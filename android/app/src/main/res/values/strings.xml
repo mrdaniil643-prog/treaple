@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Claude</string>
+    <string name="status_idle">Тап — спросить</string>
+    <string name="status_listening">Слушаю…</string>
+    <string name="status_thinking">Думаю…</string>
+    <string name="hint_pages">Свайп — листать - Назад — выход</string>
+    <string name="not_configured">Мост не настроен</string>
+    <string name="bridge_unreachable">Мост недоступен</string>
+</resources>

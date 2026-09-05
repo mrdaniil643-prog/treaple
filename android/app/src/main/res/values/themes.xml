@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Дисплей очков — монохромный зелёный micro-LED на правый глаз.
+         Отсюда чёрный фон, белый текст (на дисплее он зелёный) и полный экран.
+         Цветом ничего кодировать нельзя: оттенок на этом экране один. -->
+    <style name="Theme.RokidClaude" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

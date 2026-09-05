@@ -1,17 +1,30 @@
-# Claude в Rokid Glasses — мост через AIUI
+# Claude в Rokid Glasses
 
-HTTP-сервис, который подключает Claude к голосовому конвейеру Rokid Glasses.
-Очки распознают речь через AIUI, AIUI зовёт этот вебхук, вебхук спрашивает Claude
-и возвращает ответ в двух видах: текст для озвучки и куски для HUD плюс отдельно код.
+Две части, одна модель:
+
+1. **Мост** (`src/`) — HTTP-сервис на Node.js: держит ключ Anthropic, историю
+   диалога и готовит ответ под очки (речь без markdown, строки под HUD, код
+   отдельно).
+2. **Приложение на очки** (`android/`) — APK, который ставится на сами очки:
+   тап по тачпаду, вопрос голосом, ответ в ухо и на HUD.
+
+Подключиться к очкам можно двумя путями — они не мешают друг другу:
 
 ```
-Rokid Glasses ──▶ AIUI (ASR + навык) ──▶ POST /aiui/webhook ──▶ Claude (Messages API)
-      ▲                                            │
-      └──────── TTS + текст на HUD ◀───────────────┘
+A. Штатный голосовой конвейер, ставить на очки ничего не нужно:
+   Rokid Glasses ──▶ AIUI (ASR + навык) ──▶ POST /aiui/webhook ──▶ мост ──▶ Claude
+         ▲                                                            │
+         └──────────── TTS + текст на HUD ◀──────────────────────────┘
+
+B. Своё приложение на очках (android/):
+   Rokid Glasses ──▶ ASR ──▶ POST /v1/chat/stream ──▶ мост ──▶ Claude
+         ▲                   ◀── SSE: delta … done ──┘
+         └── TTS + страницы на HUD
 ```
 
-Ставить на очки ничего не нужно: интеграция настраивается в AIUI Studio,
-приложение на очках остаётся штатным.
+Путь A настраивается в AIUI Studio за пять минут и не требует сборки APK.
+Путь B даёт свой интерфейс, листание ответа и показ кода на экране.
+Ключ Anthropic в обоих случаях лежит только на мосту — не в очках.
 
 ## Быстрый старт
 
@@ -63,10 +76,25 @@ curl -s localhost:8787/aiui/webhook \
 
 Голосом контекст сбрасывается фразой «сброс» / «reset».
 
-## Настройка AIUI Studio
+## Настройка AIUI Studio (путь A)
 
 Пошагово — в [docs/AIUI-SETUP.md](docs/AIUI-SETUP.md). Там же — что делать,
 если формат тела вебхука в вашей конфигурации отличается от ожидаемого.
+
+## Приложение на очки (путь B)
+
+Сборка, установка через adb и настройка без клавиатуры — в
+[android/README.md](android/README.md). Коротко:
+
+```bash
+cd android && ./gradlew :app:assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n dev.treaple.rokidclaude/.MainActivity \
+  -e bridgeUrl https://ваш-мост -e token "$WEBHOOK_SECRET"
+```
+
+Очки — это YodaOS, то есть Android 12, поэтому приложение обычное андроидное:
+системные `SpeechRecognizer` и `TextToSpeech`, HTTP до моста, без Rokid SDK.
 
 ## Конфигурация
 
@@ -122,7 +150,7 @@ docker run --rm -p 8787:8787 --env-file .env rokid-claude-bridge
 
 - Прод-деплой за HTTPS: AIUI ходит только на публичный HTTPS-эндпоинт.
   Для отладки годится любой туннель (ngrok, cloudflared).
-- Приложение на очках вместо AIUI: берите `/v1/chat/stream`, он уже отдаёт
-  дельты и итоговый разбор ответа.
+- Собрать APK локально: в окружении, где писался код, не было Android SDK,
+  так что сборка приложения на очки не проверялась — см. android/README.md.
 - Инструменты (поиск по репозиторию, выполнение кода) — добавляются в
   `src/claude/client.ts` через tool use; пайплайн ответа менять не придётся.
