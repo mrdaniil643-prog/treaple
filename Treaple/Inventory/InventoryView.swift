@@ -24,7 +24,9 @@ struct InventoryView: View {
             content
                 .background(Palette.canvas)
                 .navigationTitle("Склад")
-                .navigationBarTitleDisplayMode(.large)
+                // Компактный заголовок: на iOS 26 поле поиска занимает строку
+                // крупного заголовка, и тот перестаёт отрисовываться вовсе.
+                .navigationBarTitleDisplayMode(.inline)
                 // Размещение поиска отдаём системе: на iOS 26 закреплённый
                 // navigationBarDrawer занимает место крупного заголовка.
                 .searchable(
