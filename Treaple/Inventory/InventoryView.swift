@@ -25,9 +25,10 @@ struct InventoryView: View {
                 .background(Palette.canvas)
                 .navigationTitle("Склад")
                 .navigationBarTitleDisplayMode(.large)
+                // Размещение поиска отдаём системе: на iOS 26 закреплённый
+                // navigationBarDrawer занимает место крупного заголовка.
                 .searchable(
                     text: $model.searchText,
-                    placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "Поиск по названию или категории"
                 )
                 .toolbar { toolbarContent }
