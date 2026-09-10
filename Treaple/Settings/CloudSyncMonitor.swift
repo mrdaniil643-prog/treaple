@@ -16,6 +16,8 @@ final class CloudSyncMonitor {
         case syncing
         case upToDate(Date?)
         case noAccount
+        /// У сборки нет capability iCloud — синхронизации не будет в принципе.
+        case notConfigured
         case failed(String)
 
         var title: String {
@@ -24,6 +26,7 @@ final class CloudSyncMonitor {
             case .syncing: "Синхронизация…"
             case .upToDate: "Данные актуальны"
             case .noAccount: "iCloud не подключён"
+            case .notConfigured: "Только на этом устройстве"
             case .failed: "Ошибка синхронизации"
             }
         }
@@ -34,6 +37,7 @@ final class CloudSyncMonitor {
             case .syncing: "arrow.triangle.2.circlepath.icloud"
             case .upToDate: "checkmark.icloud.fill"
             case .noAccount: "exclamationmark.icloud.fill"
+            case .notConfigured: "iphone"
             case .failed: "xmark.icloud.fill"
             }
         }
@@ -45,6 +49,11 @@ final class CloudSyncMonitor {
     @ObservationIgnored private var observer: NSObjectProtocol?
 
     init() {
+        guard AppSettingsStore.hasEntitlements else {
+            status = .notConfigured
+            return
+        }
+
         observer = NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
@@ -63,6 +72,13 @@ final class CloudSyncMonitor {
     /// Ручное обновление: pull-to-refresh на списке и кнопка в настройках.
     @MainActor
     func refresh() async {
+        // Без entitlements `CKContainer(identifier:)` не просто вернёт ошибку,
+        // а бросит исключение — до него доходить нельзя.
+        guard AppSettingsStore.hasEntitlements else {
+            status = .notConfigured
+            return
+        }
+
         if case .syncing = status {} else {
             status = .unknown
         }

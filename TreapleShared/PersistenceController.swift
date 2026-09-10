@@ -25,12 +25,20 @@ enum PersistenceController {
     }
 
     /// Контейнер приложения: локальное хранилище + автоматическая синхронизация CloudKit.
+    ///
+    /// Без entitlements CloudKit не просим вовсе — запрос приватной базы на
+    /// неподписанной сборке валит процесс, и поймать это в `catch` нельзя.
     @MainActor
     static func makeAppContainer() -> ModelContainer {
+        let cloudKitDatabase: ModelConfiguration.CloudKitDatabase =
+            AppSettingsStore.hasEntitlements
+                ? .private(AppSettingsStore.cloudKitContainerID)
+                : .none
+
         let configuration = ModelConfiguration(
             schema: schema,
             url: storeURL,
-            cloudKitDatabase: .private(AppSettingsStore.cloudKitContainerID)
+            cloudKitDatabase: cloudKitDatabase
         )
         do {
             return try ModelContainer(for: schema, configurations: configuration)

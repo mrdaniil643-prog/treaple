@@ -69,7 +69,22 @@ jobs:
           echo "app: $APP"
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" "$BUNDLE_ID" -seedDemoData
-          sleep 10
+          sleep 12
+
+          # Если приложение упало на старте, скриншоты снимут домашний экран
+          # симулятора и это молча уедет в репозиторий. Проверяем явно.
+          CRASH=$(ls -t ~/Library/Logs/DiagnosticReports/Treaple*.ips 2>/dev/null | head -1 || true)
+          if [ -n "$CRASH" ]; then
+            echo "::error::Приложение упало при запуске"
+            echo "=== $CRASH ==="
+            head -c 6000 "$CRASH"
+            echo
+            echo "=== лог симулятора ==="
+            xcrun simctl spawn "$UDID" log show --last 3m \
+              --predicate 'processImagePath CONTAINS "Treaple"' --style compact 2>/dev/null | tail -60 || true
+            exit 1
+          fi
+
           xcrun simctl io "$UDID" screenshot screenshots/1-inventory-light.png
 
           shoot() {

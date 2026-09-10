@@ -114,7 +114,7 @@ struct SettingsView: View {
                     .foregroundStyle(Palette.accent)
             }
             .buttonStyle(.plain)
-            .disabled(isRefreshing)
+            .disabled(isRefreshing || syncMonitor.status == .notConfigured)
         }
         .cardSurface(padding: 16)
     }
@@ -124,6 +124,7 @@ struct SettingsView: View {
         case .upToDate: Palette.stockOK
         case .syncing, .unknown: Palette.info
         case .noAccount: Palette.stockLow
+        case .notConfigured: Palette.textSecondary
         case .failed: Palette.danger
         }
     }
@@ -132,6 +133,8 @@ struct SettingsView: View {
         switch syncMonitor.status {
         case .noAccount:
             return "Войдите в iCloud в настройках iPhone — тогда склад появится на всех ваших устройствах."
+        case .notConfigured:
+            return "В этой сборке iCloud не подключён: данные хранятся только здесь. Включите capability iCloud и App Groups в Xcode, чтобы склад синхронизировался между устройствами."
         case .failed(let message):
             return message
         default:

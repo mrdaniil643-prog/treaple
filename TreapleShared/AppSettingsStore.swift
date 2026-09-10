@@ -27,6 +27,16 @@ enum AppSettingsStore {
     /// (например, при запуске в превью или до настройки capability).
     static let defaults: UserDefaults = UserDefaults(suiteName: appGroupID) ?? .standard
 
+    /// Настроены ли capability у этой сборки.
+    ///
+    /// App Group и iCloud включаются вместе, поэтому доступность контейнера группы —
+    /// надёжный признак того, что и CloudKit трогать можно. На неподписанной сборке
+    /// (CI, симулятор без команды разработчика) их нет: обращение к CloudKit там
+    /// не просто вернёт ошибку, а уронит приложение на старте.
+    static var hasEntitlements: Bool {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) != nil
+    }
+
     static var lowStockThreshold: Int {
         get {
             let stored = defaults.integer(forKey: Key.lowStockThreshold)
