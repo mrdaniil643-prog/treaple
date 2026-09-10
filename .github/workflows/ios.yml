@@ -5,6 +5,13 @@ on:
     branches: ["claude/**", "main", "master"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Сборка и скриншоты
@@ -63,7 +70,7 @@ jobs:
           xcrun simctl install "$UDID" "$APP"
           xcrun simctl launch "$UDID" "$BUNDLE_ID" -seedDemoData
           sleep 10
-          xcrun simctl io "$UDID" screenshot screenshots/1-склад-светлая.png
+          xcrun simctl io "$UDID" screenshot screenshots/1-inventory-light.png
 
           shoot() {
             xcrun simctl openurl "$UDID" "$1"
@@ -71,14 +78,34 @@ jobs:
             xcrun simctl io "$UDID" screenshot "screenshots/$2"
           }
 
-          shoot "treaple://dashboard" "2-дашборд.png"
-          shoot "treaple://settings"  "3-настройки.png"
-          shoot "treaple://low-stock" "4-фильтр-мало.png"
+          shoot "treaple://dashboard" "2-dashboard-light.png"
+          shoot "treaple://settings"  "3-settings-light.png"
+          shoot "treaple://low-stock" "4-filter-low-light.png"
 
           xcrun simctl ui "$UDID" appearance dark
           sleep 3
-          xcrun simctl io "$UDID" screenshot screenshots/5-склад-тёмная.png
-          shoot "treaple://dashboard" "6-дашборд-тёмная.png"
+          xcrun simctl io "$UDID" screenshot screenshots/5-inventory-dark.png
+          shoot "treaple://dashboard" "6-dashboard-dark.png"
+
+      - name: Сохранить скриншоты в репозиторий
+        run: |
+          set -e
+          # Полноразмерные снимки весят по 2-3 МБ — в репозитории это лишнее.
+          sips -Z 1000 screenshots/*.png > /dev/null
+          rm -rf docs/screenshots
+          mkdir -p docs/screenshots
+          cp screenshots/*.png docs/screenshots/
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "скриншоты не изменились"
+            exit 0
+          fi
+          # [skip ci] — иначе пуш из workflow запустил бы его снова.
+          git commit -m "Обновить скриншоты симулятора [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Выгрузить скриншоты
         if: always()
