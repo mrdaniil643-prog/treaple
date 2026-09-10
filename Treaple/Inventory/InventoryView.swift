@@ -247,10 +247,8 @@ struct InventoryView: View {
         )
         .padding(.horizontal, Metrics.gutter)
         .padding(.bottom, 10)
-        .background {
-            Palette.canvas
-                .ignoresSafeArea(edges: .top)
-        }
+        // Без ignoresSafeArea: фон, затянутый под навбар, закрашивал крупный заголовок.
+        .background(Palette.canvas)
     }
 
     // MARK: - Пустые состояния

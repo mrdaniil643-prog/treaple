@@ -39,7 +39,9 @@ struct MetricCard: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // maxHeight растягивает содержимое, иначе соседние карточки в строке
+        // сетки получают разную высоту из-за подписей в две строки.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .cardSurface(padding: 14)
         .accessibilityElement(children: .combine)
     }
