@@ -38,7 +38,12 @@ struct InventoryView: View {
                 .animation(Motion.snappy, value: model.ascending)
                 .animation(Motion.snappy, value: model.collapsedSections)
         }
-        .onAppear { model.groupByCategory = groupByCategory }
+        .onAppear {
+            model.groupByCategory = groupByCategory
+            #if DEBUG
+            if let filter = LaunchOptions.startFilter { model.filter = filter }
+            #endif
+        }
         .onChange(of: requestedFilter) { _, newValue in
             guard let newValue else { return }
             withAnimation(Motion.snappy) {

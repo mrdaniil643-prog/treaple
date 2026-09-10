@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "TR0000000000000000000074"
+               BlueprintIdentifier = "TR0000000000000000000076"
                BuildableName = "Treaple.app"
                BlueprintName = "Treaple"
                ReferencedContainer = "container:Treaple.xcodeproj">
@@ -44,7 +44,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "TR0000000000000000000074"
+            BlueprintIdentifier = "TR0000000000000000000076"
             BuildableName = "Treaple.app"
             BlueprintName = "Treaple"
             ReferencedContainer = "container:Treaple.xcodeproj">
@@ -61,7 +61,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "TR0000000000000000000074"
+            BlueprintIdentifier = "TR0000000000000000000076"
             BuildableName = "Treaple.app"
             BlueprintName = "Treaple"
             ReferencedContainer = "container:Treaple.xcodeproj">

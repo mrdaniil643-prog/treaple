@@ -31,6 +31,11 @@ struct RootView: View {
         .sheet(item: $editorRequest) { request in
             ProductEditorView(request: request)
         }
+        .onAppear {
+            #if DEBUG
+            if let tab = LaunchOptions.startTab { selection = tab }
+            #endif
+        }
         .onOpenURL { url in
             // treaple://low-stock открывается тапом по виджету, остальные адреса
             // нужны для автоматических скриншотов на CI и просто удобны сами по себе.
