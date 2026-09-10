@@ -13,7 +13,24 @@ struct TreapleApp: App {
     init() {
         container = PersistenceController.makeAppContainer()
         Appearance.applyGlobalStyling()
+        #if DEBUG
+        Self.seedDemoDataIfRequested(in: container)
+        #endif
     }
+
+    #if DEBUG
+    /// Запуск с аргументом `-seedDemoData` наполняет пустую базу примерами.
+    /// Нужно для автоматических скриншотов на CI и удобно при отладке.
+    @MainActor
+    private static func seedDemoDataIfRequested(in container: ModelContainer) {
+        guard CommandLine.arguments.contains("-seedDemoData") else { return }
+        let context = container.mainContext
+        let existing = (try? context.fetch(FetchDescriptor<Product>())) ?? []
+        guard existing.isEmpty else { return }
+        for product in Product.sampleProducts { context.insert(product) }
+        try? context.save()
+    }
+    #endif
 
     private var appearance: AppearanceMode {
         AppearanceMode(rawValue: appearanceRaw) ?? .system

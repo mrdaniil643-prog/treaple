@@ -1,0 +1,97 @@
+name: iOS
+
+on:
+  push:
+    branches: ["claude/**", "main", "master"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Сборка и скриншоты
+    runs-on: macos-latest
+    timeout-minutes: 40
+
+    env:
+      BUNDLE_ID: com.treaple.inventory
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Окружение
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes | grep iOS || true
+
+      - name: Сборка для симулятора
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Treaple.xcodeproj \
+            -scheme Treaple \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            2>&1 | tee build.log
+
+      - name: Ошибки компиляции
+        if: failure()
+        run: |
+          echo "=== errors ==="
+          grep -E "error:" build.log | sort -u | head -60 || true
+          echo "=== warnings ==="
+          grep -E "warning:" build.log | sort -u | head -30 || true
+
+      - name: Запуск в симуляторе
+        run: |
+          set -e
+          mkdir -p screenshots
+
+          UDID=$(xcrun simctl list devices available -j \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; \
+              print([x['udid'] for rt in d for x in d[rt] if x['name'].startswith('iPhone')][0])")
+          echo "simulator: $UDID"
+
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+
+          APP=$(find build/Build/Products -maxdepth 3 -name "Treaple.app" | head -1)
+          echo "app: $APP"
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" "$BUNDLE_ID" -seedDemoData
+          sleep 10
+          xcrun simctl io "$UDID" screenshot screenshots/1-склад-светлая.png
+
+          shoot() {
+            xcrun simctl openurl "$UDID" "$1"
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/$2"
+          }
+
+          shoot "treaple://dashboard" "2-дашборд.png"
+          shoot "treaple://settings"  "3-настройки.png"
+          shoot "treaple://low-stock" "4-фильтр-мало.png"
+
+          xcrun simctl ui "$UDID" appearance dark
+          sleep 3
+          xcrun simctl io "$UDID" screenshot screenshots/5-склад-тёмная.png
+          shoot "treaple://dashboard" "6-дашборд-тёмная.png"
+
+      - name: Выгрузить скриншоты
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: warn
+
+      - name: Выгрузить лог сборки
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: warn

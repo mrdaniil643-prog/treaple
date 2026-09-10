@@ -32,11 +32,14 @@ struct RootView: View {
             ProductEditorView(request: request)
         }
         .onOpenURL { url in
-            // treaple://low-stock — открывается тапом по виджету.
+            // treaple://low-stock открывается тапом по виджету, остальные адреса
+            // нужны для автоматических скриншотов на CI и просто удобны сами по себе.
             guard url.scheme == "treaple" else { return }
             switch url.host {
             case "low-stock": showInventory(filter: .low)
             case "add": editorRequest = .create
+            case "dashboard": select(.dashboard)
+            case "settings": select(.settings)
             default: showInventory(filter: nil)
             }
         }
@@ -47,6 +50,10 @@ struct RootView: View {
             selection = .inventory
             requestedFilter = filter
         }
+    }
+
+    private func select(_ tab: Tab) {
+        withAnimation(Motion.spring) { selection = tab }
     }
 }
 
