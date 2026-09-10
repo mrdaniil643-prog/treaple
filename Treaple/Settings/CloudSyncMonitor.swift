@@ -113,7 +113,7 @@ final class CloudSyncMonitor {
     /// и переносить его на другой актор нельзя.
     private nonisolated func handle(_ notification: Notification) {
         guard let event = notification.userInfo?[
-            NSPersistentCloudKitContainer.eventChangedNotificationUserInfoKey
+            NSPersistentCloudKitContainer.eventNotificationUserInfoKey
         ] as? NSPersistentCloudKitContainer.Event else { return }
 
         let endDate = event.endDate
