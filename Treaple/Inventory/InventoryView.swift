@@ -144,7 +144,7 @@ struct InventoryView: View {
             } label: {
                 Label("Изменить", systemImage: "square.and.pencil")
             }
-            .tint(Palette.info)
+            .tint(Palette.accent)
 
             Button {
                 Haptics.tap(.medium)
