@@ -70,12 +70,12 @@ struct ProductDetailView: View {
 
     private var header: some View {
         VStack(spacing: 14) {
-            ProductThumbnail(product: product, size: 120, cornerRadius: 26)
-                .shadow(color: .black.opacity(0.08), radius: 16, y: 8)
+            ProductThumbnail(product: product, size: 112, cornerRadius: 16)
 
             VStack(spacing: 8) {
                 Text(product.name.isEmpty ? "Без названия" : product.name)
-                    .font(.title2.weight(.bold))
+                    .font(.system(size: 22, weight: .semibold))
+                    .tracking(-0.4)
                     .foregroundStyle(Palette.textPrimary)
                     .multilineTextAlignment(.center)
 
@@ -100,14 +100,10 @@ struct ProductDetailView: View {
 
                 VStack(spacing: 2) {
                     Text(Format.integer(product.quantity))
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .tracking(-1)
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.stock(product.stockState))
+                        .figure(size: 46, weight: .semibold)
+                        .foregroundStyle(Palette.textPrimary)
                         .contentTransition(.numericText())
-                    Text("шт. на складе")
-                        .font(.caption)
-                        .foregroundStyle(Palette.textTertiary)
+                    Text("шт. на складе").microLabel()
                 }
                 .frame(minWidth: 120)
 
@@ -117,20 +113,17 @@ struct ProductDetailView: View {
             }
 
             if product.stockState == .low {
-                Label(
-                    "Остаток ниже порога — \(Format.integer(product.lowStockThreshold)) шт.",
-                    systemImage: "exclamationmark.triangle.fill"
-                )
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Palette.stockLow)
+                Text("Остаток ниже порога — \(Format.integer(product.lowStockThreshold)) шт.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Palette.textSecondary)
             }
 
             Toggle(isOn: inStockBinding) {
-                Label("В наличии", systemImage: "checkmark.seal.fill")
-                    .font(.subheadline.weight(.medium))
+                Text("В наличии")
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.textPrimary)
             }
-            .tint(Palette.stockOK)
+            .tint(Palette.ink)
         }
         .cardSurface(padding: 18)
         .animation(Motion.snappy, value: product.quantity)
@@ -155,15 +148,15 @@ struct ProductDetailView: View {
         } label: {
             Image(systemName: symbol)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(enabled ? Palette.accent : Palette.textTertiary)
+                .foregroundStyle(enabled ? Palette.textPrimary : Palette.textTertiary)
                 .frame(width: 52, height: 52)
                 .background {
                     Circle()
-                        .fill(enabled ? Palette.accent.opacity(0.12) : Palette.separator.opacity(0.4))
+                        .fill(Palette.surfaceAlt)
                         .overlay {
                             Circle().strokeBorder(
-                                enabled ? Palette.accent.opacity(0.2) : .clear,
-                                lineWidth: 0.75
+                                enabled ? Palette.lineStrong : Palette.line,
+                                lineWidth: Metrics.hairline
                             )
                         }
                 }
@@ -176,58 +169,30 @@ struct ProductDetailView: View {
 
     private var economicsGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ЭКОНОМИКА ПОЗИЦИИ")
-                .font(.caption2.weight(.bold))
-                .tracking(0.7)
-                .foregroundStyle(Palette.textTertiary)
+            Text("Экономика позиции")
+                .microLabel(Palette.textSecondary)
                 .padding(.leading, 4)
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                statTile("Закупка", Format.money(product.purchasePrice), "arrow.down.circle.fill", Palette.info)
-                statTile("Продажа", Format.money(product.salePrice), "arrow.up.circle.fill", Palette.accent)
-                statTile(
-                    "Прибыль с единицы",
-                    Format.money(product.profitPerUnit),
-                    "plus.forwardslash.minus",
-                    product.profitPerUnit >= 0 ? Palette.stockOK : Palette.danger
-                )
-                statTile("Наценка", Format.percent(product.markupPercent), "percent", Palette.stockLow)
-                statTile("Сумма закупки", Format.money(product.totalPurchaseValue), "shippingbox.fill", Palette.info)
-                statTile(
-                    "Прибыль по остатку",
-                    Format.money(product.totalProfit),
-                    "chart.line.uptrend.xyaxis",
-                    product.totalProfit >= 0 ? Palette.stockOK : Palette.danger
-                )
+                statTile("Закупка", Format.money(product.purchasePrice))
+                statTile("Продажа", Format.money(product.salePrice))
+                statTile("Прибыль с единицы", Format.money(product.profitPerUnit))
+                statTile("Наценка", Format.percent(product.markupPercent))
+                statTile("Сумма закупки", Format.money(product.totalPurchaseValue))
+                statTile("Прибыль по остатку", Format.money(product.totalProfit))
             }
         }
     }
 
-    private func statTile(_ title: String, _ value: String, _ symbol: String, _ tint: Color) -> some View {
+    private func statTile(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 26, height: 26)
-                .background {
-                    Circle()
-                        .fill(LinearGradient(
-                            colors: [tint, tint.opacity(0.72)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ))
-                        .shadow(color: tint.opacity(0.3), radius: 5, y: 2)
-                }
-
             Text(value)
-                .font(.system(.callout, design: .rounded, weight: .bold))
-                .monospacedDigit()
+                .figure(size: 17)
                 .foregroundStyle(Palette.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
 
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(Palette.textTertiary)
+            Text(title).microLabel()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface(padding: 13)
@@ -238,9 +203,9 @@ struct ProductDetailView: View {
     private var metaCard: some View {
         VStack(spacing: 10) {
             metaRow("Обновлено", Format.relativeDate(product.updatedAt))
-            Divider()
+            Hairline()
             metaRow("Создано", Format.dateTime(product.createdAt))
-            Divider()
+            Hairline()
             metaRow("Порог «мало»", Format.quantity(product.lowStockThreshold))
         }
         .cardSurface(padding: 14)

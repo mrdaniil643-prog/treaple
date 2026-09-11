@@ -1,14 +1,12 @@
 import SwiftUI
 
-/// Превью товара: фото, если оно есть, иначе — инициал на подложке цвета
-/// категории. Заглушка не должна выглядеть как «нет данных», поэтому это
-/// полноценный градиентный плиточный знак, а не серый квадрат.
+/// Превью товара: фото, если оно есть, иначе — монограмма в обведённом
+/// квадрате. Без градиентов и цветных подложек: знак держится на самой
+/// букве, её весе и точной рамке.
 struct ProductThumbnail: View {
     let product: Product
     var size: CGFloat = Metrics.thumbSize
     var cornerRadius: CGFloat = Metrics.thumbRadius
-
-    @Environment(\.colorScheme) private var colorScheme
 
     private var initial: String {
         let source = product.name.isEmpty ? product.displayCategory : product.name
@@ -25,36 +23,22 @@ struct ProductThumbnail: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
+                    .grayscale(1)
             } else {
-                placeholder
+                ZStack {
+                    Palette.surfaceAlt
+                    Text(initial)
+                        .font(.system(size: size * 0.36, weight: .medium))
+                        .tracking(-0.5)
+                        .foregroundStyle(Palette.textSecondary)
+                }
             }
         }
         .frame(width: size, height: size)
         .clipShape(shape)
         .overlay {
-            shape.strokeBorder(
-                LinearGradient(
-                    colors: [.white.opacity(colorScheme == .dark ? 0.12 : 0.7), Palette.separator.opacity(0.6)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ),
-                lineWidth: 0.75
-            )
+            shape.strokeBorder(Palette.line, lineWidth: Metrics.hairline)
         }
         .accessibilityHidden(true)
-    }
-
-    private var placeholder: some View {
-        let tint = Palette.category(product.displayCategory)
-        return ZStack {
-            LinearGradient(
-                colors: [tint.opacity(0.26), tint.opacity(0.11)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            Text(initial)
-                .font(.system(size: size * 0.38, weight: .bold, design: .rounded))
-                .foregroundStyle(tint)
-        }
     }
 }

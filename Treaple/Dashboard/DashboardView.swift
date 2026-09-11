@@ -64,39 +64,32 @@ struct DashboardView: View {
 
     private var metricsGrid: some View {
         let data = metrics
-        return LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-            spacing: 12
-        ) {
-            MetricCard(
-                title: "Сумма закупки",
-                value: Format.compactMoney(data.purchaseValue),
-                caption: "\(Format.integer(data.totalUnits)) шт. на складе",
-                symbolName: "arrow.down.circle.fill",
-                tint: Palette.info
-            )
-            MetricCard(
-                title: "Сумма продажи",
-                value: Format.compactMoney(data.saleValue),
-                caption: "\(Format.integer(data.totalTitles)) наименований",
-                symbolName: "arrow.up.circle.fill",
-                tint: Palette.accent
-            )
+
+        return VStack(spacing: Metrics.cardSpacing) {
             MetricCard(
                 title: "Потенциальная прибыль",
                 value: Format.compactMoney(data.potentialProfit),
-                caption: "при полной продаже",
-                symbolName: "chart.line.uptrend.xyaxis",
-                tint: data.potentialProfit >= 0 ? Palette.stockOK : Palette.danger
+                caption: "если продать весь остаток — \(Format.integer(data.totalUnits)) шт.",
+                size: .hero
             )
-            MetricCard(
-                title: "Маржа",
-                value: Format.percent(data.marginPercent),
-                caption: "от суммы продажи",
-                symbolName: "percent",
-                tint: Palette.stockLow
-            )
+            .cardSurface(padding: 18)
+
+            HStack(spacing: 0) {
+                MetricCard(title: "Закупка", value: Format.compactMoney(data.purchaseValue))
+                columnRule
+                MetricCard(title: "Продажа", value: Format.compactMoney(data.saleValue))
+                columnRule
+                MetricCard(title: "Маржа", value: Format.percent(data.marginPercent, digits: 0))
+            }
+            .cardSurface(padding: 16)
         }
+    }
+
+    private var columnRule: some View {
+        Rectangle()
+            .fill(Palette.line)
+            .frame(width: Metrics.hairline)
+            .padding(.vertical, 2)
     }
 
     // MARK: - График
@@ -122,27 +115,20 @@ struct DashboardView: View {
                     x: .value("Значение", chartGrown ? value(for: slice) : 0),
                     y: .value("Категория", slice.category)
                 )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Palette.category(slice.category),
-                            Palette.category(slice.category).opacity(0.7)
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(8)
+                // Ранговая шкала серого: самый большой остаток самый плотный,
+                // порядок виден без легенды и без единого цветного пятна.
+                .foregroundStyle(Palette.tone(rank: slice.rank, of: slices.count))
+                .cornerRadius(3)
                 .annotation(position: .trailing, alignment: .leading, spacing: 6) {
                     Text(
                         chartMetric == .quantity
                             ? Format.integer(slice.quantity)
                             : Format.compactMoney(slice.saleValue)
                     )
-                    .font(.caption2.weight(.semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    .foregroundStyle(Palette.textTertiary)
+                    .foregroundStyle(Palette.textSecondary)
                     .opacity(chartGrown ? 1 : 0)
                 }
             }
@@ -150,7 +136,7 @@ struct DashboardView: View {
             .chartYAxis {
                 AxisMarks(preset: .aligned, position: .leading) { _ in
                     AxisValueLabel()
-                        .font(.caption2)
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Palette.textSecondary)
                 }
             }
@@ -179,20 +165,20 @@ struct DashboardView: View {
                 Spacer()
                 if !attention.isEmpty {
                     Text(Format.integer(attention.count))
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 11, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(Palette.stockLow)
-                        .padding(.horizontal, 8)
+                        .foregroundStyle(Palette.inkInverted)
+                        .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background { Capsule().fill(Palette.stockLow.opacity(0.14)) }
+                        .background { Capsule(style: .continuous).fill(Palette.ink) }
                 }
             }
 
             if attention.isEmpty {
                 HStack(spacing: 10) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(Palette.stockOK)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Palette.textPrimary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Всё в порядке")
                             .font(.subheadline.weight(.semibold))
@@ -209,7 +195,7 @@ struct DashboardView: View {
                     ForEach(Array(attention.prefix(6).enumerated()), id: \.element.id) { index, product in
                         lowStockRow(product)
                         if index < min(attention.count, 6) - 1 {
-                            Divider().padding(.leading, 52)
+                            Hairline(inset: 50)
                         }
                     }
                 }
@@ -221,8 +207,8 @@ struct DashboardView: View {
                         Image(systemName: "chevron.right")
                             .font(.caption2.weight(.bold))
                     }
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Palette.accent)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.textPrimary)
                 }
                 .buttonStyle(.pressable)
                 .padding(.leading, 4)
@@ -232,17 +218,14 @@ struct DashboardView: View {
 
     private func lowStockRow(_ product: Product) -> some View {
         HStack(spacing: 12) {
-            ProductThumbnail(product: product, size: 38, cornerRadius: 11)
+            ProductThumbnail(product: product, size: 36, cornerRadius: 8)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(product.name.isEmpty ? "Без названия" : product.name)
-                    .font(.subheadline.weight(.medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(1)
-                Text(product.displayCategory)
-                    .font(.caption2)
-                    .foregroundStyle(Palette.textTertiary)
-                    .lineLimit(1)
+                CategoryChip(title: product.displayCategory)
             }
 
             Spacer(minLength: 8)
@@ -258,9 +241,7 @@ struct DashboardView: View {
     }
 
     private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.system(.headline, design: .rounded, weight: .semibold))
-            .foregroundStyle(Palette.textPrimary)
+        Text(text).microLabel(Palette.textSecondary)
     }
 }
 

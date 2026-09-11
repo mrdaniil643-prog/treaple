@@ -209,29 +209,24 @@ struct InventoryView: View {
             Haptics.selection()
             withAnimation(Motion.spring) { model.toggleCollapse(section) }
         } label: {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(Palette.category(section.title).gradient)
-                    .frame(width: 7, height: 7)
+            HStack(spacing: 10) {
+                Text(section.title).microLabel(Palette.textPrimary)
 
-                Text(section.title)
-                    .font(.footnote.weight(.bold))
-                    .foregroundStyle(Palette.textPrimary)
-                    .textCase(nil)
-
-                Text("\(section.products.count) · \(Format.quantity(section.totalQuantity))")
-                    .font(.caption2.weight(.medium))
+                Text(Format.quantity(section.totalQuantity))
+                    .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(Palette.textTertiary)
 
-                Spacer()
+                // Линия дотягивает заголовок до правого края: секции
+                // читаются как разделы печатного каталога.
+                Hairline()
 
                 Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(Palette.textTertiary)
                     .rotationEffect(.degrees(model.isCollapsed(section) ? -90 : 0))
             }
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 4)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
@@ -323,8 +318,8 @@ struct InventoryView: View {
                     Label("Группировать по категориям", systemImage: "rectangle.3.group")
                 }
             } label: {
-                Image(systemName: "arrow.up.arrow.down.circle")
-                    .font(.title3)
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 15, weight: .semibold))
             }
             .accessibilityLabel("Сортировка и группировка")
         }
@@ -335,7 +330,7 @@ struct InventoryView: View {
                 editorRequest = .create
             } label: {
                 Image(systemName: "plus")
-                    .font(.body.weight(.semibold))
+                    .font(.system(size: 16, weight: .semibold))
             }
             .accessibilityLabel("Добавить товар")
         }

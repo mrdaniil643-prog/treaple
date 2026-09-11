@@ -5,7 +5,7 @@ struct LowStockWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: AppSettingsStore.lowStockWidgetKind, provider: LowStockProvider()) { entry in
             LowStockWidgetView(entry: entry)
-                .containerBackground(Palette.surface.gradient, for: .widget)
+                .containerBackground(Palette.surface, for: .widget)
         }
         .configurationDisplayName("Мало на складе")
         .description("Сколько позиций заканчивается или закончилось.")
@@ -37,13 +37,12 @@ struct LowStockWidgetView: View {
             Spacer(minLength: 0)
 
             Text(Format.integer(entry.attentionCount))
-                .font(.system(size: 44, weight: .bold, design: .rounded))
-                .monospacedDigit()
+                .figure(size: 44, weight: .semibold)
                 .foregroundStyle(accent)
                 .contentTransition(.numericText())
 
             Text(summaryLine)
-                .font(.caption2)
+                .font(.system(size: 11))
                 .foregroundStyle(Palette.textSecondary)
                 .lineLimit(2)
         }
@@ -59,8 +58,7 @@ struct LowStockWidgetView: View {
                 header
                 Spacer(minLength: 0)
                 Text(Format.integer(entry.attentionCount))
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
-                    .monospacedDigit()
+                    .figure(size: 40, weight: .semibold)
                     .foregroundStyle(accent)
                 Text(summaryLine)
                     .font(.caption2)
@@ -74,15 +72,16 @@ struct LowStockWidgetView: View {
             VStack(alignment: .leading, spacing: 7) {
                 if entry.items.isEmpty {
                     Spacer(minLength: 0)
-                    Label("Все позиции в норме", systemImage: "checkmark.circle.fill")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Palette.stockOK)
+                    Text("Все позиции в норме")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Palette.textSecondary)
                     Spacer(minLength: 0)
                 } else {
                     ForEach(entry.items) { item in
                         HStack(spacing: 7) {
                             Circle()
-                                .fill(item.isOut ? Palette.stockOut : Palette.stockLow)
+                                .fill(Palette.ink)
+                                .opacity(item.isOut ? 1 : 0.35)
                                 .frame(width: 6, height: 6)
 
                             Text(item.name)
@@ -93,9 +92,9 @@ struct LowStockWidgetView: View {
                             Spacer(minLength: 4)
 
                             Text(item.isOut ? "0" : Format.integer(item.quantity))
-                                .font(.caption.weight(.bold))
+                                .font(.system(size: 12, weight: .semibold))
                                 .monospacedDigit()
-                                .foregroundStyle(item.isOut ? Palette.stockOut : Palette.stockLow)
+                                .foregroundStyle(Palette.textPrimary)
                         }
                     }
                     Spacer(minLength: 0)
@@ -121,8 +120,8 @@ struct LowStockWidgetView: View {
 
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label("Мало на складе", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption2.weight(.semibold))
+            Text("Мало на складе")
+                .font(.system(size: 11, weight: .semibold))
             Text("\(Format.integer(entry.attentionCount)) из \(Format.integer(entry.totalTitles))")
                 .font(.headline)
                 .monospacedDigit()
@@ -137,19 +136,12 @@ struct LowStockWidgetView: View {
     // MARK: - Общее
 
     private var header: some View {
-        HStack(spacing: 5) {
-            Image(systemName: entry.attentionCount > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .font(.caption2.weight(.bold))
-            Text("Склад")
-                .font(.caption2.weight(.bold))
-        }
-        .foregroundStyle(accent)
+        Text("Склад").microLabel(Palette.textSecondary)
     }
 
+    /// Чем острее ситуация, тем плотнее краска — цвета здесь нет.
     private var accent: Color {
-        if entry.outOfStockCount > 0 { return Palette.danger }
-        if entry.lowStockCount > 0 { return Palette.stockLow }
-        return Palette.stockOK
+        entry.attentionCount > 0 ? Palette.ink : Palette.textTertiary
     }
 
     private var summaryLine: String {

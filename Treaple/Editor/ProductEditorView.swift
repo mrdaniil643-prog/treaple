@@ -80,30 +80,22 @@ struct ProductEditorView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {
                     ZStack {
-                        LinearGradient(
-                            colors: [Palette.accentSoft, Palette.accentSoft.opacity(0.6)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        VStack(spacing: 6) {
-                            Image(systemName: "photo.badge.plus")
-                                .font(.system(size: 26, weight: .medium))
-                                .symbolRenderingMode(.hierarchical)
-                            Text("Добавьте фото товара")
-                                .font(.caption)
+                        Palette.surfaceAlt
+                        VStack(spacing: 8) {
+                            Image(systemName: "camera")
+                                .font(.system(size: 22, weight: .regular))
+                            Text("Фото товара").microLabel(Palette.textTertiary)
                         }
-                        .foregroundStyle(Palette.accent)
+                        .foregroundStyle(Palette.textTertiary)
                     }
                 }
             }
             .frame(width: 132, height: 132)
-            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .strokeBorder(Palette.separator, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
             }
-            .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
-            .shadow(color: .black.opacity(0.10), radius: 22, y: 12)
 
             HStack(spacing: 8) {
                 PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
@@ -113,10 +105,13 @@ struct ProductEditorView: View {
                         Text("Галерея")
                             .font(.footnote.weight(.semibold))
                     }
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.textPrimary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background { Capsule().fill(Palette.accent.opacity(0.12)) }
+                    .background {
+                        Capsule(style: .continuous)
+                            .strokeBorder(Palette.lineStrong, lineWidth: Metrics.hairline)
+                    }
                 }
 
                 if CameraPicker.isAvailable {
@@ -188,12 +183,13 @@ struct ProductEditorView: View {
                         withAnimation(Motion.snappy) { draft.category = suggestion }
                     } label: {
                         Text(suggestion)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Palette.category(suggestion))
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Palette.textSecondary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background {
-                                Capsule().fill(Palette.category(suggestion).opacity(0.12))
+                                Capsule(style: .continuous)
+                                    .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
                             }
                     }
                     .buttonStyle(.plain)
@@ -351,7 +347,7 @@ struct ProductEditorView: View {
             FormRow(title: "В наличии", systemImage: "checkmark.seal.fill", showsDivider: false) {
                 Toggle("", isOn: $draft.inStock)
                     .labelsHidden()
-                    .tint(Palette.stockOK)
+                    .tint(Palette.ink)
                     .onChange(of: draft.inStock) { _, _ in Haptics.tap() }
             }
         }
@@ -365,15 +361,15 @@ struct ProductEditorView: View {
                 summaryItem(
                     title: "Прибыль с единицы",
                     value: Format.money(draft.profitPerUnit),
-                    tint: draft.profitPerUnit >= 0 ? Palette.stockOK : Palette.danger
+                    tint: Palette.textPrimary
                 )
-                Divider().frame(height: 34)
+                Rectangle().fill(Palette.line).frame(width: Metrics.hairline, height: 34)
                 summaryItem(
                     title: "Маржа",
                     value: Format.percent(draft.marginPercent),
-                    tint: draft.marginPercent >= 0 ? Palette.stockOK : Palette.danger
+                    tint: Palette.textPrimary
                 )
-                Divider().frame(height: 34)
+                Rectangle().fill(Palette.line).frame(width: Metrics.hairline, height: 34)
                 summaryItem(
                     title: "Всего на складе",
                     value: Format.money(draft.totalProfit),
@@ -382,9 +378,9 @@ struct ProductEditorView: View {
             }
 
             if let warning = draft.lossWarning {
-                Label(warning, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(Palette.stockLow)
+                Label(warning, systemImage: "exclamationmark.triangle")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Palette.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -394,16 +390,14 @@ struct ProductEditorView: View {
     }
 
     private func summaryItem(title: String, value: String, tint: Color) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 4) {
             Text(value)
-                .font(.callout.weight(.bold))
-                .monospacedDigit()
+                .figure(size: 16)
                 .foregroundStyle(tint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(title)
-                .font(.caption2)
-                .foregroundStyle(Palette.textTertiary)
+                .microLabel()
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)

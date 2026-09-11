@@ -3,53 +3,58 @@ import UIKit
 
 // MARK: - Палитра
 
-/// Цвета приложения. Все оттенки адаптивные: собираются через `UIColor` с
-/// динамическим провайдером, поэтому корректно переключаются между темами
-/// и не требуют дублирования в каталоге ассетов.
+/// Строго монохромная шкала. Цвета нет вовсе — ни акцентного, ни
+/// семантического: иерархию держат плотность краски, вес шрифта и линии.
+/// Оттенок пришлось бы заучивать, а плотность читается сразу.
 enum Palette {
 
-    // Акцент — чернильный индиго. Семантические зелёный/янтарный/серый
-    // остаются читаемыми рядом с ним и не сливаются с брендовым цветом.
-    static let accent = dynamic(light: 0x4338CA, dark: 0x8D89F7)
-    static let accentDeep = dynamic(light: 0x312BA0, dark: 0xA8A4FF)
-    static let accentSoft = dynamic(light: 0xEDECFB, dark: 0x22203F)
+    // Чернила. В светлой теме это почти чёрный, в тёмной — почти белый:
+    // чистые #000/#FFF на большой площади дают резь в глазах.
+    static let ink = dynamic(light: 0x0A0A0A, dark: 0xFAFAFA)
+    static let inkInverted = dynamic(light: 0xFFFFFF, dark: 0x0A0A0A)
 
-    // Поверхности: тёплый нейтральный фон, карточки чуть светлее фона.
-    static let canvas = dynamic(light: 0xF4F3F0, dark: 0x0B0B10)
-    static let surface = dynamic(light: 0xFFFFFF, dark: 0x17171E)
-    static let surfaceElevated = dynamic(light: 0xFFFFFF, dark: 0x1F1F28)
-    static let separator = dynamic(light: 0xE6E3DD, dark: 0x2C2C37)
+    /// Акцент в монохроме — это и есть чернила.
+    static var accent: Color { ink }
+
+    // Полотно и поверхности. Карточка отделяется от фона тоном и волосяной
+    // линией, а не тенью: тень — это мягкость, здесь она неуместна.
+    static let canvas = dynamic(light: 0xF2F2F2, dark: 0x000000)
+    static let surface = dynamic(light: 0xFFFFFF, dark: 0x0E0E0E)
+    static let surfaceAlt = dynamic(light: 0xF7F7F7, dark: 0x161616)
+
+    // Линии.
+    static let line = dynamic(light: 0xE3E3E3, dark: 0x262626)
+    static let lineStrong = dynamic(light: 0xC9C9C9, dark: 0x3C3C3C)
 
     // Текст.
-    static let textPrimary = dynamic(light: 0x17171C, dark: 0xF3F2F0)
-    static let textSecondary = dynamic(light: 0x6A6A74, dark: 0x9B9BA7)
-    static let textTertiary = dynamic(light: 0x9A9AA4, dark: 0x6C6C78)
+    static let textPrimary = dynamic(light: 0x0A0A0A, dark: 0xFAFAFA)
+    static let textSecondary = dynamic(light: 0x6B6B6B, dark: 0xA2A2A2)
+    static let textTertiary = dynamic(light: 0x9C9C9C, dark: 0x6E6E6E)
 
-    // Семантика остатков.
-    static let stockOK = dynamic(light: 0x1B9B57, dark: 0x4ADE80)
-    static let stockLow = dynamic(light: 0xC17E00, dark: 0xFBBF24)
-    static let stockOut = dynamic(light: 0x9A9AA4, dark: 0x74747F)
-    static let danger = dynamic(light: 0xD92D20, dark: 0xFF6B60)
-    static let info = dynamic(light: 0x1D6FE0, dark: 0x63A8FF)
+    // Состояния остатка — те же чернила разной плотности.
+    static let stockOK = textTertiary
+    static let stockLow = ink
+    static let stockOut = ink
+    static let danger = ink
+    static let info = textSecondary
 
     static func stock(_ state: StockState) -> Color {
         switch state {
-        case .ok: stockOK
-        case .low: stockLow
-        case .out: stockOut
+        case .ok: textTertiary
+        case .low, .out: ink
         }
     }
 
-    /// Устойчивый цвет для категории — одинаковый при каждом запуске.
-    static func category(_ name: String) -> Color {
-        let hues: [Double] = [0.02, 0.09, 0.14, 0.33, 0.45, 0.53, 0.61, 0.70, 0.78, 0.90]
-        var hasher: UInt64 = 5381
-        for byte in name.utf8 { hasher = hasher &* 33 &+ UInt64(byte) }
-        let hue = hues[Int(hasher % UInt64(hues.count))]
+    /// Ступень серого для рангов — графики, списки категорий.
+    /// Ранг 0 самый плотный, дальше светлее: порядок виден без подписей.
+    static func tone(rank: Int, of total: Int) -> Color {
+        guard total > 1 else { return ink }
+        let step = min(Double(rank) / Double(total - 1), 1)
         return Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(hue: hue, saturation: 0.55, brightness: 0.85, alpha: 1)
-                : UIColor(hue: hue, saturation: 0.68, brightness: 0.66, alpha: 1)
+            let dark = traits.userInterfaceStyle == .dark
+            // Светлая тема темнеет от чёрного к серому, тёмная — от белого к серому.
+            let value = dark ? (0.96 - step * 0.55) : (0.06 + step * 0.58)
+            return UIColor(white: value, alpha: 1)
         })
     }
 
@@ -73,85 +78,54 @@ private extension UIColor {
 
 // MARK: - Метрики
 
-/// Радиусы, отступы и тени. Один источник правды, чтобы вёрстка «дышала» одинаково.
+/// Радиусы сознательно мелкие: сильное скругление читается как «мягкое
+/// дружелюбное приложение», мелкое — как точный инструмент.
 enum Metrics {
-    static let cardRadius: CGFloat = 20
-    static let controlRadius: CGFloat = 14
-    static let thumbRadius: CGFloat = 15
+    static let cardRadius: CGFloat = 14
+    static let controlRadius: CGFloat = 10
+    static let thumbRadius: CGFloat = 9
+
+    static let hairline: CGFloat = 1
 
     static let gutter: CGFloat = 20
     static let cardPadding: CGFloat = 14
-    static let cardSpacing: CGFloat = 12
-    static let sectionSpacing: CGFloat = 28
+    static let cardSpacing: CGFloat = 10
+    static let sectionSpacing: CGFloat = 30
 
-    static let thumbSize: CGFloat = 54
+    static let thumbSize: CGFloat = 50
 }
 
-// MARK: - Глубина
-
-/// Тень в два слоя: плотная контактная прямо под карточкой и мягкая рассеянная
-/// вокруг неё. Одним слоем получается либо грязное пятно, либо плоскость —
-/// разделение и даёт ощущение физического объекта.
-struct Elevation {
-    let contactOpacity: Double
-    let contactRadius: CGFloat
-    let contactOffset: CGFloat
-    let ambientOpacity: Double
-    let ambientRadius: CGFloat
-    let ambientOffset: CGFloat
-
-    static let card = Elevation(
-        contactOpacity: 0.045, contactRadius: 1.5, contactOffset: 1,
-        ambientOpacity: 0.065, ambientRadius: 14, ambientOffset: 7
-    )
-
-    static let raised = Elevation(
-        contactOpacity: 0.06, contactRadius: 2, contactOffset: 1,
-        ambientOpacity: 0.11, ambientRadius: 26, ambientOffset: 14
-    )
-
-    /// В тёмной теме тень работает иначе: рассеянный ореол почти не читается,
-    /// поэтому контактный слой делаем плотнее, а мягкий — компактнее.
-    func resolved(for scheme: ColorScheme) -> Elevation {
-        guard scheme == .dark else { return self }
-        return Elevation(
-            contactOpacity: contactOpacity * 3.4,
-            contactRadius: contactRadius,
-            contactOffset: contactOffset,
-            ambientOpacity: ambientOpacity * 2.6,
-            ambientRadius: ambientRadius * 0.75,
-            ambientOffset: ambientOffset * 0.8
-        )
-    }
-}
+// MARK: - Типографика
 
 extension View {
-    func elevation(_ level: Elevation, scheme: ColorScheme) -> some View {
-        let resolved = level.resolved(for: scheme)
-        return self
-            .shadow(
-                color: .black.opacity(resolved.contactOpacity),
-                radius: resolved.contactRadius,
-                y: resolved.contactOffset
-            )
-            .shadow(
-                color: .black.opacity(resolved.ambientOpacity),
-                radius: resolved.ambientRadius,
-                y: resolved.ambientOffset
-            )
+    /// Микрозаголовок: капитель, разреженный трекинг, третичный тон.
+    /// Именно он задаёт «выставочный» ритм — подписи не кричат, а маркируют.
+    func microLabel(_ color: Color = Palette.textTertiary) -> some View {
+        self
+            .font(.system(size: 10, weight: .semibold))
+            .tracking(1.1)
+            .textCase(.uppercase)
+            .foregroundStyle(color)
+    }
+
+    /// Крупное число: плотный трекинг и табличные цифры, чтобы разряды
+    /// не смещались при обновлении.
+    func figure(size: CGFloat, weight: Font.Weight = .semibold) -> some View {
+        self
+            .font(.system(size: size, weight: weight))
+            .tracking(-size * 0.025)
+            .monospacedDigit()
     }
 }
 
-// MARK: - Модификаторы
+// MARK: - Поверхности
 
-/// Карточка: скруглённая подложка, двухслойная тень и кромка со световым
-/// градиентом сверху — она отделяет карточку от фона мягче, чем ровная обводка.
+/// Карточка: плоская заливка и волосяная линия по контуру. Ни теней, ни
+/// градиентов — глубина здесь создаётся разницей тонов и точностью линий.
 struct CardSurface: ViewModifier {
     var radius: CGFloat = Metrics.cardRadius
     var padding: CGFloat = Metrics.cardPadding
     var elevated: Bool = false
-
-    @Environment(\.colorScheme) private var colorScheme
 
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -160,24 +134,10 @@ struct CardSurface: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(padding)
-            .background {
-                shape
-                    .fill(elevated ? Palette.surfaceElevated : Palette.surface)
-                    .elevation(elevated ? .raised : .card, scheme: colorScheme)
-            }
+            .background(shape.fill(elevated ? Palette.surfaceAlt : Palette.surface))
             .overlay {
-                shape.strokeBorder(edgeHighlight, lineWidth: 0.75)
+                shape.strokeBorder(Palette.line, lineWidth: Metrics.hairline)
             }
-    }
-
-    private var edgeHighlight: LinearGradient {
-        LinearGradient(
-            colors: colorScheme == .dark
-                ? [.white.opacity(0.10), .white.opacity(0.02)]
-                : [.white.opacity(0.9), Palette.separator.opacity(0.75)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
     }
 }
 
@@ -191,50 +151,40 @@ extension View {
     }
 
     /// Убирает системные отступы и фон строки списка — чтобы карточки выглядели как карточки.
-    func plainListRow(insets: EdgeInsets = EdgeInsets(top: 5, leading: Metrics.gutter, bottom: 5, trailing: Metrics.gutter)) -> some View {
+    func plainListRow(insets: EdgeInsets = EdgeInsets(top: 4, leading: Metrics.gutter, bottom: 4, trailing: Metrics.gutter)) -> some View {
         listRowInsets(insets)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
     }
 
-    /// «Жидкое стекло» на iOS 26, плотная карточка-капсула на версиях старше.
-    func glassCapsule() -> some View {
-        modifier(GlassCapsule())
+    /// Панель управления: плоская подложка с контуром, без стекла и размытия.
+    func controlSurface(radius: CGFloat = Metrics.controlRadius) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return background(shape.fill(Palette.surface))
+            .overlay { shape.strokeBorder(Palette.line, lineWidth: Metrics.hairline) }
     }
-
 }
 
-/// Панель-капсула. На iOS 26 системные панели стеклянные, и собственные
-/// элементы управления должны выглядеть так же; ниже — обычная подложка с тенью.
-struct GlassCapsule: ViewModifier {
-    @Environment(\.colorScheme) private var colorScheme
+/// Волосяная линия. Системный `Divider` берёт собственный цвет и толщину —
+/// здесь нужна ровно одна линия одного тона по всему приложению.
+struct Hairline: View {
+    var inset: CGFloat = 0
 
-    private var shape: Capsule { Capsule(style: .continuous) }
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
-        } else {
-            content
-                .background {
-                    shape
-                        .fill(Palette.surface)
-                        .elevation(.card, scheme: colorScheme)
-                }
-                .overlay {
-                    shape.strokeBorder(Palette.separator, lineWidth: 0.75)
-                }
-        }
+    var body: some View {
+        Rectangle()
+            .fill(Palette.line)
+            .frame(height: Metrics.hairline)
+            .padding(.leading, inset)
     }
 }
 
 /// Нажатие: лёгкое сжатие вместо мгновенной подсветки.
 struct PressableStyle: ButtonStyle {
-    var scale: CGFloat = 0.96
+    var scale: CGFloat = 0.97
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1)
             .scaleEffect(configuration.isPressed ? scale : 1)
             .animation(Motion.snappy, value: configuration.isPressed)
     }
@@ -247,10 +197,7 @@ extension ButtonStyle where Self == PressableStyle {
 // MARK: - Анимации
 
 enum Motion {
-    /// Основная пружина: для появления/исчезновения карточек и смены фильтров.
-    static let spring = Animation.spring(response: 0.38, dampingFraction: 0.82)
-    /// Быстрая пружина: для нажатий и мелких переключателей.
-    static let snappy = Animation.spring(response: 0.24, dampingFraction: 0.78)
-    /// Мягкая длинная — для графиков и появления экрана.
-    static let gentle = Animation.spring(response: 0.75, dampingFraction: 0.9)
+    static let spring = Animation.spring(response: 0.34, dampingFraction: 0.86)
+    static let snappy = Animation.spring(response: 0.22, dampingFraction: 0.82)
+    static let gentle = Animation.spring(response: 0.7, dampingFraction: 0.92)
 }

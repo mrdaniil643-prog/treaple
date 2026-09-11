@@ -71,14 +71,13 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Image(systemName: syncMonitor.status.symbolName)
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: 19, weight: .regular))
                     .foregroundStyle(statusTint)
-                    .frame(width: 46, height: 46)
+                    .frame(width: 44, height: 44)
                     .background {
                         Circle()
-                            .fill(statusTint.opacity(0.13))
-                            .overlay { Circle().strokeBorder(statusTint.opacity(0.18), lineWidth: 0.75) }
+                            .fill(Palette.surfaceAlt)
+                            .overlay { Circle().strokeBorder(Palette.line, lineWidth: Metrics.hairline) }
                     }
                     .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     .animation(
@@ -88,10 +87,10 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(syncMonitor.status.title)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(Palette.textPrimary)
                     Text(syncDescription)
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundStyle(Palette.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -108,14 +107,14 @@ struct SettingsView: View {
                 }
             } label: {
                 Text("Обновить сейчас")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background {
                         RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                            .fill(Palette.accent.opacity(0.12))
+                            .strokeBorder(Palette.lineStrong, lineWidth: Metrics.hairline)
                     }
-                    .foregroundStyle(Palette.accent)
+                    .foregroundStyle(Palette.textPrimary)
             }
             .buttonStyle(.pressable)
             .disabled(isRefreshing || syncMonitor.status == .notConfigured)
@@ -125,11 +124,8 @@ struct SettingsView: View {
 
     private var statusTint: Color {
         switch syncMonitor.status {
-        case .upToDate: Palette.stockOK
-        case .syncing, .unknown: Palette.info
-        case .noAccount: Palette.stockLow
-        case .notConfigured: Palette.textSecondary
-        case .failed: Palette.danger
+        case .upToDate, .syncing, .unknown: Palette.textPrimary
+        case .noAccount, .notConfigured, .failed: Palette.textSecondary
         }
     }
 
@@ -184,12 +180,12 @@ struct SettingsView: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.accent)
+                        .font(.system(size: 14))
+                        .foregroundStyle(Palette.textPrimary)
                         .frame(width: 22)
                     Text("Применить порог ко всем товарам")
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.accent)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Palette.textPrimary)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 14)
@@ -205,10 +201,8 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ОФОРМЛЕНИЕ")
-                .font(.caption2.weight(.bold))
-                .tracking(0.7)
-                .foregroundStyle(Palette.textTertiary)
+            Text("Оформление")
+                .microLabel()
                 .padding(.leading, 6)
 
             HStack(spacing: 10) {
@@ -225,31 +219,22 @@ struct SettingsView: View {
             Haptics.selection()
             withAnimation(Motion.spring) { appearanceRaw = mode.rawValue }
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: 9) {
                 Image(systemName: mode.symbolName)
-                    .font(.title3)
-                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: 17, weight: .regular))
                 Text(mode.title)
-                    .font(.caption.weight(.medium))
+                    .font(.system(size: 12, weight: .medium))
             }
-            .foregroundStyle(isActive ? Palette.accent : Palette.textSecondary)
+            .foregroundStyle(isActive ? Palette.inkInverted : Palette.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                    .fill(isActive ? Palette.accent.opacity(0.13) : Palette.surface)
-                    .shadow(
-                        color: isActive ? Palette.accent.opacity(0.22) : .black.opacity(0.04),
-                        radius: isActive ? 10 : 5,
-                        y: isActive ? 4 : 2
-                    )
+                    .fill(isActive ? Palette.ink : Palette.surface)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                    .strokeBorder(
-                        isActive ? Palette.accent.opacity(0.45) : Palette.separator,
-                        lineWidth: isActive ? 1.5 : 0.75
-                    )
+                    .strokeBorder(isActive ? Color.clear : Palette.line, lineWidth: Metrics.hairline)
             }
         }
         .buttonStyle(.pressable)
@@ -306,23 +291,23 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.accent)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Palette.textSecondary)
                     .frame(width: 22)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.subheadline.weight(.medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(Palette.textPrimary)
                     Text(subtitle)
-                        .font(.caption2)
+                        .font(.system(size: 11))
                         .foregroundStyle(Palette.textTertiary)
                 }
 
                 Spacer(minLength: 0)
 
                 Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.bold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Palette.textTertiary)
             }
             .padding(.horizontal, 14)
@@ -330,7 +315,7 @@ struct SettingsView: View {
             .contentShape(Rectangle())
 
             if showsDivider {
-                Divider().padding(.leading, 48)
+                Hairline(inset: 48)
             }
         }
     }
@@ -339,11 +324,9 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         VStack(spacing: 6) {
-            Text("Treaple")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Palette.textSecondary)
+            Text("Treaple").microLabel(Palette.textSecondary)
             Text("Версия \(appVersion) · данные хранятся в вашем iCloud")
-                .font(.caption2)
+                .font(.system(size: 11))
                 .foregroundStyle(Palette.textTertiary)
                 .multilineTextAlignment(.center)
         }

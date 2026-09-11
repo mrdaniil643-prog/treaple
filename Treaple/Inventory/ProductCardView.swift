@@ -1,41 +1,42 @@
 import SwiftUI
 
-/// Карточка товара в списке: фото слева, название и категория по центру,
-/// цена и остаток справа. Состояние остатка дублируется цветной кромкой
-/// у левого края — её видно боковым зрением при быстрой прокрутке.
+/// Строка товара. Монограмма слева, название с категорией по центру,
+/// цена и остаток справа. Позиции, требующие внимания, помечены плотной
+/// вертикальной чертой у левого края — единственный «громкий» элемент строки.
 struct ProductCardView: View {
     let product: Product
 
     private var state: StockState { product.stockState }
 
     var body: some View {
-        HStack(spacing: 13) {
+        HStack(spacing: 12) {
             ProductThumbnail(product: product)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(product.name.isEmpty ? "Без названия" : product.name)
-                    .font(.system(.body, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
+                    .tracking(-0.2)
                     .foregroundStyle(Palette.textPrimary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     CategoryChip(title: product.displayCategory)
+
                     if product.profitPerUnit > 0 {
                         Text("+\(Format.percent(product.markupPercent, digits: 0))")
-                            .font(.caption2.weight(.semibold))
+                            .font(.system(size: 11, weight: .medium))
                             .monospacedDigit()
-                            .foregroundStyle(Palette.stockOK)
+                            .foregroundStyle(Palette.textTertiary)
                     }
                 }
             }
 
-            Spacer(minLength: 6)
+            Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 6) {
                 Text(Format.money(product.salePrice))
-                    .font(.system(.callout, design: .rounded, weight: .semibold))
-                    .monospacedDigit()
+                    .figure(size: 16)
                     .contentTransition(.numericText())
                     .foregroundStyle(Palette.textPrimary)
 
@@ -44,35 +45,28 @@ struct ProductCardView: View {
         }
         .padding(.vertical, 2)
         .cardSurface()
-        .overlay(alignment: .leading) { spine }
+        .overlay(alignment: .leading) { marker }
         .clipShape(RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
-    /// Кромка состояния. Градиент вместо плашки: сверху цвет плотный, книзу
-    /// растворяется — полоска читается как подсветка, а не как рамка таблицы.
-    private var spine: some View {
-        UnevenRoundedRectangle(
-            topLeadingRadius: Metrics.cardRadius,
-            bottomLeadingRadius: Metrics.cardRadius,
-            style: .continuous
-        )
-        .fill(
-            LinearGradient(
-                colors: [Palette.stock(state), Palette.stock(state).opacity(0.45)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .frame(width: 4)
-        .opacity(state == .ok ? 0.4 : 1)
+    /// Метка состояния у кромки: сплошная для закончившихся, приглушённая
+    /// для заканчивающихся, отсутствует для нормального остатка.
+    @ViewBuilder
+    private var marker: some View {
+        if state != .ok {
+            Rectangle()
+                .fill(Palette.ink)
+                .opacity(state == .out ? 1 : 0.32)
+                .frame(width: 3)
+        }
     }
 }
 
 #Preview {
-    VStack(spacing: 12) {
-        ForEach(Product.sampleProducts.prefix(3)) { product in
+    VStack(spacing: Metrics.cardSpacing) {
+        ForEach(Product.sampleProducts.prefix(4)) { product in
             ProductCardView(product: product)
         }
     }

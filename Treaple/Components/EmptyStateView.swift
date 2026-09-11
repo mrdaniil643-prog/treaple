@@ -5,7 +5,7 @@ struct EmptyStateView: View {
     let symbolName: String
     let title: String
     let message: String
-    var tint: Color = Palette.accent
+    var tint: Color = Palette.ink
     var actionTitle: String?
     var action: (() -> Void)?
     var secondaryTitle: String?
@@ -17,32 +17,25 @@ struct EmptyStateView: View {
         VStack(spacing: 18) {
             ZStack {
                 Circle()
-                    .fill(tint.opacity(0.09))
-                    .frame(width: 124, height: 124)
+                    .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
+                    .frame(width: 116, height: 116)
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [tint.opacity(0.20), tint.opacity(0.10)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 86, height: 86)
-                    .shadow(color: tint.opacity(0.25), radius: 16, y: 8)
+                    .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
+                    .frame(width: 82, height: 82)
                 Image(systemName: symbolName)
-                    .font(.system(size: 34, weight: .medium))
-                    .foregroundStyle(tint)
-                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: 30, weight: .regular))
+                    .foregroundStyle(Palette.textSecondary)
             }
             .scaleEffect(appeared ? 1 : 0.82)
             .opacity(appeared ? 1 : 0)
 
             VStack(spacing: 7) {
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(.system(size: 19, weight: .semibold))
+                    .tracking(-0.3)
                     .foregroundStyle(Palette.textPrimary)
                 Text(message)
-                    .font(.subheadline)
+                    .font(.system(size: 14))
                     .foregroundStyle(Palette.textSecondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
@@ -53,19 +46,20 @@ struct EmptyStateView: View {
             if let actionTitle, let action {
                 Button(action: action) {
                     Text(actionTitle)
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Palette.inkInverted)
                         .padding(.horizontal, 22)
                         .padding(.vertical, 12)
+                        .background { Capsule(style: .continuous).fill(Palette.ink) }
                 }
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.capsule)
-                .tint(tint)
+                .buttonStyle(.pressable)
             }
 
             if let secondaryTitle, let secondaryAction {
                 Button(secondaryTitle, action: secondaryAction)
-                    .font(.subheadline.weight(.medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.textSecondary)
+                    .buttonStyle(.pressable)
             }
         }
         .padding(.horizontal, 32)

@@ -9,6 +9,8 @@ struct DashboardMetrics {
         let quantity: Int
         let saleValue: Double
         let titles: Int
+        /// Позиция в убывающем порядке остатка. По ней график берёт ступень серого.
+        var rank: Int = 0
     }
 
     let totalTitles: Int
@@ -47,6 +49,12 @@ struct DashboardMetrics {
                 )
             }
             .sorted { $0.quantity > $1.quantity }
+            .enumerated()
+            .map { index, slice in
+                var ranked = slice
+                ranked.rank = index
+                return ranked
+            }
     }
 
     var isEmpty: Bool { totalTitles == 0 }
@@ -60,7 +68,8 @@ struct DashboardMetrics {
             category: "Прочее",
             quantity: rest.reduce(0) { $0 + $1.quantity },
             saleValue: rest.reduce(0) { $0 + $1.saleValue },
-            titles: rest.reduce(0) { $0 + $1.titles }
+            titles: rest.reduce(0) { $0 + $1.titles },
+            rank: limit
         )
         return top + [other]
     }
