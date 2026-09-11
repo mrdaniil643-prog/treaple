@@ -149,7 +149,7 @@ struct SettingsView: View {
 
     private var stockSection: some View {
         FormSection(title: "Склад", subtitle: "Применяется к новым товарам") {
-            FormRow(title: "Порог «мало на складе»", systemImage: "exclamationmark.triangle.fill") {
+            FormRow(title: "Порог «мало»", systemImage: "exclamationmark.triangle") {
                 Stepper(value: $lowStockThreshold, in: 0...999) {
                     Text(Format.quantity(lowStockThreshold))
                         .font(.subheadline.weight(.semibold))

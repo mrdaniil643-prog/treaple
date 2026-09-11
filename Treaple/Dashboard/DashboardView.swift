@@ -85,11 +85,14 @@ struct DashboardView: View {
         }
     }
 
+    /// Разделитель колонок. Поля по бокам обязательны: без них подписи
+    /// упираются в линию и полоса читается как таблица, а не как ряд цифр.
     private var columnRule: some View {
         Rectangle()
             .fill(Palette.line)
             .frame(width: Metrics.hairline)
             .padding(.vertical, 2)
+            .padding(.horizontal, 12)
     }
 
     // MARK: - График
