@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Точка-индикатор наличия. Пульсирует, когда остаток на нуле, — так пустые
-/// позиции видно даже боковым зрением при прокрутке.
+/// Точка-индикатор наличия. Когда остаток на нуле, вокруг расходится
+/// затухающее кольцо: пустые позиции должны цеплять взгляд при прокрутке.
 struct StockDot: View {
     let state: StockState
     var size: CGFloat = 8
@@ -10,18 +10,18 @@ struct StockDot: View {
 
     var body: some View {
         Circle()
-            .fill(Palette.stock(state))
+            .fill(Palette.stock(state).gradient)
             .frame(width: size, height: size)
             .overlay {
                 if state == .out {
                     Circle()
-                        .stroke(Palette.stock(state).opacity(pulse ? 0 : 0.5), lineWidth: 3)
+                        .stroke(Palette.stock(state).opacity(pulse ? 0 : 0.55), lineWidth: 3)
                         .scaleEffect(pulse ? 2.2 : 1)
                 }
             }
             .onAppear {
                 guard state == .out else { return }
-                withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
+                withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) {
                     pulse = true
                 }
             }
@@ -36,19 +36,28 @@ struct StockBadge: View {
 
     var body: some View {
         let state = product.stockState
-        HStack(spacing: 5) {
+        let tint = Palette.stock(state)
+
+        return HStack(spacing: 5) {
             StockDot(state: state, size: 7)
+
             Text(showsTitle ? state.title : Format.quantity(product.quantity))
                 .font(.footnote.weight(.semibold))
                 .monospacedDigit()
-                .foregroundStyle(state == .ok ? Palette.textSecondary : Palette.stock(state))
+                .contentTransition(.numericText())
+                .foregroundStyle(state == .ok ? Palette.textSecondary : tint)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
         .background {
             Capsule(style: .continuous)
-                .fill(Palette.stock(state).opacity(state == .ok ? 0.10 : 0.14))
+                .fill(tint.opacity(state == .ok ? 0.10 : 0.15))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(tint.opacity(state == .ok ? 0.10 : 0.22), lineWidth: 0.75)
+                }
         }
+        .animation(Motion.snappy, value: product.quantity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(state.title), \(Format.quantity(product.quantity))")
     }
@@ -59,14 +68,15 @@ struct CategoryChip: View {
     let title: String
 
     var body: some View {
-        Text(title)
+        let tint = Palette.category(title)
+
+        return Text(title)
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(Palette.category(title))
+            .foregroundStyle(tint)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background {
-                Capsule(style: .continuous)
-                    .fill(Palette.category(title).opacity(0.12))
+                Capsule(style: .continuous).fill(tint.opacity(0.13))
             }
             .lineLimit(1)
     }

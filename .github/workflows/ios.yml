@@ -29,6 +29,16 @@ jobs:
           xcodebuild -version
           xcrun simctl list runtimes | grep iOS || true
 
+      - name: Доступные API оформления в SDK
+        continue-on-error: true
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          DIR="$SDK/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule"
+          IFACE=$(ls "$DIR"/*.swiftinterface 2>/dev/null | head -1)
+          echo "sdk: $SDK"
+          echo "interface: $IFACE"
+          [ -n "$IFACE" ] && grep -nE "func glassEffect|GlassEffectContainer|func glassEffectID|func scrollTransition|func symbolEffect" "$IFACE" | head -20
+
       - name: Сборка для симулятора
         run: |
           set -o pipefail

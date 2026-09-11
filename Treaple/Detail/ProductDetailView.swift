@@ -23,7 +23,7 @@ struct ProductDetailView: View {
             .padding(.horizontal, Metrics.gutter)
             .padding(.bottom, 40)
         }
-        .background(Palette.canvas)
+        .background(ScreenBackground())
         .navigationTitle(product.name.isEmpty ? "Товар" : product.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -100,7 +100,8 @@ struct ProductDetailView: View {
 
                 VStack(spacing: 2) {
                     Text(Format.integer(product.quantity))
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .tracking(-1)
                         .monospacedDigit()
                         .foregroundStyle(Palette.stock(product.stockState))
                         .contentTransition(.numericText())
@@ -157,10 +158,17 @@ struct ProductDetailView: View {
                 .foregroundStyle(enabled ? Palette.accent : Palette.textTertiary)
                 .frame(width: 52, height: 52)
                 .background {
-                    Circle().fill(enabled ? Palette.accent.opacity(0.12) : Palette.separator.opacity(0.4))
+                    Circle()
+                        .fill(enabled ? Palette.accent.opacity(0.12) : Palette.separator.opacity(0.4))
+                        .overlay {
+                            Circle().strokeBorder(
+                                enabled ? Palette.accent.opacity(0.2) : .clear,
+                                lineWidth: 0.75
+                            )
+                        }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .disabled(!enabled)
     }
 
@@ -170,7 +178,7 @@ struct ProductDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("ЭКОНОМИКА ПОЗИЦИИ")
                 .font(.caption2.weight(.bold))
-                .tracking(0.6)
+                .tracking(0.7)
                 .foregroundStyle(Palette.textTertiary)
                 .padding(.leading, 4)
 
@@ -198,13 +206,20 @@ struct ProductDetailView: View {
     private func statTile(_ title: String, _ value: String, _ symbol: String, _ tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: symbol)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(tint)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
                 .frame(width: 26, height: 26)
-                .background { Circle().fill(tint.opacity(0.12)) }
+                .background {
+                    Circle()
+                        .fill(LinearGradient(
+                            colors: [tint, tint.opacity(0.72)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ))
+                        .shadow(color: tint.opacity(0.3), radius: 5, y: 2)
+                }
 
             Text(value)
-                .font(.callout.weight(.bold))
+                .font(.system(.callout, design: .rounded, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(Palette.textPrimary)
                 .lineLimit(1)

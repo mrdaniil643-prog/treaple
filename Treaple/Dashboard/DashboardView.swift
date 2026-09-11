@@ -12,6 +12,9 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var context
 
     @State private var chartMetric: ChartMetric = .quantity
+    /// Столбцы вырастают из нуля при появлении экрана — это читается как
+    /// «данные посчитались», а не как мигание готовой картинки.
+    @State private var chartGrown = false
 
     enum ChartMetric: String, CaseIterable, Identifiable {
         case quantity, value
@@ -38,7 +41,7 @@ struct DashboardView: View {
                     content
                 }
             }
-            .background(Palette.canvas)
+            .background(ScreenBackground())
             .navigationTitle("Дашборд")
         }
     }
@@ -116,11 +119,20 @@ struct DashboardView: View {
 
             Chart(slices) { slice in
                 BarMark(
-                    x: .value("Значение", chartMetric == .quantity ? Double(slice.quantity) : slice.saleValue),
+                    x: .value("Значение", chartGrown ? value(for: slice) : 0),
                     y: .value("Категория", slice.category)
                 )
-                .foregroundStyle(Palette.category(slice.category).gradient)
-                .cornerRadius(7)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Palette.category(slice.category),
+                            Palette.category(slice.category).opacity(0.7)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(8)
                 .annotation(position: .trailing, alignment: .leading, spacing: 6) {
                     Text(
                         chartMetric == .quantity
@@ -129,7 +141,9 @@ struct DashboardView: View {
                     )
                     .font(.caption2.weight(.semibold))
                     .monospacedDigit()
+                    .contentTransition(.numericText())
                     .foregroundStyle(Palette.textTertiary)
+                    .opacity(chartGrown ? 1 : 0)
                 }
             }
             .chartXAxis(.hidden)
@@ -145,6 +159,10 @@ struct DashboardView: View {
             }
             .frame(height: max(CGFloat(slices.count) * 38, 120))
             .animation(Motion.spring, value: chartMetric)
+            .onAppear {
+                guard !chartGrown else { return }
+                withAnimation(Motion.gentle.delay(0.15)) { chartGrown = true }
+            }
         }
         .cardSurface(padding: 16)
     }
@@ -196,6 +214,7 @@ struct DashboardView: View {
                     }
                 }
                 .cardSurface(padding: 0)
+                .scrollFade()
 
                 Button(action: onSelectLowStock) {
                     HStack(spacing: 5) {
@@ -206,7 +225,7 @@ struct DashboardView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Palette.accent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
                 .padding(.leading, 4)
             }
         }
@@ -235,9 +254,13 @@ struct DashboardView: View {
         .padding(.vertical, 11)
     }
 
+    private func value(for slice: DashboardMetrics.CategorySlice) -> Double {
+        chartMetric == .quantity ? Double(slice.quantity) : slice.saleValue
+    }
+
     private func sectionTitle(_ text: String) -> some View {
         Text(text)
-            .font(.headline)
+            .font(.system(.headline, design: .rounded, weight: .semibold))
             .foregroundStyle(Palette.textPrimary)
     }
 }

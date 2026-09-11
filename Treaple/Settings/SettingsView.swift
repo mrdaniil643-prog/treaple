@@ -42,7 +42,7 @@ struct SettingsView: View {
                 .padding(.top, 4)
                 .padding(.bottom, 40)
             }
-            .background(Palette.canvas)
+            .background(ScreenBackground())
             .navigationTitle("Настройки")
         }
         .alert(
@@ -74,8 +74,12 @@ struct SettingsView: View {
                     .font(.title2)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(statusTint)
-                    .frame(width: 44, height: 44)
-                    .background { Circle().fill(statusTint.opacity(0.12)) }
+                    .frame(width: 46, height: 46)
+                    .background {
+                        Circle()
+                            .fill(statusTint.opacity(0.13))
+                            .overlay { Circle().strokeBorder(statusTint.opacity(0.18), lineWidth: 0.75) }
+                    }
                     .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     .animation(
                         isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
@@ -106,14 +110,14 @@ struct SettingsView: View {
                 Text("Обновить сейчас")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
+                    .padding(.vertical, 12)
                     .background {
                         RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
                             .fill(Palette.accent.opacity(0.12))
                     }
                     .foregroundStyle(Palette.accent)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .disabled(isRefreshing || syncMonitor.status == .notConfigured)
         }
         .cardSurface(padding: 16)
@@ -203,9 +207,9 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("ОФОРМЛЕНИЕ")
                 .font(.caption2.weight(.bold))
-                .tracking(0.6)
+                .tracking(0.7)
                 .foregroundStyle(Palette.textTertiary)
-                .padding(.leading, 4)
+                .padding(.leading, 6)
 
             HStack(spacing: 10) {
                 ForEach(AppearanceMode.allCases) { mode in
@@ -233,17 +237,22 @@ struct SettingsView: View {
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                    .fill(isActive ? Palette.accent.opacity(0.12) : Palette.surface)
+                    .fill(isActive ? Palette.accent.opacity(0.13) : Palette.surface)
+                    .shadow(
+                        color: isActive ? Palette.accent.opacity(0.22) : .black.opacity(0.04),
+                        radius: isActive ? 10 : 5,
+                        y: isActive ? 4 : 2
+                    )
             }
             .overlay {
                 RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
                     .strokeBorder(
-                        isActive ? Palette.accent.opacity(0.5) : Palette.separator,
-                        lineWidth: isActive ? 1.5 : 0.5
+                        isActive ? Palette.accent.opacity(0.45) : Palette.separator,
+                        lineWidth: isActive ? 1.5 : 0.75
                     )
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
     }
 
     // MARK: - Экспорт

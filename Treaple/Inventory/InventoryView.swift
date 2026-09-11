@@ -22,7 +22,7 @@ struct InventoryView: View {
     var body: some View {
         NavigationStack {
             content
-                .background(Palette.canvas)
+                .background(ScreenBackground())
                 .navigationTitle("Склад")
                 // Компактный заголовок: на iOS 26 поле поиска занимает строку
                 // крупного заголовка, и тот перестаёт отрисовываться вовсе.
@@ -129,6 +129,7 @@ struct InventoryView: View {
             ProductCardView(product: product)
         }
         .plainListRow()
+        .scrollFade()
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 Haptics.warning()
@@ -211,7 +212,7 @@ struct InventoryView: View {
         } label: {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Palette.category(section.title))
+                    .fill(Palette.category(section.title).gradient)
                     .frame(width: 7, height: 7)
 
                 Text(section.title)
@@ -231,12 +232,12 @@ struct InventoryView: View {
                     .foregroundStyle(Palette.textTertiary)
                     .rotationEffect(.degrees(model.isCollapsed(section) ? -90 : 0))
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, 6)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .plainListRow(insets: EdgeInsets(top: 14, leading: Metrics.gutter, bottom: 2, trailing: Metrics.gutter))
+        .buttonStyle(.pressable)
+        .plainListRow(insets: EdgeInsets(top: 16, leading: Metrics.gutter, bottom: 2, trailing: Metrics.gutter))
     }
 
     private var filterBar: some View {
@@ -250,8 +251,6 @@ struct InventoryView: View {
         )
         .padding(.horizontal, Metrics.gutter)
         .padding(.bottom, 10)
-        // Без ignoresSafeArea: фон, затянутый под навбар, закрашивал крупный заголовок.
-        .background(Palette.canvas)
     }
 
     // MARK: - Пустые состояния
@@ -336,9 +335,8 @@ struct InventoryView: View {
                 Haptics.tap(.medium)
                 editorRequest = .create
             } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
+                Image(systemName: "plus")
+                    .font(.body.weight(.semibold))
             }
             .accessibilityLabel("Добавить товар")
         }

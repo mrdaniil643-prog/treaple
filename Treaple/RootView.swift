@@ -27,7 +27,7 @@ struct RootView: View {
                 .tabItem { Label("Настройки", systemImage: "gearshape.fill") }
                 .tag(Tab.settings)
         }
-        .background(Palette.canvas)
+        .background(ScreenBackground())
         .sheet(item: $editorRequest) { request in
             ProductEditorView(request: request)
         }

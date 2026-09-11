@@ -17,11 +17,18 @@ struct EmptyStateView: View {
         VStack(spacing: 18) {
             ZStack {
                 Circle()
-                    .fill(tint.opacity(0.10))
-                    .frame(width: 116, height: 116)
+                    .fill(tint.opacity(0.09))
+                    .frame(width: 124, height: 124)
                 Circle()
-                    .fill(tint.opacity(0.14))
-                    .frame(width: 82, height: 82)
+                    .fill(
+                        LinearGradient(
+                            colors: [tint.opacity(0.20), tint.opacity(0.10)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 86, height: 86)
+                    .shadow(color: tint.opacity(0.25), radius: 16, y: 8)
                 Image(systemName: symbolName)
                     .font(.system(size: 34, weight: .medium))
                     .foregroundStyle(tint)
@@ -81,5 +88,5 @@ struct EmptyStateView: View {
         secondaryAction: {}
     )
     .frame(maxHeight: .infinity)
-    .background(Palette.canvas)
+    .background(ScreenBackground())
 }

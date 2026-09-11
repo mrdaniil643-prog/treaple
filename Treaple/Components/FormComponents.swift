@@ -11,7 +11,7 @@ struct FormSection<Content: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title.uppercased())
                     .font(.caption2.weight(.bold))
-                    .tracking(0.6)
+                    .tracking(0.7)
                     .foregroundStyle(Palette.textTertiary)
                 if let subtitle {
                     Text(subtitle)
@@ -19,7 +19,7 @@ struct FormSection<Content: View>: View {
                         .foregroundStyle(Palette.textTertiary)
                 }
             }
-            .padding(.leading, 4)
+            .padding(.leading, 6)
 
             VStack(spacing: 0) {
                 content
@@ -108,8 +108,9 @@ struct PillButton: View {
             .background {
                 Capsule(style: .continuous)
                     .fill(isActive ? tint : tint.opacity(0.12))
+                    .shadow(color: isActive ? tint.opacity(0.3) : .clear, radius: 6, y: 2)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
     }
 }

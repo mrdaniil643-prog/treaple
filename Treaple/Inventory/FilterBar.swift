@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Сегмент-контрол фильтров. Написан руками вместо `Picker(.segmented)`,
-/// чтобы показывать счётчики и перетаскивать подложку через `matchedGeometryEffect`.
+/// чтобы показывать счётчики и перетаскивать подложку выделения между
+/// сегментами через `matchedGeometryEffect` — она не перекрашивается, а едет.
 struct FilterBar: View {
     @Binding var selection: InventoryFilter
     let counts: [InventoryFilter: Int]
@@ -15,36 +16,33 @@ struct FilterBar: View {
             }
         }
         .padding(4)
-        .background {
-            Capsule(style: .continuous)
-                .fill(Palette.surface)
-                .shadow(color: .black.opacity(0.05), radius: 8, y: 3)
-        }
-        .overlay {
-            Capsule(style: .continuous)
-                .strokeBorder(Palette.separator, lineWidth: 0.5)
-        }
+        .glassCapsule()
     }
 
     private func segment(_ filter: InventoryFilter) -> some View {
         let isSelected = selection == filter
         let count = counts[filter] ?? 0
+        let tint = tint(for: filter)
 
         return Button {
             guard !isSelected else { return }
             Haptics.selection()
-            withAnimation(Motion.snappy) { selection = filter }
+            withAnimation(Motion.spring) { selection = filter }
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: filter.symbolName)
                     .font(.caption2.weight(.semibold))
+                    .symbolEffect(.bounce, value: isSelected)
+
                 Text(filter.title)
                     .font(.subheadline.weight(.semibold))
+
                 if count > 0 {
                     Text(Format.integer(count))
                         .font(.caption2.weight(.bold))
                         .monospacedDigit()
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.85) : Palette.textTertiary)
+                        .contentTransition(.numericText())
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.8) : Palette.textTertiary)
                 }
             }
             .foregroundStyle(isSelected ? .white : Palette.textSecondary)
@@ -53,13 +51,20 @@ struct FilterBar: View {
             .background {
                 if isSelected {
                     Capsule(style: .continuous)
-                        .fill(tint(for: filter))
+                        .fill(
+                            LinearGradient(
+                                colors: [tint, tint.opacity(0.82)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: tint.opacity(0.35), radius: 8, y: 3)
                         .matchedGeometryEffect(id: "filterIndicator", in: indicator)
                 }
             }
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
@@ -78,7 +83,7 @@ private struct FilterBarPreview: View {
     var body: some View {
         FilterBar(selection: $selection, counts: [.all: 24, .low: 3, .out: 1])
             .padding()
-            .background(Palette.canvas)
+            .background(ScreenBackground())
     }
 }
 

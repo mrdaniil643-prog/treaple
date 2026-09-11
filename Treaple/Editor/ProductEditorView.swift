@@ -45,7 +45,7 @@ struct ProductEditorView: View {
                 .padding(.bottom, 40)
             }
             .scrollDismissesKeyboard(.interactively)
-            .background(Palette.canvas)
+            .background(ScreenBackground())
             .navigationTitle(request.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
@@ -80,7 +80,11 @@ struct ProductEditorView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {
                     ZStack {
-                        Palette.accentSoft
+                        LinearGradient(
+                            colors: [Palette.accentSoft, Palette.accentSoft.opacity(0.6)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                         VStack(spacing: 6) {
                             Image(systemName: "photo.badge.plus")
                                 .font(.system(size: 26, weight: .medium))
@@ -98,7 +102,8 @@ struct ProductEditorView: View {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .strokeBorder(Palette.separator, lineWidth: 0.5)
             }
-            .shadow(color: .black.opacity(0.07), radius: 14, y: 6)
+            .shadow(color: .black.opacity(0.06), radius: 2, y: 1)
+            .shadow(color: .black.opacity(0.10), radius: 22, y: 12)
 
             HStack(spacing: 8) {
                 PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
