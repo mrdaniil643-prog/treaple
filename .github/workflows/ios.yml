@@ -100,8 +100,14 @@ jobs:
 
           # simctl openurl показывает системный диалог «Open in ...?», поэтому
           # экраны открываем перезапуском с аргументом.
-          # Экран после перезапуска какое-то время белый. Кадр этого момента
-          # весит в разы меньше отрисованного — по размеру и ловим, переснимая.
+          # Экран после перезапуска какое-то время белый. Такой кадр весит
+          # заметно меньше отрисованного — по весу и ловим, переснимая. Порог
+          # берём от первого снимка, а не абсолютный: он зависит от того,
+          # насколько хорошо сжимается сама графика, и меняется вместе с дизайном.
+          REFERENCE=$(stat -f%z screenshots/1-inventory-light.png)
+          MIN_SIZE=$(( REFERENCE * 2 / 5 ))
+          echo "эталон $REFERENCE байт, порог $MIN_SIZE"
+
           shot() {
             NAME="$1"; shift
             xcrun simctl terminate "$UDID" "$BUNDLE_ID" > /dev/null 2>&1 || true
@@ -112,7 +118,9 @@ jobs:
               xcrun simctl io "$UDID" screenshot "screenshots/$NAME"
               SIZE=$(stat -f%z "screenshots/$NAME")
               echo "$NAME: попытка $attempt, $SIZE байт"
-              [ "$SIZE" -gt 400000 ] && break
+              if [ "$SIZE" -ge "$MIN_SIZE" ]; then
+                break
+              fi
             done
           }
 
