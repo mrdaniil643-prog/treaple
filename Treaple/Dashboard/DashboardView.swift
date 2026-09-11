@@ -70,7 +70,8 @@ struct DashboardView: View {
                 title: "Потенциальная прибыль",
                 value: Format.compactMoney(data.potentialProfit),
                 caption: "если продать весь остаток — \(Format.integer(data.totalUnits)) шт.",
-                size: .hero
+                size: .hero,
+                valueTint: data.potentialProfit >= 0 ? Palette.stockOK : Palette.danger
             )
             .cardSurface(padding: 18)
 
@@ -118,10 +119,10 @@ struct DashboardView: View {
                     x: .value("Значение", chartGrown ? value(for: slice) : 0),
                     y: .value("Категория", slice.category)
                 )
-                // Ранговая шкала серого: самый большой остаток самый плотный,
-                // порядок виден без легенды и без единого цветного пятна.
-                .foregroundStyle(Palette.tone(rank: slice.rank, of: slices.count))
-                .cornerRadius(3)
+                // Один акцент разной насыщенности по рангу: порядок виден
+                // без легенды, а список категорий не превращается в радугу.
+                .foregroundStyle(Palette.accentStep(rank: slice.rank, of: slices.count))
+                .cornerRadius(5)
                 .annotation(position: .trailing, alignment: .leading, spacing: 6) {
                     Text(
                         chartMetric == .quantity
@@ -170,18 +171,18 @@ struct DashboardView: View {
                     Text(Format.integer(attention.count))
                         .font(.system(size: 11, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(Palette.inkInverted)
+                        .foregroundStyle(Palette.stockLow)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
-                        .background { Capsule(style: .continuous).fill(Palette.ink) }
+                        .background { Capsule(style: .continuous).fill(Palette.stockLow.opacity(0.14)) }
                 }
             }
 
             if attention.isEmpty {
                 HStack(spacing: 10) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Palette.textPrimary)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Palette.stockOK)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Всё в порядке")
                             .font(.subheadline.weight(.semibold))
@@ -211,7 +212,7 @@ struct DashboardView: View {
                             .font(.caption2.weight(.bold))
                     }
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Palette.textPrimary)
+                    .foregroundStyle(Palette.accent)
                 }
                 .buttonStyle(.pressable)
                 .padding(.leading, 4)

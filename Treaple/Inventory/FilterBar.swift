@@ -1,17 +1,13 @@
 import SwiftUI
 
-/// Переключатель фильтров. Выбранный сегмент залит чернилами и выворачивает
-/// текст — в монохроме инверсия работает так же однозначно, как цвет,
-/// и при этом не вводит в палитру ничего лишнего.
+/// Переключатель фильтров. Выделение не перекрашивается, а переезжает между
+/// сегментами через `matchedGeometryEffect`: движение показывает связь
+/// состояний, мгновенная смена цвета — нет.
 struct FilterBar: View {
     @Binding var selection: InventoryFilter
     let counts: [InventoryFilter: Int]
 
     @Namespace private var indicator
-
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -20,12 +16,13 @@ struct FilterBar: View {
             }
         }
         .padding(3)
-        .controlSurface()
+        .glassControl(radius: Metrics.controlRadius + 3)
     }
 
     private func segment(_ filter: InventoryFilter) -> some View {
         let isSelected = selection == filter
         let count = counts[filter] ?? 0
+        let tint = tint(for: filter)
 
         return Button {
             guard !isSelected else { return }
@@ -41,17 +38,17 @@ struct FilterBar: View {
                         .font(.system(size: 11, weight: .semibold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .opacity(isSelected ? 0.65 : 1)
-                        .foregroundStyle(isSelected ? Palette.inkInverted : Palette.textTertiary)
+                        .foregroundStyle(isSelected ? .white.opacity(0.7) : Palette.textTertiary)
                 }
             }
-            .foregroundStyle(isSelected ? Palette.inkInverted : Palette.textSecondary)
+            .foregroundStyle(isSelected ? .white : Palette.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: Metrics.controlRadius - 3, style: .continuous)
-                        .fill(Palette.ink)
+                    RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
+                        .fill(tint)
+                        .shadow(color: tint.opacity(0.3), radius: 6, y: 2)
                         .matchedGeometryEffect(id: "filterIndicator", in: indicator)
                 }
             }
@@ -59,6 +56,16 @@ struct FilterBar: View {
         }
         .buttonStyle(.pressable)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    /// Цвет выделения повторяет смысл фильтра: «Мало» подсвечивается тем же
+    /// янтарным, что и бейджи в списке.
+    private func tint(for filter: InventoryFilter) -> Color {
+        switch filter {
+        case .all: Palette.accent
+        case .low: Palette.stockLow
+        case .out: Palette.textSecondary
+        }
     }
 }
 

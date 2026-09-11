@@ -101,7 +101,7 @@ struct ProductDetailView: View {
                 VStack(spacing: 2) {
                     Text(Format.integer(product.quantity))
                         .figure(size: 46, weight: .semibold)
-                        .foregroundStyle(Palette.textPrimary)
+                        .foregroundStyle(Palette.stock(product.stockState))
                         .contentTransition(.numericText())
                     Text("шт. на складе").microLabel()
                 }
@@ -113,9 +113,10 @@ struct ProductDetailView: View {
             }
 
             if product.stockState == .low {
-                Text("Остаток ниже порога — \(Format.integer(product.lowStockThreshold)) шт.")
+                Label("Остаток ниже порога — \(Format.integer(product.lowStockThreshold)) шт.",
+                      systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Palette.textSecondary)
+                    .foregroundStyle(Palette.stockLow)
             }
 
             Toggle(isOn: inStockBinding) {
@@ -123,7 +124,7 @@ struct ProductDetailView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Palette.textPrimary)
             }
-            .tint(Palette.ink)
+            .tint(Palette.stockOK)
         }
         .cardSurface(padding: 18)
         .animation(Motion.snappy, value: product.quantity)
@@ -148,14 +149,14 @@ struct ProductDetailView: View {
         } label: {
             Image(systemName: symbol)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(enabled ? Palette.textPrimary : Palette.textTertiary)
+                .foregroundStyle(enabled ? Palette.accent : Palette.textTertiary)
                 .frame(width: 52, height: 52)
                 .background {
                     Circle()
-                        .fill(Palette.surfaceAlt)
+                        .fill(enabled ? Palette.accentWash : Palette.surfaceAlt)
                         .overlay {
                             Circle().strokeBorder(
-                                enabled ? Palette.lineStrong : Palette.line,
+                                enabled ? Palette.accent.opacity(0.22) : Palette.line,
                                 lineWidth: Metrics.hairline
                             )
                         }

@@ -210,7 +210,7 @@ struct InventoryView: View {
             withAnimation(Motion.spring) { model.toggleCollapse(section) }
         } label: {
             HStack(spacing: 10) {
-                Text(section.title).microLabel(Palette.textPrimary)
+                Text(section.title).microLabel(Palette.textSecondary)
 
                 Text(Format.quantity(section.totalQuantity))
                     .font(.system(size: 11, weight: .medium))

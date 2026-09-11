@@ -80,13 +80,13 @@ struct ProductEditorView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {
                     ZStack {
-                        Palette.surfaceAlt
+                        Palette.accentWash
                         VStack(spacing: 8) {
                             Image(systemName: "camera")
                                 .font(.system(size: 22, weight: .regular))
-                            Text("Фото товара").microLabel(Palette.textTertiary)
+                            Text("Фото товара").microLabel(Palette.accent.opacity(0.8))
                         }
-                        .foregroundStyle(Palette.textTertiary)
+                        .foregroundStyle(Palette.accent.opacity(0.8))
                     }
                 }
             }
@@ -105,13 +105,10 @@ struct ProductEditorView: View {
                         Text("Галерея")
                             .font(.footnote.weight(.semibold))
                     }
-                    .foregroundStyle(Palette.textPrimary)
+                    .foregroundStyle(Palette.accent)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background {
-                        Capsule(style: .continuous)
-                            .strokeBorder(Palette.lineStrong, lineWidth: Metrics.hairline)
-                    }
+                    .background { Capsule(style: .continuous).fill(Palette.accent.opacity(0.11)) }
                 }
 
                 if CameraPicker.isAvailable {
@@ -188,6 +185,9 @@ struct ProductEditorView: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
                             .background {
+                                Capsule(style: .continuous).fill(Palette.surfaceAlt)
+                            }
+                            .overlay {
                                 Capsule(style: .continuous)
                                     .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
                             }
@@ -347,7 +347,7 @@ struct ProductEditorView: View {
             FormRow(title: "В наличии", systemImage: "checkmark.seal.fill", showsDivider: false) {
                 Toggle("", isOn: $draft.inStock)
                     .labelsHidden()
-                    .tint(Palette.ink)
+                    .tint(Palette.stockOK)
                     .onChange(of: draft.inStock) { _, _ in Haptics.tap() }
             }
         }
@@ -361,13 +361,13 @@ struct ProductEditorView: View {
                 summaryItem(
                     title: "Прибыль с единицы",
                     value: Format.money(draft.profitPerUnit),
-                    tint: Palette.textPrimary
+                    tint: draft.profitPerUnit >= 0 ? Palette.stockOK : Palette.danger
                 )
                 Rectangle().fill(Palette.line).frame(width: Metrics.hairline, height: 34)
                 summaryItem(
                     title: "Маржа",
                     value: Format.percent(draft.marginPercent),
-                    tint: Palette.textPrimary
+                    tint: draft.marginPercent >= 0 ? Palette.stockOK : Palette.danger
                 )
                 Rectangle().fill(Palette.line).frame(width: Metrics.hairline, height: 34)
                 summaryItem(
@@ -378,9 +378,9 @@ struct ProductEditorView: View {
             }
 
             if let warning = draft.lossWarning {
-                Label(warning, systemImage: "exclamationmark.triangle")
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Palette.textPrimary)
+                    .foregroundStyle(Palette.stockLow)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }

@@ -24,6 +24,8 @@ struct SettingsView: View {
     @State private var isRefreshing = false
     @State private var showsThresholdApplyConfirmation = false
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var appearance: AppearanceMode {
         AppearanceMode(rawValue: appearanceRaw) ?? .system
     }
@@ -76,8 +78,10 @@ struct SettingsView: View {
                     .frame(width: 44, height: 44)
                     .background {
                         Circle()
-                            .fill(Palette.surfaceAlt)
-                            .overlay { Circle().strokeBorder(Palette.line, lineWidth: Metrics.hairline) }
+                            .fill(statusTint.opacity(0.12))
+                            .overlay {
+                                Circle().strokeBorder(statusTint.opacity(0.2), lineWidth: Metrics.hairline)
+                            }
                     }
                     .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     .animation(
@@ -112,9 +116,9 @@ struct SettingsView: View {
                     .padding(.vertical, 12)
                     .background {
                         RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                            .strokeBorder(Palette.lineStrong, lineWidth: Metrics.hairline)
+                            .fill(Palette.accent.opacity(0.11))
                     }
-                    .foregroundStyle(Palette.textPrimary)
+                    .foregroundStyle(Palette.accent)
             }
             .buttonStyle(.pressable)
             .disabled(isRefreshing || syncMonitor.status == .notConfigured)
@@ -124,8 +128,11 @@ struct SettingsView: View {
 
     private var statusTint: Color {
         switch syncMonitor.status {
-        case .upToDate, .syncing, .unknown: Palette.textPrimary
-        case .noAccount, .notConfigured, .failed: Palette.textSecondary
+        case .upToDate: Palette.stockOK
+        case .syncing, .unknown: Palette.accent
+        case .noAccount: Palette.stockLow
+        case .notConfigured: Palette.textSecondary
+        case .failed: Palette.danger
         }
     }
 
@@ -181,11 +188,11 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 14))
-                        .foregroundStyle(Palette.textPrimary)
+                        .foregroundStyle(Palette.accent)
                         .frame(width: 22)
                     Text("Применить порог ко всем товарам")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Palette.textPrimary)
+                        .foregroundStyle(Palette.accent)
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 14)
@@ -225,16 +232,20 @@ struct SettingsView: View {
                 Text(mode.title)
                     .font(.system(size: 12, weight: .medium))
             }
-            .foregroundStyle(isActive ? Palette.inkInverted : Palette.textSecondary)
+            .foregroundStyle(isActive ? Palette.accent : Palette.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background {
                 RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                    .fill(isActive ? Palette.ink : Palette.surface)
+                    .fill(isActive ? Palette.accentWash : Palette.surface)
+                    .elevation(.card, scheme: colorScheme)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: Metrics.controlRadius, style: .continuous)
-                    .strokeBorder(isActive ? Color.clear : Palette.line, lineWidth: Metrics.hairline)
+                    .strokeBorder(
+                        isActive ? Palette.accent.opacity(0.45) : Palette.line,
+                        lineWidth: isActive ? 1.5 : Metrics.hairline
+                    )
             }
         }
         .buttonStyle(.pressable)
@@ -292,7 +303,7 @@ struct SettingsView: View {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
                     .font(.system(size: 14))
-                    .foregroundStyle(Palette.textSecondary)
+                    .foregroundStyle(Palette.accent)
                     .frame(width: 22)
 
                 VStack(alignment: .leading, spacing: 2) {

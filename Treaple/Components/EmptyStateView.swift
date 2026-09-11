@@ -5,7 +5,7 @@ struct EmptyStateView: View {
     let symbolName: String
     let title: String
     let message: String
-    var tint: Color = Palette.ink
+    var tint: Color = Palette.accent
     var actionTitle: String?
     var action: (() -> Void)?
     var secondaryTitle: String?
@@ -17,14 +17,17 @@ struct EmptyStateView: View {
         VStack(spacing: 18) {
             ZStack {
                 Circle()
-                    .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
-                    .frame(width: 116, height: 116)
+                    .fill(tint.opacity(0.07))
+                    .frame(width: 118, height: 118)
                 Circle()
-                    .strokeBorder(Palette.line, lineWidth: Metrics.hairline)
+                    .strokeBorder(tint.opacity(0.18), lineWidth: Metrics.hairline)
+                    .frame(width: 118, height: 118)
+                Circle()
+                    .fill(tint.opacity(0.11))
                     .frame(width: 82, height: 82)
                 Image(systemName: symbolName)
                     .font(.system(size: 30, weight: .regular))
-                    .foregroundStyle(Palette.textSecondary)
+                    .foregroundStyle(tint)
             }
             .scaleEffect(appeared ? 1 : 0.82)
             .opacity(appeared ? 1 : 0)
@@ -47,10 +50,14 @@ struct EmptyStateView: View {
                 Button(action: action) {
                     Text(actionTitle)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Palette.inkInverted)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 22)
                         .padding(.vertical, 12)
-                        .background { Capsule(style: .continuous).fill(Palette.ink) }
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(tint)
+                                .shadow(color: tint.opacity(0.3), radius: 10, y: 4)
+                        }
                 }
                 .buttonStyle(.pressable)
             }

@@ -72,16 +72,15 @@ struct LowStockWidgetView: View {
             VStack(alignment: .leading, spacing: 7) {
                 if entry.items.isEmpty {
                     Spacer(minLength: 0)
-                    Text("Все позиции в норме")
+                    Label("Все позиции в норме", systemImage: "checkmark.circle.fill")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Palette.textSecondary)
+                        .foregroundStyle(Palette.stockOK)
                     Spacer(minLength: 0)
                 } else {
                     ForEach(entry.items) { item in
                         HStack(spacing: 7) {
                             Circle()
-                                .fill(Palette.ink)
-                                .opacity(item.isOut ? 1 : 0.35)
+                                .fill(item.isOut ? Palette.stockOut : Palette.stockLow)
                                 .frame(width: 6, height: 6)
 
                             Text(item.name)
@@ -94,7 +93,7 @@ struct LowStockWidgetView: View {
                             Text(item.isOut ? "0" : Format.integer(item.quantity))
                                 .font(.system(size: 12, weight: .semibold))
                                 .monospacedDigit()
-                                .foregroundStyle(Palette.textPrimary)
+                                .foregroundStyle(item.isOut ? Palette.stockOut : Palette.stockLow)
                         }
                     }
                     Spacer(minLength: 0)
@@ -136,12 +135,13 @@ struct LowStockWidgetView: View {
     // MARK: - Общее
 
     private var header: some View {
-        Text("Склад").microLabel(Palette.textSecondary)
+        Text("Склад").microLabel(accent)
     }
 
-    /// Чем острее ситуация, тем плотнее краска — цвета здесь нет.
     private var accent: Color {
-        entry.attentionCount > 0 ? Palette.ink : Palette.textTertiary
+        if entry.outOfStockCount > 0 { return Palette.danger }
+        if entry.lowStockCount > 0 { return Palette.stockLow }
+        return Palette.stockOK
     }
 
     private var summaryLine: String {

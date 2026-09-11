@@ -1,12 +1,16 @@
 import SwiftUI
 
-/// Превью товара: фото, если оно есть, иначе — монограмма в обведённом
-/// квадрате. Без градиентов и цветных подложек: знак держится на самой
-/// букве, её весе и точной рамке.
+/// Превью товара: фото, если оно есть, иначе — монограмма.
+///
+/// Подложка тонирована одним и тем же акцентом для всех товаров. Раньше
+/// оттенок брался по хешу категории, и список превращался в пестроту,
+/// в которой цвет ничего не сообщал.
 struct ProductThumbnail: View {
     let product: Product
     var size: CGFloat = Metrics.thumbSize
     var cornerRadius: CGFloat = Metrics.thumbRadius
+
+    @Environment(\.colorScheme) private var colorScheme
 
     private var initial: String {
         let source = product.name.isEmpty ? product.displayCategory : product.name
@@ -23,21 +27,30 @@ struct ProductThumbnail: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .grayscale(1)
             } else {
                 ZStack {
-                    Palette.surfaceAlt
+                    Palette.accentWash
                     Text(initial)
-                        .font(.system(size: size * 0.36, weight: .medium))
+                        .font(.system(size: size * 0.38, weight: .semibold))
                         .tracking(-0.5)
-                        .foregroundStyle(Palette.textSecondary)
+                        .foregroundStyle(Palette.accent.opacity(0.85))
                 }
             }
         }
         .frame(width: size, height: size)
         .clipShape(shape)
         .overlay {
-            shape.strokeBorder(Palette.line, lineWidth: Metrics.hairline)
+            shape.strokeBorder(
+                LinearGradient(
+                    colors: [
+                        .white.opacity(colorScheme == .dark ? 0.10 : 0.75),
+                        Palette.line.opacity(0.9)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ),
+                lineWidth: 0.75
+            )
         }
         .accessibilityHidden(true)
     }

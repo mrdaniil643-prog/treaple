@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Метка состояния. Без цвета остаётся форма: норма — светлая точка,
-/// заканчивается — кольцо, закончился — залитый круг. Плотность краски
-/// растёт вместе со срочностью, и порядок читается без легенды.
+/// Метка состояния. Цвет здесь работает по назначению — он единственный
+/// носитель смысла, поэтому форма его дублирует: норма — залитая точка,
+/// заканчивается — кольцо, закончился — перечёркнутый круг. Так состояние
+/// читается и при дальтонизме, и в чёрно-белой печати.
 struct StockDot: View {
     let state: StockState
     var size: CGFloat = 7
@@ -11,11 +12,11 @@ struct StockDot: View {
         Group {
             switch state {
             case .ok:
-                Circle().fill(Palette.textTertiary)
+                Circle().fill(Palette.stockOK)
             case .low:
-                Circle().strokeBorder(Palette.ink, lineWidth: size * 0.28)
+                Circle().strokeBorder(Palette.stockLow, lineWidth: size * 0.3)
             case .out:
-                Circle().fill(Palette.ink)
+                Circle().fill(Palette.stockOut.opacity(0.45))
             }
         }
         .frame(width: size, height: size)
@@ -23,17 +24,14 @@ struct StockDot: View {
     }
 }
 
-/// Бейдж с остатком. Нормальный остаток не получает обвязки вовсе —
-/// внимание должно доставаться только тому, что требует действия.
+/// Бейдж с остатком. Нормальный остаток обвязки не получает: внимание
+/// должно доставаться тому, что требует действия.
 struct StockBadge: View {
     let product: Product
     var showsTitle: Bool = false
 
     private var state: StockState { product.stockState }
-
-    private var text: String {
-        showsTitle ? state.title : Format.quantity(product.quantity)
-    }
+    private var tint: Color { Palette.stock(state) }
 
     var body: some View {
         HStack(spacing: 5) {
@@ -41,37 +39,32 @@ struct StockBadge: View {
                 StockDot(state: state, size: 6)
             }
 
-            Text(text)
+            Text(showsTitle ? state.title : Format.quantity(product.quantity))
                 .font(.system(size: 12, weight: .semibold))
                 .monospacedDigit()
                 .contentTransition(.numericText())
         }
-        .foregroundStyle(foreground)
+        .foregroundStyle(state == .ok ? Palette.textSecondary : tint)
         .padding(.horizontal, state == .ok ? 0 : 8)
         .padding(.vertical, state == .ok ? 0 : 4)
         .background {
-            if state == .out {
-                Capsule(style: .continuous).fill(Palette.ink)
-            } else if state == .low {
-                Capsule(style: .continuous).strokeBorder(Palette.ink, lineWidth: Metrics.hairline)
+            if state != .ok {
+                Capsule(style: .continuous)
+                    .fill(tint.opacity(0.12))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(tint.opacity(0.28), lineWidth: Metrics.hairline)
+                    }
             }
         }
         .animation(Motion.snappy, value: product.quantity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(state.title), \(Format.quantity(product.quantity))")
     }
-
-    private var foreground: Color {
-        switch state {
-        case .ok: Palette.textSecondary
-        case .low: Palette.ink
-        case .out: Palette.inkInverted
-        }
-    }
 }
 
-/// Категория — не плашка, а набранная капителью подпись.
-/// Плашки дробят строку, подпись встраивается в типографический ритм.
+/// Категория — набранная капителью подпись, а не цветная плашка.
+/// Плашка тянула бы на себя внимание, ничего при этом не сообщая.
 struct CategoryChip: View {
     let title: String
 

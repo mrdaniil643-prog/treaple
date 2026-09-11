@@ -43,7 +43,7 @@ struct FormRow<Content: View>: View {
                 if let systemImage {
                     Image(systemName: systemImage)
                         .font(.system(size: 14))
-                        .foregroundStyle(Palette.textTertiary)
+                        .foregroundStyle(isInvalid ? Palette.danger : Palette.textTertiary)
                         .frame(width: 22)
                 }
 
@@ -62,7 +62,7 @@ struct FormRow<Content: View>: View {
             if isInvalid, let error {
                 Text(error)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Palette.textPrimary)
+                    .foregroundStyle(Palette.danger)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 10)
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -72,12 +72,12 @@ struct FormRow<Content: View>: View {
                 Hairline(inset: 14)
             }
         }
-        // Ошибку отмечаем полем-подложкой, а не красным: в монохроме
-        // выделение делает сам тон, а текст ошибки говорит остальное.
-        .background(isInvalid ? Palette.surfaceAlt : Color.clear)
+        // Неверное поле помечено и подложкой, и полосой у кромки: цвет
+        // один, но носителей два — так ошибку видно и боковым зрением.
+        .background(isInvalid ? Palette.danger.opacity(0.05) : Color.clear)
         .overlay(alignment: .leading) {
             if isInvalid {
-                Rectangle().fill(Palette.ink).frame(width: 2)
+                Rectangle().fill(Palette.danger).frame(width: 2)
             }
         }
         .animation(Motion.snappy, value: isInvalid)
@@ -89,7 +89,7 @@ struct PillButton: View {
     let title: String
     var systemImage: String?
     var isActive: Bool = false
-    var tint: Color = Palette.ink
+    var tint: Color = Palette.accent
     let action: () -> Void
 
     var body: some View {
@@ -105,16 +105,12 @@ struct PillButton: View {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundStyle(isActive ? Palette.inkInverted : Palette.textPrimary)
+            .foregroundStyle(isActive ? .white : tint)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background {
                 Capsule(style: .continuous)
-                    .fill(isActive ? Palette.ink : Color.clear)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .strokeBorder(isActive ? Color.clear : Palette.lineStrong, lineWidth: Metrics.hairline)
-                    }
+                    .fill(isActive ? tint : tint.opacity(0.11))
             }
         }
         .buttonStyle(.pressable)
