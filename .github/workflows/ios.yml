@@ -33,11 +33,12 @@ jobs:
         continue-on-error: true
         run: |
           SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          DIR="$SDK/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule"
-          IFACE=$(ls "$DIR"/*.swiftinterface 2>/dev/null | head -1)
           echo "sdk: $SDK"
-          echo "interface: $IFACE"
-          [ -n "$IFACE" ] && grep -nE "func glassEffect|GlassEffectContainer|func glassEffectID|func scrollTransition|func symbolEffect" "$IFACE" | head -20
+          echo "=== где объявлен glassEffect ==="
+          grep -rl "glassEffect" "$SDK/System/Library/Frameworks"/*/Modules/*.swiftmodule/*.swiftinterface 2>/dev/null | head
+          echo "=== сигнатуры ==="
+          grep -rhoE "public func glassEffect[^{]{0,160}|public struct Glass[ :][^{]{0,60}|public struct GlassEffectContainer[^{]{0,80}" \
+            "$SDK/System/Library/Frameworks"/*/Modules/*.swiftmodule/*.swiftinterface 2>/dev/null | sort -u | head -20
 
       - name: Сборка для симулятора
         run: |
