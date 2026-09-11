@@ -100,13 +100,20 @@ jobs:
 
           # simctl openurl показывает системный диалог «Open in ...?», поэтому
           # экраны открываем перезапуском с аргументом.
+          # Экран после перезапуска какое-то время белый. Кадр этого момента
+          # весит в разы меньше отрисованного — по размеру и ловим, переснимая.
           shot() {
             NAME="$1"; shift
             xcrun simctl terminate "$UDID" "$BUNDLE_ID" > /dev/null 2>&1 || true
             sleep 1
             xcrun simctl launch "$UDID" "$BUNDLE_ID" "$@"
-            sleep 7
-            xcrun simctl io "$UDID" screenshot "screenshots/$NAME"
+            for attempt in 1 2 3; do
+              sleep 8
+              xcrun simctl io "$UDID" screenshot "screenshots/$NAME"
+              SIZE=$(stat -f%z "screenshots/$NAME")
+              echo "$NAME: попытка $attempt, $SIZE байт"
+              [ "$SIZE" -gt 400000 ] && break
+            done
           }
 
           shot 2-dashboard-light.png  -startTab dashboard

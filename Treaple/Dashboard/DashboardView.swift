@@ -85,7 +85,7 @@ struct DashboardView: View {
             MetricCard(
                 title: "Потенциальная прибыль",
                 value: Format.compactMoney(data.potentialProfit),
-                caption: "если продать весь остаток",
+                caption: "при полной продаже",
                 symbolName: "chart.line.uptrend.xyaxis",
                 tint: data.potentialProfit >= 0 ? Palette.stockOK : Palette.danger
             )
@@ -106,7 +106,7 @@ struct DashboardView: View {
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
-                sectionTitle("Остатки по категориям")
+                sectionTitle("По категориям")
                 Spacer()
                 Picker("Показатель", selection: $chartMetric) {
                     ForEach(ChartMetric.allCases) { metric in
@@ -214,7 +214,6 @@ struct DashboardView: View {
                     }
                 }
                 .cardSurface(padding: 0)
-                .scrollFade()
 
                 Button(action: onSelectLowStock) {
                     HStack(spacing: 5) {

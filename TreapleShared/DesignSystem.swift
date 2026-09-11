@@ -202,15 +202,6 @@ extension View {
         modifier(GlassCapsule())
     }
 
-    /// Мягкое появление карточек при прокрутке: элементы у краёв экрана
-    /// слегка приглушены и уменьшены. Заметно ощущается, но не отвлекает.
-    func scrollFade() -> some View {
-        scrollTransition(.interactive, axis: .vertical) { content, phase in
-            content
-                .opacity(phase.isIdentity ? 1 : 0.45)
-                .scaleEffect(phase.isIdentity ? 1 : 0.965)
-        }
-    }
 }
 
 /// Панель-капсула. На iOS 26 системные панели стеклянные, и собственные

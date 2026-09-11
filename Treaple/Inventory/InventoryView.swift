@@ -129,7 +129,6 @@ struct InventoryView: View {
             ProductCardView(product: product)
         }
         .plainListRow()
-        .scrollFade()
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 Haptics.warning()
