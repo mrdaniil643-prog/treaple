@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 640" width="520" height="640" role="img" aria-label="Заглушка портрета">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#202B38"/><stop offset="1" stop-color="#121922"/>
+    </linearGradient>
+  </defs>
+  <rect width="520" height="640" fill="url(#bg)"/>
+  <circle cx="260" cy="238" r="96" fill="#2A3746"/>
+  <path d="M104 640c0-92 70-166 156-166s156 74 156 166Z" fill="#2A3746"/>
+  <g fill="none" stroke="#B8894A" stroke-width="1.5" opacity=".65">
+    <rect x="40" y="40" width="440" height="560"/>
+  </g>
+  <text x="260" y="600" font-family="Georgia, serif" font-size="19" fill="#8E97A3" text-anchor="middle">
+    Заменить на фотографию юриста
+  </text>
+</svg>

@@ -1,0 +1,11 @@
+{
+  "name": "saveliev-legal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Лендинг юридической практики",
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "lint:html": "node --check assets/js/main.js"
+  }
+}
