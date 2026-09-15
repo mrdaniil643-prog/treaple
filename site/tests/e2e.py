@@ -155,16 +155,42 @@ with sync_playwright() as p:
 
     ctx.close()
 
+    # контраст основного текста
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    page.goto(BASE, wait_until="networkidle")
+    contrast = page.evaluate("""() => {
+      const lum = (rgb) => {
+        const [r,g,b] = rgb.match(/\d+/g).slice(0,3).map(Number).map(v => {
+          v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+        });
+        return 0.2126*r + 0.7152*g + 0.0722*b;
+      };
+      const ratio = (a,b) => { const [x,y] = [lum(a), lum(b)].sort((m,n)=>n-m); return (x+0.05)/(y+0.05); };
+      const bg = getComputedStyle(document.body).backgroundColor;
+      const out = {};
+      for (const sel of ['.hero__lead', '.case__answer', '.stat__label', '.field__label', '.qa__a>p']) {
+        const el = document.querySelector(sel);
+        if (el) out[sel] = Math.round(ratio(getComputedStyle(el).color, bg) * 100) / 100;
+      }
+      return out;
+    }""")
+    notes.append(f"контраст к фону страницы: {contrast}")
+    for sel, val in contrast.items():
+        if val < 4.5:
+            problems.append(f"контраст {sel} = {val}, ниже AA 4.5")
+    ctx.close()
+
     # reduced motion
     ctx = browser.new_context(viewport={"width": 1440, "height": 900}, reduced_motion="reduce")
     page = ctx.new_page()
     page.goto(BASE, wait_until="networkidle")
     page.wait_for_timeout(600)
     h1_op = page.evaluate("getComputedStyle(document.querySelector('.hero__title span span')).opacity")
-    motes = page.evaluate("getComputedStyle(document.querySelector('#motes')).display")
-    notes.append(f"reduced-motion: заголовок opacity={h1_op}, частицы display={motes}")
-    if motes != "none":
-        problems.append("при reduced-motion частицы не отключились")
+    h1_tr = page.evaluate("getComputedStyle(document.querySelector('.hero__title span span')).transform")
+    notes.append(f"reduced-motion: заголовок opacity={h1_op}, transform={h1_tr}")
+    if h1_op != "1" or h1_tr not in ("none", "matrix(1, 0, 0, 1, 0, 0)"):
+        problems.append("при reduced-motion заголовок остался анимированным")
     page.screenshot(path=f"{OUT}/reduced-motion.png")
     ctx.close()
 

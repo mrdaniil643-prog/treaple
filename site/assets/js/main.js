@@ -274,7 +274,7 @@
   function validate(field) {
     var v = (field.value || '').trim();
     if (field.type === 'checkbox') {
-      if (!field.checked) { setError(field, 'Без согласия отправить заявку не получится'); return false; }
+      if (!field.checked) { setError(field, 'Нужно согласие на обработку данных'); return false; }
     } else if (field.name === 'name') {
       if (v.length < 2) { setError(field, 'Напишите, как к вам обращаться'); return false; }
     } else if (field.name === 'phone') {
@@ -361,65 +361,6 @@
         });
     });
   });
-
-  /* ── 10. Частицы фона: замирают, когда вы печатаете ──────── */
-  var canvas = $('#motes');
-  if (canvas && !reduced && window.innerWidth > 760) {
-    var ctx = canvas.getContext('2d');
-    var motes = [], raf = null, frozen = false, onScreen = true, w = 0, h = 0;
-
-    function size() {
-      var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = canvas.clientWidth; h = canvas.clientHeight;
-      canvas.width = w * dpr; canvas.height = h * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    function seed() {
-      motes = [];
-      var count = Math.round(Math.min(30, w / 46));
-      for (var i = 0; i < count; i++) {
-        motes.push({
-          x: Math.random() * w, y: Math.random() * h,
-          r: Math.random() * 1.5 + 0.5,
-          vx: (Math.random() - 0.5) * 0.09,
-          vy: -(Math.random() * 0.12 + 0.03),
-          a: Math.random() * 0.3 + 0.08
-        });
-      }
-    }
-    function frame() {
-      ctx.clearRect(0, 0, w, h);
-      motes.forEach(function (m) {
-        if (!frozen) {
-          m.x += m.vx; m.y += m.vy;
-          if (m.y < -6) { m.y = h + 6; m.x = Math.random() * w; }
-          if (m.x < -6) m.x = w + 6;
-          if (m.x > w + 6) m.x = -6;
-        }
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(217,176,114,' + m.a + ')';
-        ctx.fill();
-      });
-      raf = requestAnimationFrame(frame);
-    }
-    function start() { if (!raf && onScreen) frame(); }
-    function halt() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
-
-    size(); seed(); start();
-    window.addEventListener('resize', function () { size(); seed(); });
-
-    new IntersectionObserver(function (es) {
-      onScreen = es[0].isIntersecting;
-      if (onScreen) start(); else halt();
-    }, { threshold: 0 }).observe(canvas);
-
-    // Человек начал заполнять форму — фон замирает и не отвлекает
-    $$('#form-quick input').forEach(function (f) {
-      f.addEventListener('focus', function () { frozen = true; });
-      f.addEventListener('blur',  function () { frozen = false; });
-    });
-  }
 
   var year = $('#year');
   if (year) year.textContent = new Date().getFullYear();
