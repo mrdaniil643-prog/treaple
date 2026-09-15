@@ -49,7 +49,6 @@
   --t-lg:clamp(1.4rem,1.15rem + 1vw,1.85rem);
   --t-xl:clamp(1.9rem,1.45rem + 2.1vw,2.9rem);
   --t-hero:clamp(2.25rem,1.5rem + 3.2vw,4.1rem);
-  --t-stat:clamp(2.8rem,2rem + 3.6vw,4.8rem);
 
   --space-1:.5rem; --space-2:.75rem; --space-3:1rem; --space-4:1.5rem;
   --space-5:2rem; --space-6:3rem; --space-7:4.5rem; --space-8:7rem;
@@ -232,19 +231,6 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
   border-left:2px solid var(--line-strong)}
 .case__answer{color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--space-3);max-width:46ch}
 
-/* ─── Цифры ─────────────────────────────────────────────── */
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-5)}
-.stat{border-top:1px solid var(--ink);padding-top:var(--space-3)}
-.stat__value{font-family:var(--font-display);font-size:var(--t-stat);line-height:1;color:var(--seal);
-  font-variant-numeric:tabular-nums;display:inline-flex;overflow:hidden;vertical-align:bottom}
-.stat__unit{font-size:var(--t-md);color:var(--ink-2);margin-left:.4rem}
-.stat__label{color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--space-3);max-width:32ch}
-/* Барабан счётчика: цифры прокручиваются как на табло */
-.roll{display:block;width:1ch;overflow:hidden;height:1em}
-.roll__strip{display:flex;flex-direction:column;transform:translateY(0);
-  transition:transform 1.5s cubic-bezier(.2,.8,.2,1)}
-.roll__strip span{height:1em;line-height:1;display:block}
-
 /* ─── Порядок работы ────────────────────────────────────── */
 .steps{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-5);
   padding-top:var(--space-5)}
@@ -417,7 +403,6 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
   .topnav{display:none}
   .hero__in{grid-template-columns:1fr}
   .quickform{max-width:560px}
-  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-6) var(--space-5)}
   .steps{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:var(--space-6)}
   .steps__track{display:none}
   .lawyer__in,.apply__in{grid-template-columns:1fr}
@@ -426,7 +411,6 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
 }
 @media (max-width:720px){
   .cases{grid-template-columns:1fr}
-  .stats{grid-template-columns:1fr}
   .steps{grid-template-columns:1fr;row-gap:var(--space-5)}
   .form--main{grid-template-columns:1fr}
   .footer__in{grid-template-columns:1fr}

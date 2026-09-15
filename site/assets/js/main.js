@@ -16,7 +16,7 @@
   });
 
   /* ── 2. Появление секций по скроллу ──────────────────────── */
-  $$('.band__head, .case, .stat, .step, .slider, .lawyer__figure, .lawyer__body, .form--main, .qa, .footer__col')
+  $$('.band__head, .case, .step, .slider, .lawyer__figure, .lawyer__body, .form--main, .qa, .footer__col')
     .forEach(function (el) { el.setAttribute('data-anim', ''); });
 
   $$('[data-stagger]').forEach(function (group) {
@@ -45,43 +45,7 @@
     }, { threshold: 0.3 }).observe(lawyer);
   }
 
-  /* ── 3. Счётчики: цифры прокручиваются как на табло ──────── */
-  function buildRoll(host, value) {
-    var digits = String(value).split('');
-    host.textContent = '';
-    digits.forEach(function (d, i) {
-      var cell = document.createElement('span');
-      cell.className = 'roll';
-      var strip = document.createElement('span');
-      strip.className = 'roll__strip';
-      for (var n = 0; n <= 9; n++) {
-        var s = document.createElement('span');
-        s.textContent = n;
-        strip.appendChild(s);
-      }
-      strip.style.transitionDelay = (i * 110) + 'ms';
-      cell.appendChild(strip);
-      host.appendChild(cell);
-      requestAnimationFrame(function () {
-        strip.style.transform = 'translateY(-' + (parseInt(d, 10) * 10) + '%)';
-      });
-    });
-  }
-
-  $$('.stat__value').forEach(function (host) {
-    var target = host.getAttribute('data-count');
-    if (reduced) { host.textContent = target; return; }
-    host.textContent = target;              // значение видно до анимации, без скачка верстки
-    new IntersectionObserver(function (es, o) {
-      es.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        buildRoll(host, target);
-        o.disconnect();
-      });
-    }, { threshold: 0.4 }).observe(host);
-  });
-
-  /* ── 4. Таймлайн: линия заполняется по мере скролла ──────── */
+  /* ── 3. Таймлайн: линия заполняется по мере скролла ──────── */
   var steps = $('#steps');
   if (steps) {
     var fill = $('.steps__fill', steps);
@@ -110,7 +74,7 @@
     paint();
   }
 
-  /* ── 5. Слайдер отзывов ──────────────────────────────────── */
+  /* ── 4. Слайдер отзывов ──────────────────────────────────── */
   var slider = $('#slider');
   if (slider) {
     var track  = $('.slider__track', slider);
@@ -178,7 +142,7 @@
     restart();
   }
 
-  /* ── 6. FAQ: раскрытие через grid-template-rows ──────────── */
+  /* ── 5. FAQ: раскрытие через grid-template-rows ──────────── */
   $$('.qa').forEach(function (qa) {
     var summary = $('.qa__q', qa);
     var panel = $('.qa__a', qa);
@@ -200,7 +164,7 @@
     });
   });
 
-  /* ── 7. Sticky-кнопка: после hero, но не поверх главной формы ── */
+  /* ── 6. Sticky-кнопка: после hero, но не поверх главной формы ── */
   var tab = $('#calltab');
   var hero = $('#hero');
   var apply = $('#apply');
@@ -224,7 +188,7 @@
     }, { threshold: 1 }).observe(sentinel);
   }
 
-  /* ── 8. Карта по клику: iframe не грузится в первичной загрузке ── */
+  /* ── 7. Карта по клику: iframe не грузится в первичной загрузке ── */
   var stub = $('#mapstub');
   if (stub) {
     stub.addEventListener('click', function () {
@@ -238,7 +202,7 @@
     });
   }
 
-  /* ── 9. Формы ────────────────────────────────────────────── */
+  /* ── 8. Формы ────────────────────────────────────────────── */
   var ENDPOINT = (window.LEAD_ENDPOINT || '/api/lead');
 
   function maskPhone(input) {

@@ -169,7 +169,7 @@ with sync_playwright() as p:
       const ratio = (a,b) => { const [x,y] = [lum(a), lum(b)].sort((m,n)=>n-m); return (x+0.05)/(y+0.05); };
       const bg = getComputedStyle(document.body).backgroundColor;
       const out = {};
-      for (const sel of ['.hero__lead', '.case__answer', '.stat__label', '.field__label', '.qa__a>p']) {
+      for (const sel of ['.hero__lead', '.case__answer', '.step__text', '.field__label', '.qa__a>p']) {
         const el = document.querySelector(sel);
         if (el) out[sel] = Math.round(ratio(getComputedStyle(el).color, bg) * 100) / 100;
       }
