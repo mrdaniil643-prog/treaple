@@ -1,4 +1,4 @@
-/* Савельев — юридическая практика
+/* Сазиков — юридическая практика
    Ваниль, без зависимостей. Страница читается полностью без этого файла. */
 (function () {
   'use strict';
@@ -188,21 +188,7 @@
     }, { threshold: 1 }).observe(sentinel);
   }
 
-  /* ── 7. Карта по клику: iframe не грузится в первичной загрузке ── */
-  var stub = $('#mapstub');
-  if (stub) {
-    stub.addEventListener('click', function () {
-      var frame = document.createElement('iframe');
-      frame.src = 'https://yandex.ru/map-widget/v1/?ll=37.627%2C55.741&z=16&pt=37.627,55.741,pm2rdm';
-      frame.title = 'Карта проезда: Москва, улица Пятницкая, 25';
-      frame.loading = 'lazy';
-      frame.allowFullscreen = true;
-      frame.referrerPolicy = 'no-referrer-when-downgrade';
-      stub.replaceWith(frame);
-    });
-  }
-
-  /* ── 8. Формы ────────────────────────────────────────────── */
+  /* ── 7. Формы ────────────────────────────────────────────── */
   var ENDPOINT = (window.LEAD_ENDPOINT || '/api/lead');
 
   /* Режим превью. Нужен там, где сайт лежит статикой и serverless-функции нет:
@@ -328,7 +314,7 @@
       sendLead(payload)
         .then(function () {
           var card = form.dataset.form === 'quick'
-            ? stampNode('Заявка принята', 'Перезвоню в течение 15 минут с номера +7 495 123-45-67.')
+            ? stampNode('Заявка принята', 'Перезвоню в течение 15 минут с номера +7 909 854-88-61.')
             : stampNode('Заявка принята', 'Прочитаю описание и перезвоню в течение 15 минут в рабочее время. Вечером и в выходные наберу утром.');
           form.replaceWith(card);
           card.setAttribute('tabindex', '-1');
@@ -338,7 +324,7 @@
           button.disabled = false;
           button.classList.remove('is-busy');
           status.classList.add('is-error');
-          status.textContent = 'Отправить не вышло. Позвоните на +7 495 123-45-67 или напишите на hello@saveliev-legal.ru';
+          status.textContent = 'Отправить не вышло. Позвоните на +7 909 854-88-61.';
         });
     });
   });
