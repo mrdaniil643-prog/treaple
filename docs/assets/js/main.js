@@ -205,6 +205,28 @@
   /* ── 8. Формы ────────────────────────────────────────────── */
   var ENDPOINT = (window.LEAD_ENDPOINT || '/api/lead');
 
+  /* Режим превью. Нужен там, где сайт лежит статикой и serverless-функции нет:
+     GitHub Pages, любой файловый хостинг, открытый локально index.html.
+     Форма проходит валидацию и показывает успех, но заявка никуда не уходит.
+     На собственном домене клиента режим не включается никогда. */
+  var DEMO = ENDPOINT === 'demo' ||
+             /[?&]demo=1(&|$)/.test(location.search) ||
+             /(^|\.)github\.io$/.test(location.hostname);
+
+  function sendLead(payload) {
+    if (DEMO) {
+      return new Promise(function (resolve) { setTimeout(resolve, 650); });
+    }
+    return fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json().catch(function () { return {}; });
+    });
+  }
+
   function maskPhone(input) {
     var digits = input.value.replace(/\D/g, '');
     if (digits[0] === '8') digits = '7' + digits.slice(1);
@@ -303,12 +325,7 @@
         page: location.href
       };
 
-      fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json().catch(function () { return {}; }); })
+      sendLead(payload)
         .then(function () {
           var card = form.dataset.form === 'quick'
             ? stampNode('Заявка принята', 'Перезвоню в течение 15 минут с номера +7 495 123-45-67.')
