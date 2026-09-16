@@ -289,11 +289,75 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 .sync.live .led{background:var(--ok)}
 .sync.local .led{background:var(--low)}
 
+/* ── Вход в магазин ──────────────────────────────────────────────────── */
+#gate{position:fixed;inset:0;z-index:60;background:var(--canvas);display:none;
+  overflow-y:auto;padding:calc(28px + env(safe-area-inset-top,0px)) var(--gutter) 40px}
+#gate.on{display:block}
+.gate-wrap{max-width:400px;margin:0 auto}
+.gate-mark{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;
+  background:var(--accent);color:var(--on-accent);margin-bottom:20px}
+.gate-mark svg{width:26px;height:26px}
+.gate-wrap h2{margin:0 0 6px;font-size:23px;font-weight:600;letter-spacing:-.025em;text-wrap:balance}
+.gate-wrap .lead{margin:0 0 22px;color:var(--text-2);font-size:14px;line-height:1.5}
+.gate-switch{display:flex;gap:3px;padding:3px;background:var(--surface-alt);border:1px solid var(--line);
+  border-radius:calc(var(--r-control) + 3px);margin-bottom:16px}
+.gate-switch button{flex:1;padding:8px;border-radius:var(--r-control);font-size:13px;font-weight:600;color:var(--text-2)}
+.gate-switch button[aria-pressed="true"]{background:var(--surface);color:var(--text);
+  box-shadow:0 1px 2px var(--shadow-contact),0 2px 6px var(--shadow-ambient)}
+.gate-field{margin-bottom:12px}
+.gate-field label{display:block;margin-bottom:6px;font-size:12px;font-weight:500;color:var(--text-2)}
+.gate-field input{width:100%;padding:11px 13px;border-radius:var(--r-control);
+  background:var(--surface);border:1px solid var(--line);font-size:15px}
+.gate-field input::placeholder{color:var(--text-3)}
+.gate-field.code input{text-transform:uppercase;letter-spacing:.16em;font-weight:600;font-variant-numeric:tabular-nums}
+.gate-field .hint{margin:6px 2px 0;font-size:12px;color:var(--text-3)}
+.gate-field .bad{color:var(--danger)}
+.gate-wrap .btn{width:100%;justify-content:center;margin-top:6px;padding:13px}
+.gate-note{margin-top:20px;padding:13px 14px;border-radius:var(--r-control);
+  background:var(--surface-alt);border:1px solid var(--line);font-size:12px;line-height:1.55;color:var(--text-2)}
+.gate-note b{color:var(--text);font-weight:600}
+
+/* ── Личность в шапке ────────────────────────────────────────────────── */
+.who{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0;text-align:left}
+.who .av{width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--accent-wash);color:var(--accent);font-size:12px;font-weight:600}
+.who .nm{min-width:0}
+.who .shop{display:block;font-size:15px;font-weight:600;letter-spacing:-.015em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who .person{display:block;font-size:11px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Участники и консоль ─────────────────────────────────────────────── */
+.person-row{display:flex;align-items:center;gap:8px 11px;padding:11px 0;flex-wrap:wrap}
+.person-row+.person-row{border-top:1px solid var(--line)}
+.person-row .av{width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+  background:var(--accent-wash);color:var(--accent);font-size:13px;font-weight:600}
+.person-row .nm{flex:1 1 150px;min-width:0}
+.person-row .nm .micro{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person-row .nm b{display:block;font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+  font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--surface-alt);border:1px solid var(--line);color:var(--text-2);white-space:nowrap}
+.chip.owner{background:var(--accent-wash);border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent)}
+.chip.you{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:var(--ok)}
+.code-box{display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:var(--r-control);
+  background:var(--accent-wash);border:1px dashed color-mix(in srgb,var(--accent) 40%,transparent);margin-top:8px}
+.code-box .val{flex:1;font-size:22px;font-weight:600;letter-spacing:.22em;color:var(--accent);font-variant-numeric:tabular-nums}
+.team-block{margin-bottom:10px}
+.team-block .head{display:flex;align-items:baseline;gap:9px;padding:0 0 9px}
+.team-block .head b{font-size:15px;font-weight:600;letter-spacing:-.015em}
+.log-row{display:flex;gap:10px;padding:9px 0;font-size:13px;align-items:baseline}
+.log-row+.log-row{border-top:1px solid var(--line)}
+.log-row .when{flex:0 0 auto;font-size:11px;color:var(--text-3);font-variant-numeric:tabular-nums;min-width:74px}
+.log-row .what{flex:1 1 auto;min-width:0;color:var(--text-2)}
+.log-row .what b{color:var(--text);font-weight:500}
+
 /* ── Широкий экран: список и сводка рядом ────────────────────────────── */
 @media (min-width:900px){
   body{font-size:14px}
   .tabs{display:none}
   #app{max-width:1180px;margin:0 auto;width:100%}
+  #gate{padding-top:64px}
+  .gate-wrap{max-width:430px}
   .topbar{padding-top:16px}
   .cols{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:24px;align-items:start}
   .pane{display:block}
@@ -311,7 +375,10 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 <div id="app">
   <header class="topbar" id="topbar">
     <div class="topbar-row">
-      <h1 class="brand">Склад</h1>
+      <button class="who" id="who" title="Магазин и участники">
+        <span class="av" id="whoAv"></span>
+        <span class="nm"><span class="shop" id="whoShop">Склад</span><span class="person" id="whoPerson"></span></span>
+      </button>
       <span class="sync" id="sync"><i class="led"></i><span id="syncText">Загрузка</span></span>
       <button class="iconbtn" id="btnSort" title="Сортировка" aria-label="Сортировка">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 4l-3 4M7 4l3 4M17 20V4M17 20l-3-4M17 20l3-4"/></svg>
@@ -338,6 +405,7 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
   <nav class="tabs" id="tabs" role="tablist"></nav>
 </div>
 
+<div id="gate"></div>
 <dialog id="editor"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -373,7 +441,12 @@ const SAMPLE = [
 const state = {
   products:[], tab:"stock", filter:"all", sort:"name", asc:true,
   query:"", collapsed:new Set(), threshold:3, theme:"system",
-  db:null, downloads:null, ready:false
+  db:null, downloads:null, ready:false,
+  // Личность и команда. Без возможности `user` страница не может проверить,
+  // кто её открыл, поэтому участник опознаётся идентификатором, который
+  // хранится в его браузере. Это маршрутизация, а не защита.
+  me:null, teams:[], members:[], events:[], appOwnerId:null,
+  gateMode:"join", gateError:"", consoleOpen:false
 };
 
 /* ══ Формат ═════════════════════════════════════════════════════════════ */
@@ -457,11 +530,53 @@ function saveLocal(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(state.products)); }catch(e){}
 }
 
-const uid = () => "p" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const uid = (pre="p") => pre + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+/* ══ Личность ═══════════════════════════════════════════════════════════
+   Код магазина — не пароль: он лежит в том же общем хранилище и нужен,
+   чтобы человек попал в нужный магазин, а не чтобы кого-то не пустить. */
+const LS_ME = "treaple.me.v1";
+const CODE_ALPHABET = "ACEFHKLMNPRTUVWXY349";
+const makeCode = () => Array.from({length:6}, () =>
+  CODE_ALPHABET[Math.floor(Math.random()*CODE_ALPHABET.length)]).join("");
+
+function loadMe(){
+  try{
+    const raw = localStorage.getItem(LS_ME);
+    state.me = raw ? JSON.parse(raw) : null;
+  }catch(e){ state.me = null; }
+}
+function saveMe(){
+  try{
+    if (state.me) localStorage.setItem(LS_ME, JSON.stringify(state.me));
+    else localStorage.removeItem(LS_ME);
+  }catch(e){}
+}
+const myTeam = () => state.teams.find(t => t.id === state.me?.teamId) || null;
+const myMember = () => state.members.find(m => m.id === state.me?.memberId) || null;
+const isTeamOwner = () => myMember()?.role === "owner";
+const isAppOwner = () => !!state.appOwnerId && state.me?.memberId === state.appOwnerId;
+const teamMembers = id => state.members.filter(m => m.teamId === id)
+  .sort((a,b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0) || a.joinedAt - b.joinedAt);
+const initials = n => (n || "?").trim().split(/\s+/).slice(0,2).map(w => w[0] || "").join("").toUpperCase() || "?";
+
+/* Короткая пометка об устройстве — чтобы владелец отличал вход с телефона
+   от входа с компьютера. Ничего опознающего человека здесь нет. */
+function deviceHint(){
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPod/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua)) return "iPad";
+  if (/Android/.test(ua)) return "Android";
+  if (/Macintosh/.test(ua)) return "Mac";
+  if (/Windows/.test(ua)) return "Windows";
+  return "браузер";
+}
 
 function makeProduct(o){
   return {
     id:o.id || uid(),
+    teamId:o.teamId || state.me?.teamId || "solo",
+    updatedBy:o.updatedBy || "",
     name:o.name || "", category:o.category || "",
     purchasePrice:+o.purchasePrice || 0, salePrice:+o.salePrice || 0,
     quantity:Math.max(0, Math.round(+o.quantity || 0)),
@@ -471,8 +586,41 @@ function makeProduct(o){
   };
 }
 
+/* ══ Журнал ═════════════════════════════════════════════════════════════
+   Общий склад без следа «кто менял» быстро превращается в спор. Пишем
+   коротко и подрезаем хвост: в базе артефакта ограничение на число
+   документов, и журнал не должен его съесть. */
+async function logEvent(kind, subject, detail){
+  if (!state.db || !state.me) return;
+  const ev = {
+    at:Date.now(), teamId:state.me.teamId, memberId:state.me.memberId,
+    memberName:myMember()?.name || "", kind, subject:subject || "", detail:detail || ""
+  };
+  try{
+    await state.db.collection("events").doc(uid("e")).set(ev);
+    const mine = state.events.filter(e => e.teamId === state.me.teamId)
+      .sort((a,b) => a.at - b.at);
+    if (mine.length > 320){
+      for (const old of mine.slice(0, mine.length - 280)){
+        state.db.collection("events").doc(old.id).delete().catch(() => {});
+      }
+    }
+  }catch(e){}
+}
+
+async function touchMember(){
+  if (!state.db || !state.me) return;
+  const m = myMember();
+  if (!m) return;
+  // Раз в час, а не на каждый заход: запись без изменения данных — мусорный трафик.
+  if (Date.now() - (m.lastSeenAt || 0) < 3600e3) return;
+  try{ await state.db.collection("members").doc(m.id).update({lastSeenAt:Date.now()}); }catch(e){}
+}
+
 async function persist(product){
   product.updatedAt = Date.now();
+  product.teamId = product.teamId || state.me?.teamId || "solo";
+  product.updatedBy = state.me?.memberId || "";
   const i = state.products.findIndex(p => p.id === product.id);
   if (i >= 0) state.products[i] = product; else state.products.push(product);
   render();
@@ -499,6 +647,7 @@ async function seedSamples(){
       try{ await state.db.collection("products").doc(p.id).set(p); }catch(e){ break; }
     }
   }
+  logEvent("seed", "", "");
   toast("Добавлено 8 демо-товаров");
 }
 
@@ -521,29 +670,49 @@ async function initStorage(){
     render();
     return;
   }
+  // Подписки открываются по одной на коллекцию и живут всё время сеанса.
+  const fail = () => { setSync("local","Только это устройство"); state.ready = true; render(); renderGate(); };
   try{
     db.collection("products").onSnapshot(snap => {
       state.products = snap.docs.map(d => makeProduct({id:d.id, ...d.data()}));
       state.ready = true;
       saveLocal();
       setSync("live","Синхронизировано");
-      render();
-    }, () => {
-      setSync("local","Только это устройство");
-      state.ready = true;
-      render();
-    });
-  }catch(e){
-    setSync("local","Только это устройство");
-    state.ready = true;
-    render();
-  }
+      render(); renderGate();
+    }, fail);
+
+    db.collection("teams").onSnapshot(snap => {
+      state.teams = snap.docs.map(d => ({id:d.id, ...d.data()}));
+      render(); renderGate();
+    }, () => {});
+
+    db.collection("members").onSnapshot(snap => {
+      state.members = snap.docs.map(d => ({id:d.id, ...d.data()}));
+      render(); renderGate();
+      touchMember();
+    }, () => {});
+
+    db.collection("events").orderBy("at","desc").limit(200).onSnapshot(snap => {
+      state.events = snap.docs.map(d => ({id:d.id, ...d.data()}));
+      if (state.tab === "settings") renderSettings();
+    }, () => {});
+
+    db.doc("config/app").onSnapshot(snap => {
+      state.appOwnerId = snap.exists ? (snap.data().ownerMemberId || null) : null;
+      render(); renderGate();
+    }, () => {});
+  }catch(e){ fail(); }
 }
 
 /* ══ Отбор и сортировка ═════════════════════════════════════════════════ */
+const inTeam = () => {
+  const t = state.me?.teamId;
+  return t ? state.products.filter(p => p.teamId === t) : state.products;
+};
+
 function visible(){
   const q = state.query.trim().toLowerCase();
-  return state.products.filter(p => {
+  return inTeam().filter(p => {
     const st = stockState(p);
     if (state.filter === "low" && st !== "low") return false;
     if (state.filter === "out" && st !== "out") return false;
@@ -574,7 +743,7 @@ function grouped(list){
     .map(([title, items]) => ({title, items:sortList(items)}))
     .sort((a,b) => a.title === NO_CATEGORY ? 1 : b.title === NO_CATEGORY ? -1 : a.title.localeCompare(b.title,"ru"));
 }
-const countFor = id => state.products.filter(p =>
+const countFor = id => inTeam().filter(p =>
   id === "all" ? true : stockState(p) === id).length;
 
 /* ══ Иконки ═════════════════════════════════════════════════════════════ */
@@ -595,7 +764,17 @@ const ICON = {
 };
 
 /* ══ Отрисовка ══════════════════════════════════════════════════════════ */
+function renderWho(){
+  const team = myTeam(), me = myMember();
+  document.getElementById("whoShop").textContent = team?.name || "Склад";
+  document.getElementById("whoPerson").textContent =
+    me ? me.name + (isTeamOwner() ? " · управляющий" : "") : (state.db ? "" : "это устройство");
+  document.getElementById("whoAv").textContent = initials(me?.name || team?.name || "С");
+  document.getElementById("who").disabled = !me;
+}
+
 function render(){
+  renderWho();
   renderSegment();
   renderTabs();
   renderStock();
@@ -655,7 +834,7 @@ function renderStock(){
   const pane = document.getElementById("pane-stock");
   if (!state.ready){ pane.innerHTML = `<p style="padding:40px 0;text-align:center;color:var(--text-3)">Загрузка…</p>`; return; }
 
-  if (!state.products.length){
+  if (!inTeam().length){
     pane.innerHTML = `<div class="empty">
       <div class="ill">${ICON.box}</div>
       <h3>Пока нет товаров</h3>
@@ -693,7 +872,7 @@ function renderStock(){
 
 function renderDash(){
   const pane = document.getElementById("pane-dash");
-  if (!state.products.length){
+  if (!inTeam().length){
     pane.innerHTML = `<div class="empty" style="padding:36px 12px">
       <div class="ill">${ICON.chart}</div>
       <h3>Считать пока нечего</h3>
@@ -701,8 +880,8 @@ function renderDash(){
     </div>`;
     return;
   }
-  const t = totals(state.products);
-  const cats = [...state.products.reduce((m,p) => {
+  const t = totals(inTeam());
+  const cats = [...inTeam().reduce((m,p) => {
     const c = category(p);
     m.set(c, (m.get(c) || 0) + Math.max(p.quantity,0));
     return m;
@@ -712,7 +891,7 @@ function renderDash(){
   if (rest.length) top.push({title:"Прочее", value:rest.reduce((s,c) => s + c.value, 0)});
   const max = Math.max(1, ...top.map(c => c.value));
 
-  const att = state.products.filter(p => stockState(p) !== "ok")
+  const att = inTeam().filter(p => stockState(p) !== "ok")
     .sort((a,b) => a.quantity - b.quantity).slice(0,5);
 
   pane.innerHTML = `
@@ -763,10 +942,96 @@ function renderDash(){
 
 function renderSettings(){
   const pane = document.getElementById("pane-settings");
-  const t = totals(state.products);
+  const t = totals(inTeam());
   const themes = [["system","Системная",ICON.phone],["light","Светлая",ICON.sun],["dark","Тёмная",ICON.moon]];
+  const team = myTeam(), me = myMember();
+  const mates = team ? teamMembers(team.id) : [];
+
+  const teamBlock = !team ? "" : `
+    <span class="micro">Магазин</span>
+    <div class="panel" style="margin-top:8px">
+      <div style="font-size:16px;font-weight:600;letter-spacing:-.015em">${esc(team.name)}</div>
+      <div style="font-size:12px;color:var(--text-3);margin-top:2px">${mates.length === 1 ? "1 участник" : mates.length + " участника"} · заведён ${new Date(team.createdAt).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"})}</div>
+      ${isTeamOwner() ? `
+        <div class="code-box">
+          <span class="val">${esc(team.code)}</span>
+          <button class="btn" style="padding:8px 14px;font-size:13px" data-act="copyCode">Скопировать</button>
+        </div>
+        <p style="font-size:12px;color:var(--text-2);margin:9px 2px 0;line-height:1.5">
+          Передайте код тому, кого приглашаете, — он введёт его при первом открытии.
+          Сначала дайте человеку доступ к самой странице через меню «Поделиться».
+        </p>` : ""}
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:4px">
+        ${mates.map(m => `<div class="person-row">
+          <span class="av">${esc(initials(m.name))}</span>
+          <span class="nm">
+            <b>${esc(m.name)}</b>
+            <span class="micro">${esc(m.device || "")} · ${m.lastSeenAt ? "был " + relative(m.lastSeenAt) : "ещё не заходил"}</span>
+          </span>
+          ${m.id === state.me?.memberId ? `<span class="chip you">вы</span>` : ""}
+          ${m.role === "owner" ? `<span class="chip owner">управляющий</span>` : `<span class="chip">сотрудник</span>`}
+          ${isTeamOwner() && m.id !== state.me?.memberId ? `<button class="iconbtn" style="width:28px;height:28px" data-kick="${m.id}" title="Убрать из магазина" aria-label="Убрать ${esc(m.name)}">${ICON.trash}</button>` : ""}
+        </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="panel" style="padding:2px 16px">
+      <button class="linkrow" data-act="switchMe">
+        <span style="width:17px;height:17px;display:block">${ICON.swap}</span>
+        <span>Сменить пользователя<span class="sub">Вернуться к экрану входа на этом устройстве</span></span>
+      </button>
+    </div>`;
+
+  const log = team ? state.events.filter(e => e.teamId === team.id).slice(0,40) : [];
+  const logBlock = !team || !log.length ? "" : `
+    <div style="margin-top:22px"><span class="micro">Что происходило</span></div>
+    <div class="panel" style="margin-top:8px">
+      ${log.map(e => `<div class="log-row">
+        <span class="when">${esc(relative(e.at))}</span>
+        <span class="what"><b>${esc(e.memberName || "кто-то")}</b> ${esc(describeEvent(e))}</span>
+      </div>`).join("")}
+    </div>`;
+
+  const consoleBlock = !isAppOwner() ? "" : `
+    <div style="margin-top:22px;display:flex;align-items:baseline;gap:8px">
+      <span class="micro" style="flex:1">Все магазины</span>
+      <button style="font-size:12px;font-weight:600;color:var(--accent)" data-act="toggleConsole">
+        ${state.consoleOpen ? "Свернуть" : "Показать"}
+      </button>
+    </div>
+    ${state.consoleOpen ? `<div class="panel" style="margin-top:8px">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:12px;line-height:1.5">
+        ${state.teams.length === 1 ? "1 магазин" : state.teams.length + " магазина"} ·
+        ${state.members.length === 1 ? "1 участник" : state.members.length + " участника"} всего
+      </div>
+      ${[...state.teams].sort((a,b) => b.createdAt - a.createdAt).map(t => {
+        const mm = teamMembers(t.id);
+        const goods = state.products.filter(p => p.teamId === t.id);
+        return `<div class="team-block">
+          <div class="head">
+            <b>${esc(t.name)}</b>
+            <span class="micro">код ${esc(t.code)}</span>
+            <span style="flex:1"></span>
+            <span class="micro">${goods.length} поз.</span>
+          </div>
+          ${mm.map(m => `<div class="person-row" style="padding:8px 0">
+            <span class="av" style="width:28px;height:28px;font-size:11px">${esc(initials(m.name))}</span>
+            <span class="nm">
+              <b style="font-size:13px">${esc(m.name)}</b>
+              <span class="micro">пришёл ${esc(relative(m.joinedAt))} · ${esc(m.device || "")}${m.lastSeenAt ? " · был " + relative(m.lastSeenAt) : ""}</span>
+            </span>
+            ${m.role === "owner" ? `<span class="chip owner">управляющий</span>` : ""}
+          </div>`).join("")}
+        </div>`;
+      }).join("")}
+    </div>` : ""}`;
+
   pane.innerHTML = `
   <div style="padding-top:6px">
+    ${teamBlock}
+    ${logBlock}
+    ${consoleBlock}
+    <div style="margin-top:22px"></div>
     <span class="micro">Склад</span>
     <div class="panel" style="margin-top:8px;padding:2px 16px">
       <div class="row">
@@ -809,7 +1074,13 @@ function renderSettings(){
       </button>
     </div>
 
-    <p style="text-align:center;color:var(--text-3);font-size:11px;margin:26px 0 0;line-height:1.6">
+    ${state.db ? `<div class="gate-note" style="margin-top:22px">
+      <b>Где проходит граница доступа.</b> Страницу открывают только те, кому вы дали её
+      в меню «Поделиться» — это и есть настоящая проверка. Разделение между магазинами
+      внутри страницы организационное: оно раскладывает данные по местам, но не защищает
+      их друг от друга. Не приглашайте тех, кому не готовы показать всё.
+    </div>` : ""}
+    <p style="text-align:center;color:var(--text-3);font-size:11px;margin:22px 0 0;line-height:1.6">
       Treaple · веб-версия<br>${state.db ? "Данные синхронизируются между вашими устройствами" : "Данные хранятся в этом браузере"}
     </p>
   </div>`;
@@ -870,7 +1141,7 @@ function drawEditor(){
   const show = k => draft.touched && errs[k];
   const pp = parseNum(draft.purchase), sp = parseNum(draft.sale);
   const profit = sp - pp;
-  const cats = [...new Set(state.products.map(p => category(p)).filter(c => c !== NO_CATEGORY))]
+  const cats = [...new Set(inTeam().map(p => category(p)).filter(c => c !== NO_CATEGORY))]
     .filter(c => !draft.category.trim() || c.toLowerCase().includes(draft.category.trim().toLowerCase()))
     .slice(0,6);
 
@@ -984,6 +1255,7 @@ function saveDraft(){
   draft.touched = true;
   if (Object.keys(editorErrors()).length){ drawEditor(); return; }
   const q = Math.max(0, Math.round(parseNum(draft.quantity)));
+  const was = draft.id ? state.products.find(x => x.id === draft.id) : null;
   const p = makeProduct({
     id: draft.id || undefined,
     name: draft.name.trim(), category: draft.category.trim(),
@@ -994,6 +1266,14 @@ function saveDraft(){
     createdAt: draft.id ? state.products.find(x => x.id === draft.id)?.createdAt : Date.now()
   });
   persist(p);
+  // Отдельное событие на смену остатка: в общем складе это самая частая
+  // правка, и в журнале она должна читаться как факт, а не как «изменил».
+  if (was && was.quantity !== p.quantity && was.name === p.name &&
+      was.purchasePrice === p.purchasePrice && was.salePrice === p.salePrice){
+    logEvent("qty", p.name, String(p.quantity));
+  } else {
+    logEvent(draft.id ? "edit" : "add", p.name, "");
+  }
   document.getElementById("editor").close();
   toast(draft.id ? "Изменения сохранены" : "Товар добавлен");
 }
@@ -1009,7 +1289,7 @@ function csvText(){
     return /[;"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
   };
   const dec = v => v.toFixed(2).replace(".",",");
-  const rows = [...state.products]
+  const rows = [...inTeam()]
     .sort((a,b) => category(a).localeCompare(category(b),"ru") || a.name.localeCompare(b.name,"ru"))
     .map(p => [p.name, category(p), dec(p.purchasePrice), dec(p.salePrice), dec(markup(p)),
                p.quantity, dec(p.purchasePrice*p.quantity), dec(p.salePrice*p.quantity),
@@ -1019,7 +1299,7 @@ function csvText(){
 }
 
 async function exportCSV(){
-  if (!state.products.length){ toast("Сначала добавьте товары"); return; }
+  if (!inTeam().length){ toast("Сначала добавьте товары"); return; }
   const dl = state.downloads ?? await (window.claude?.use?.("downloads") ?? Promise.resolve(null));
   state.downloads = dl;
   if (!dl){ toast("Скачивание недоступно в этом просмотре"); return; }
@@ -1030,6 +1310,139 @@ async function exportCSV(){
   }catch(e){
     toast("Сохранение отменено");
   }
+}
+
+function describeEvent(e){
+  const what = e.subject ? `«${e.subject}»` : "товар";
+  switch(e.kind){
+    case "join":      return e.detail === "завёл магазин" ? "завёл магазин" : "присоединился к магазину";
+    case "add":       return `добавил ${what}`;
+    case "edit":      return `изменил ${what}`;
+    case "delete":    return `удалил ${what}`;
+    case "qty":       return `поставил остаток ${what} — ${e.detail} шт.`;
+    case "threshold": return `поставил порог «мало» — ${e.detail} шт.`;
+    case "wipe":      return `очистил склад (${e.detail} поз.)`;
+    case "seed":      return "добавил демо-товары";
+    default:          return "что-то поменял";
+  }
+}
+
+/* ══ Вход в магазин ═════════════════════════════════════════════════════ */
+function gateNeeded(){
+  if (!state.ready) return false;
+  if (!state.db) return false;               // без общего хранилища магазин один
+  if (!state.me) return true;
+  return !myMember() || !myTeam();           // запись стёрлась на сервере
+}
+
+function renderGate(){
+  const g = document.getElementById("gate");
+  const need = gateNeeded();
+  g.classList.toggle("on", need);
+  if (!need){ g.innerHTML = ""; return; }
+
+  const join = state.gateMode === "join";
+  g.innerHTML = `<div class="gate-wrap">
+    <div class="gate-mark">${ICON.box}</div>
+    <h2>${join ? "Вход в магазин" : "Новый магазин"}</h2>
+    <p class="lead">${join
+      ? "Введите имя и код магазина — его даёт тот, кто магазин завёл."
+      : "Заведите магазин и раздайте его код тем, кто будет вести остатки вместе с вами."}</p>
+
+    <div class="gate-switch" role="group" aria-label="Способ входа">
+      <button type="button" data-gate="join" aria-pressed="${join}">У меня есть код</button>
+      <button type="button" data-gate="create" aria-pressed="${!join}">Завести магазин</button>
+    </div>
+
+    <div class="gate-field">
+      <label for="g-name">Как вас зовут</label>
+      <input id="g-name" type="text" placeholder="Дмитрий" autocomplete="name" value="${esc(state.gateName || "")}">
+      <p class="hint">Имя увидят остальные участники рядом с вашими изменениями.</p>
+    </div>
+
+    ${join ? `<div class="gate-field code">
+        <label for="g-code">Код магазина</label>
+        <input id="g-code" type="text" placeholder="XXXXXX" maxlength="6" autocomplete="off"
+               spellcheck="false" value="${esc(state.gateCode || "")}">
+        ${state.gateError ? `<p class="hint bad">${esc(state.gateError)}</p>` : ""}
+      </div>`
+    : `<div class="gate-field">
+        <label for="g-shop">Название магазина</label>
+        <input id="g-shop" type="text" placeholder="Магазин на Ленина" value="${esc(state.gateShop || "")}">
+        ${state.gateError ? `<p class="hint bad">${esc(state.gateError)}</p>` : ""}
+      </div>`}
+
+    <button class="btn" type="button" data-gate-go="1">${join ? "Войти" : "Создать магазин"}</button>
+
+    <p class="gate-note">${join
+      ? "Код указывает, в какой магазин вы попадёте. Он не пароль: страница целиком открывается только тем, кому владелец дал доступ через меню «Поделиться»."
+      : "Вы станете управляющим магазина: сможете видеть участников и их действия. Доступ к самой странице раздаётся через меню «Поделиться»."}</p>
+  </div>`;
+}
+
+async function gateSubmit(){
+  const name = (document.getElementById("g-name")?.value || "").trim();
+  state.gateName = name;
+  if (!name){ state.gateError = "Введите имя"; renderGate(); return; }
+
+  if (state.gateMode === "join"){
+    const code = (document.getElementById("g-code")?.value || "").trim().toUpperCase();
+    state.gateCode = code;
+    if (code.length < 4){ state.gateError = "Введите код магазина"; renderGate(); return; }
+    const team = state.teams.find(t => t.code === code);
+    if (!team){ state.gateError = "Магазин с таким кодом не найден"; renderGate(); return; }
+    await enrol(team.id, name, "staff");
+  } else {
+    const shop = (document.getElementById("g-shop")?.value || "").trim();
+    state.gateShop = shop;
+    if (!shop){ state.gateError = "Введите название магазина"; renderGate(); return; }
+    const teamId = uid("t");
+    let code = makeCode();
+    while (state.teams.some(t => t.code === code)) code = makeCode();
+    const memberId = uid("m");
+    try{
+      await state.db.collection("teams").doc(teamId)
+        .set({name:shop, code, createdAt:Date.now(), createdBy:memberId});
+    }catch(e){ state.gateError = "Не удалось создать магазин, попробуйте ещё раз"; renderGate(); return; }
+    await enrol(teamId, name, "owner", memberId);
+    // Первый заведённый магазин делает своего создателя владельцем приложения.
+    if (!state.appOwnerId){
+      try{
+        await state.db.collection("config").doc("app").set({ownerMemberId:memberId, createdAt:Date.now()});
+        state.appOwnerId = memberId;
+      }catch(e){}
+    }
+  }
+}
+
+async function enrol(teamId, name, role, forcedId){
+  const memberId = forcedId || uid("m");
+  const member = {name, teamId, role, joinedAt:Date.now(), lastSeenAt:Date.now(), device:deviceHint()};
+  try{
+    await state.db.collection("members").doc(memberId).set(member);
+  }catch(e){
+    state.gateError = "Не удалось сохранить участника, попробуйте ещё раз";
+    renderGate();
+    return;
+  }
+  state.members = state.members.filter(m => m.id !== memberId).concat({id:memberId, ...member});
+  state.me = {memberId, teamId};
+  state.gateError = "";
+  saveMe();
+  logEvent("join", name, role === "owner" ? "завёл магазин" : "присоединился");
+  render();
+  renderGate();
+  toast(role === "owner" ? "Магазин создан" : "Вы вошли в магазин");
+}
+
+function switchIdentity(){
+  state.me = null;
+  saveMe();
+  state.gateMode = "join";
+  state.gateError = "";
+  state.gateCode = "";
+  render();
+  renderGate();
 }
 
 /* ══ Мелочи ═════════════════════════════════════════════════════════════ */
@@ -1058,6 +1471,28 @@ document.getElementById("scroll").addEventListener("scroll", e => {
 }, {passive:true});
 
 document.getElementById("btnAdd").addEventListener("click", () => openEditor(null));
+
+document.getElementById("who").addEventListener("click", () => {
+  state.tab = "settings";
+  renderTabs(); applyTab();
+  document.getElementById("scroll").scrollTop = 0;
+});
+
+document.getElementById("gate").addEventListener("click", e => {
+  const mode = e.target.closest("[data-gate]");
+  if (mode){
+    state.gateMode = mode.dataset.gate;
+    state.gateError = "";
+    state.gateName = document.getElementById("g-name")?.value || state.gateName;
+    renderGate();
+    return;
+  }
+  if (e.target.closest("[data-gate-go]")) gateSubmit();
+});
+
+document.getElementById("gate").addEventListener("keydown", e => {
+  if (e.key === "Enter"){ e.preventDefault(); gateSubmit(); }
+});
 
 document.getElementById("btnSort").addEventListener("click", () => {
   const i = SORTS.findIndex(s => s.id === state.sort);
@@ -1117,15 +1552,41 @@ document.getElementById("scroll").addEventListener("click", e => {
   if (act === "seed") seedSamples();
   if (act === "all"){ state.filter = "all"; renderSegment(); renderStock(); }
   if (act === "csv") exportCSV();
+  if (act === "switchMe"){
+    if (confirm("Выйти из магазина на этом устройстве? Данные магазина останутся на месте.")) switchIdentity();
+  }
+  if (act === "toggleConsole"){ state.consoleOpen = !state.consoleOpen; renderSettings(); }
+  if (act === "copyCode"){
+    const code = myTeam()?.code || "";
+    navigator.clipboard?.writeText(code).then(
+      () => toast("Код " + code + " скопирован"),
+      () => toast("Код магазина: " + code)
+    );
+  }
+  const kick = e.target.closest("[data-kick]");
+  if (kick){
+    const m = state.members.find(x => x.id === kick.dataset.kick);
+    if (m && confirm("Убрать " + m.name + " из магазина? Человек вернётся к экрану входа.")){
+      state.members = state.members.filter(x => x.id !== m.id);
+      renderSettings();
+      state.db?.collection("members").doc(m.id).delete().catch(() => {});
+      logEvent("kick", m.name, "");
+      toast(m.name + " убран из магазина");
+    }
+  }
   if (act === "applyThreshold"){
-    state.products.forEach(p => { p.lowStockThreshold = state.threshold; });
-    state.products.forEach(p => persist(p));
+    const mine = inTeam();
+    mine.forEach(p => { p.lowStockThreshold = state.threshold; });
+    mine.forEach(p => persist(p));
+    logEvent("threshold", "", String(state.threshold));
     toast("Порог применён ко всем товарам");
   }
   if (act === "wipe"){
     if (confirm("Удалить все товары? Действие нельзя отменить.")){
-      const ids = state.products.map(p => p.id);
-      state.products = [];
+      const ids = inTeam().map(p => p.id);
+      const kill = new Set(ids);
+      state.products = state.products.filter(p => !kill.has(p.id));
+      logEvent("wipe", "", String(ids.length));
       render(); saveLocal();
       if (state.db) ids.forEach(id => state.db.collection("products").doc(id).delete().catch(() => {}));
       toast("Склад очищен");
@@ -1172,6 +1633,7 @@ dlg.addEventListener("click", e => {
   if (act === "stock"){ draft.inStock = !draft.inStock; drawEditor(); return; }
   if (act === "delete"){
     if (confirm("Удалить «" + (draft.name || "товар") + "»?")){
+      logEvent("delete", draft.name, "");
       removeProduct(draft.id);
       dlg.close();
       toast("Товар удалён");
@@ -1196,7 +1658,9 @@ window.matchMedia("(min-width:900px)").addEventListener("change", applyTab);
 
 /* ══ Старт ══════════════════════════════════════════════════════════════ */
 loadPrefs();
+loadMe();
 applyTheme();
 render();
+renderGate();
 initStorage();
 </script>
