@@ -3,6 +3,6 @@
 // решают политики Row Level Security в базе. Service role key сюда
 // класть нельзя ни при каких условиях — он обходит все политики.
 window.TREAPLE_CONFIG = {
-  url:     "",   // https://xxxxxxxxxxxx.supabase.co
-  anonKey: ""    // eyJhbGciOi...
+  url:     "https://pjvvdkaqgzudlhhzhoey.supabase.co",
+  anonKey: ""    // ← сюда ключ anon public из Project Settings → Data API
 };
