@@ -1737,7 +1737,9 @@ const humanError = e => AUTH_ERRORS[e?.message] || e?.message || "Что-то п
 async function authSubmit(){
   const email = (document.getElementById("a-email")?.value || "").trim();
   const pass = document.getElementById("a-pass")?.value || "";
+  const name = (document.getElementById("a-name")?.value || "").trim();
   state.authEmail = email;
+  if (name) state.gateName = name;
   state.authMsg = null;
 
   if (!email.includes("@")){ state.authMsg = {ok:false, text:"Введите почту"}; renderGate(); return; }
@@ -1756,8 +1758,6 @@ async function authSubmit(){
 
   state.authBusy = true; renderGate();
   if (state.authMode === "up"){
-    const name = (document.getElementById("a-name")?.value || "").trim();
-    state.gateName = name;
     const {data, error} = await sb.auth.signUp({email, password:pass, options:{data:{name}}});
     state.authBusy = false;
     if (error){ state.authMsg = {ok:false, text:humanError(error)}; renderGate(); return; }
@@ -1775,32 +1775,31 @@ async function authSubmit(){
 }
 
 async function gateSubmit(){
+  // Все поля читаем до renderGate(): перерисовка пересоздаёт разметку,
+  // и значение, не попавшее в state, теряется вместе со старым узлом.
   const name = (document.getElementById("g-name")?.value || "").trim();
-  state.gateName = name;
-  state.authMsg = null;
-  if (!name){ state.authMsg = {ok:false, text:"Введите имя"}; renderGate(); return; }
+  const shop = (document.getElementById("g-shop")?.value || "").trim();
+  const code = (document.getElementById("g-code")?.value || "").trim().toUpperCase();
+  const join = state.gateMode === "join";
 
-  state.authBusy = true; renderGate();
-  let res;
-  if (state.gateMode === "join"){
-    const code = (document.getElementById("g-code")?.value || "").trim().toUpperCase();
-    state.gateCode = code;
-    if (code.length < 4){
-      state.authBusy = false;
-      state.authMsg = {ok:false, text:"Введите код магазина"};
-      renderGate(); return;
-    }
-    res = await sb.rpc("join_team", {p_code:code, p_display_name:name});
-  } else {
-    const shop = (document.getElementById("g-shop")?.value || "").trim();
-    state.gateShop = shop;
-    if (!shop){
-      state.authBusy = false;
-      state.authMsg = {ok:false, text:"Введите название магазина"};
-      renderGate(); return;
-    }
-    res = await sb.rpc("create_team", {p_name:shop, p_display_name:name});
-  }
+  state.gateName = name;
+  if (shop) state.gateShop = shop;
+  if (code) state.gateCode = code;
+  state.authMsg = null;
+
+  const problem = !name ? "Введите имя"
+    : join && code.length < 4 ? "Введите код магазина"
+    : !join && !shop ? "Введите название магазина"
+    : null;
+  if (problem){ state.authMsg = {ok:false, text:problem}; renderGate(); return; }
+
+  state.authBusy = true;
+  renderGate();
+
+  const res = join
+    ? await sb.rpc("join_team", {p_code:code, p_display_name:name})
+    : await sb.rpc("create_team", {p_name:shop, p_display_name:name});
+
   state.authBusy = false;
 
   if (res.error){
@@ -1809,11 +1808,12 @@ async function gateSubmit(){
     renderGate();
     return;
   }
+
   state.me = {teamId:res.data};
   savePrefs();
   await afterTeamChange();
-  toast(state.gateMode === "join" ? "Вы вошли в магазин" : "Магазин создан");
-  logEvent("join", name, state.gateMode === "join" ? "присоединился" : "завёл магазин");
+  toast(join ? "Вы вошли в магазин" : "Магазин создан");
+  logEvent("join", name, join ? "присоединился" : "завёл магазин");
 }
 
 async function afterTeamChange(){
