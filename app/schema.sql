@@ -72,6 +72,34 @@ create table if not exists public.app_admins (
 );
 
 -- ─────────────────────────────────────────────────────────────────────
+-- Границы значений
+--
+-- Участник магазина пишет в products, memberships и events напрямую —
+-- значит, длину текста задаёт он. Без потолка одна строка может весить
+-- мегабайты: и место, и тормоза у всех остальных в том же магазине.
+-- Отдельным блоком, чтобы повторный запуск на живой базе не падал.
+-- ─────────────────────────────────────────────────────────────────────
+do $$
+declare
+  c record;
+begin
+  for c in
+    select * from (values
+      ('products',    'products_name_len',     'char_length(name) <= 200'),
+      ('products',    'products_category_len', 'char_length(category) <= 80'),
+      ('memberships', 'memberships_name_len',  'char_length(display_name) <= 60'),
+      ('events',      'events_kind_len',       'char_length(kind) <= 24'),
+      ('events',      'events_subject_len',    'char_length(subject) <= 200'),
+      ('events',      'events_detail_len',     'char_length(detail) <= 200')
+    ) as t(tbl, name, expr)
+  loop
+    if not exists (select 1 from pg_constraint where conname = c.name) then
+      execute format('alter table public.%I add constraint %I check (%s)', c.tbl, c.name, c.expr);
+    end if;
+  end loop;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────
 -- Вспомогательные функции
 --
 -- security definer обязателен: политика на memberships, которая сама
@@ -125,6 +153,29 @@ create policy teams_update on public.teams for update
 drop policy if exists teams_delete on public.teams;
 create policy teams_delete on public.teams for delete
   using (public.is_team_owner(id));
+
+-- Управляющий переименовывает магазин, но не переписывает код и владельца:
+-- код знают все участники и он же служит адресом для вступления, а смена
+-- владельца через update прав всё равно не даёт — их решает роль в
+-- memberships. Разрешать бессмысленную правку не нужно.
+create or replace function public.guard_team()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.code is distinct from old.code then
+    raise exception 'код магазина не меняется';
+  end if;
+  if new.owner_id is distinct from old.owner_id then
+    raise exception 'владельца магазина не меняют правкой';
+  end if;
+  if new.id is distinct from old.id then
+    raise exception 'идентификатор магазина не меняется';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists teams_guard on public.teams;
+create trigger teams_guard before update on public.teams
+  for each row execute function public.guard_team();
 
 drop policy if exists memberships_select on public.memberships;
 create policy memberships_select on public.memberships for select

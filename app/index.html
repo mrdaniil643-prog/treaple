@@ -503,6 +503,15 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
   font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   background:var(--surface-alt);border:1px solid var(--line);color:var(--text-2);white-space:nowrap}
 .chip.owner{background:var(--accent-wash);border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent)}
+/* Название правится там же, где читается: поле выглядит текстом, пока в
+   него не встали. Отдельный экран ради одной строки — лишний шаг. */
+.shop-title{width:100%;padding:3px 7px;margin:-3px -7px;border:1px solid transparent;border-radius:8px;
+  background:transparent;font-size:16px;font-weight:600;letter-spacing:-.015em;
+  transition:background .15s,border-color .15s}
+.shop-title:not([readonly]):hover{background:var(--surface-alt);border-color:var(--line)}
+.shop-title:focus{outline:none;background:var(--surface-alt);border-color:var(--accent)}
+.shop-title[readonly]{cursor:default}
+
 .code-box{display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:var(--r-control);
   background:var(--accent-wash);border:1px dashed color-mix(in srgb,var(--accent) 40%,transparent);margin-top:8px}
 .code-box .val{flex:1;font-size:22px;font-weight:600;letter-spacing:.22em;color:var(--accent);font-variant-numeric:tabular-nums}
@@ -710,9 +719,11 @@ function totals(list){
 }
 
 /* ══ Отбор и сортировка ═════════════════════════════════════════════════ */
+/* Вне магазина складу неоткуда взяться: раньше здесь возвращался весь
+   state.products, и в режиме владельца это был бы чужой товар. */
 const inTeam = () => {
   const t = state.me?.teamId;
-  return t ? state.products.filter(p => p.teamId === t) : state.products;
+  return t ? state.products.filter(p => p.teamId === t) : [];
 };
 
 function visible(){
@@ -1021,7 +1032,8 @@ function renderSettings(){
   const teamBlock = !team ? "" : `
     <span class="micro">Магазин</span>
     <div class="panel" style="margin-top:8px">
-      <div style="font-size:16px;font-weight:600;letter-spacing:-.015em">${esc(team.name)}</div>
+      <input id="shopName" class="shop-title" value="${esc(team.name)}" maxlength="80"
+             aria-label="Название магазина" ${isTeamOwner() ? "" : "readonly"}>
       <div style="font-size:12px;color:var(--text-3);margin-top:2px">${mates.length === 1 ? "1 участник" : mates.length + " участника"} · заведён ${new Date(team.createdAt).toLocaleDateString("ru-RU",{day:"numeric",month:"long",year:"numeric"})}</div>
       ${isTeamOwner() ? `
         <div class="code-box">
@@ -1048,6 +1060,12 @@ function renderSettings(){
     </div>
 
     <div class="panel" style="padding:2px 16px">
+      <button class="linkrow" data-act="switchTeam">
+        <span style="width:17px;height:17px;display:block">${ICON.box}</span>
+        <span>Сменить магазин<span class="sub">${myMemberships().length > 1
+          ? "Вы состоите в " + myMemberships().length + " " + plural(myMemberships().length,"магазине","магазинах","магазинах")
+          : "Войти по коду в другой или завести новый"}</span></span>
+      </button>
       <button class="linkrow" data-act="switchMe">
         <span style="width:17px;height:17px;display:block">${ICON.swap}</span>
         <span>Выйти из учётной записи<span class="sub">Товары магазина останутся на месте</span></span>
@@ -1653,8 +1671,13 @@ function openSortMenu(){
   menu.innerHTML = SORTS.map(o =>
       `<button data-sort="${o.id}" role="menuitemradio" aria-checked="${state.sort === o.id}">${tick}<span>${o.title}</span></button>`
     ).join("")
+    // Направление — это не «выбрано», а стрелка: галочка здесь читалась бы
+    // как ещё один отмеченный пункт списка.
     + `<div class="sep"></div>`
-    + `<button data-dir="1" class="dir">${tick.replace('class="tick"','class="tick" style="opacity:1"')}<span>${state.asc ? "По возрастанию" : "По убыванию"}</span></button>`;
+    + `<button data-dir="1" class="dir"><svg class="tick" style="opacity:1" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+         ><path d="M12 ${state.asc ? "19V5M6 11l6-6 6 6" : "5v14M6 13l6 6 6-6"}"/></svg
+         ><span>${state.asc ? "По возрастанию" : "По убыванию"}</span></button>`;
 
   const r = btn.getBoundingClientRect();
   menu.hidden = false;
@@ -1775,6 +1798,7 @@ document.getElementById("scroll").addEventListener("click", e => {
     if (confirm("Выйти из учётной записи на этом устройстве? Товары магазина останутся на месте.")) switchIdentity();
   }
   if (act === "toggleConsole"){ state.consoleOpen = !state.consoleOpen; renderSettings(); }
+  if (act === "switchTeam") leaveTeamView();
   if (act === "copyCode"){
     const code = myTeam()?.code || "";
     navigator.clipboard?.writeText(code).then(
@@ -2368,44 +2392,55 @@ const AUTH_ERRORS = {
 };
 const humanError = e => AUTH_ERRORS[e?.message] || e?.message || "Что-то пошло не так";
 
+/* Любая неожиданная ошибка — оборванная сеть, сбой у поставщика — раньше
+   вылетала из функции, оставив authBusy включённым: кнопка навсегда
+   застревала на «Секунду…», и форму спасала только перезагрузка. Теперь
+   снятие флага живёт в finally. */
 async function authSubmit(){
   const email = (document.getElementById("a-email")?.value || "").trim();
   const pass = document.getElementById("a-pass")?.value || "";
   const name = (document.getElementById("a-name")?.value || "").trim();
+  const mode = state.authMode;
   state.authEmail = email;
   if (name) state.gateName = name;
   state.authMsg = null;
 
-  if (!email.includes("@")){ state.authMsg = {ok:false, text:"Введите почту"}; renderGate(); return; }
-
-  if (state.authMode === "reset"){
-    state.authBusy = true; renderGate();
-    const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo:location.href});
-    state.authBusy = false;
-    state.authMsg = error ? {ok:false, text:humanError(error)}
-                          : {ok:true, text:"Письмо отправлено. Проверьте почту."};
-    renderGate();
-    return;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    state.authMsg = {ok:false, text:"Введите почту целиком, вида you@example.com"};
+    renderGate(); return;
+  }
+  // Длину проверяем только при регистрации: у входа пароль уже заведён,
+  // и наша мерка не обязана совпадать с той, по которой его выдавали.
+  if (mode === "up" && pass.length < 8){
+    state.authMsg = {ok:false, text:"Пароль не короче 8 знаков"};
+    renderGate(); return;
+  }
+  if (mode === "in" && !pass){
+    state.authMsg = {ok:false, text:"Введите пароль"};
+    renderGate(); return;
   }
 
-  if (pass.length < 8){ state.authMsg = {ok:false, text:"Пароль не короче 8 знаков"}; renderGate(); return; }
-
-  state.authBusy = true; renderGate();
-  if (state.authMode === "up"){
-    const {data, error} = await sb.auth.signUp({email, password:pass, options:{data:{name}}});
-    state.authBusy = false;
-    if (error){ state.authMsg = {ok:false, text:humanError(error)}; renderGate(); return; }
-    if (!data.session){
-      state.authMsg = {ok:true, text:"Готово. Подтвердите почту по ссылке из письма и возвращайтесь."};
-      renderGate();
-      return;
+  state.authBusy = true;
+  renderGate();
+  try{
+    if (mode === "reset"){
+      const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo:location.href});
+      state.authMsg = error ? {ok:false, text:humanError(error)}
+                            : {ok:true, text:"Письмо отправлено. Проверьте почту."};
+    } else if (mode === "up"){
+      const {data, error} = await sb.auth.signUp({email, password:pass, options:{data:{name}}});
+      if (error) state.authMsg = {ok:false, text:humanError(error)};
+      else if (!data.session) state.authMsg = {ok:true, text:"Готово. Подтвердите почту по ссылке из письма и возвращайтесь."};
+    } else {
+      const {error} = await sb.auth.signInWithPassword({email, password:pass});
+      if (error) state.authMsg = {ok:false, text:humanError(error)};
     }
-  } else {
-    const {error} = await sb.auth.signInWithPassword({email, password:pass});
+  } catch(err){
+    state.authMsg = {ok:false, text:"Не получилось связаться с сервером. Проверьте сеть и попробуйте ещё раз."};
+  } finally {
     state.authBusy = false;
-    if (error){ state.authMsg = {ok:false, text:humanError(error)}; renderGate(); return; }
   }
-  state.authMsg = null;
+  renderGate();
 }
 
 async function gateSubmit(){
@@ -2430,11 +2465,16 @@ async function gateSubmit(){
   state.authBusy = true;
   renderGate();
 
-  const res = join
-    ? await sb.rpc("join_team", {p_code:code, p_display_name:name})
-    : await sb.rpc("create_team", {p_name:shop, p_display_name:name});
-
-  state.authBusy = false;
+  let res;
+  try{
+    res = join
+      ? await sb.rpc("join_team", {p_code:code, p_display_name:name})
+      : await sb.rpc("create_team", {p_name:shop, p_display_name:name});
+  } catch(err){
+    res = {error:{message:"Не получилось связаться с сервером. Проверьте сеть."}};
+  } finally {
+    state.authBusy = false;
+  }
 
   if (res.error){
     state.authMsg = {ok:false, text:res.error.message.includes("не найден")
@@ -2459,6 +2499,46 @@ async function afterTeamChange(){
   render();
   renderGate();
 }
+
+/* Возврат к выбору магазина без выхода из учётной записи: сам вход, список
+   магазинов и права остаются, меняется только то, что открыто. */
+function leaveTeamView(){
+  flushQty();
+  if (state.channel){ sb.removeChannel(state.channel); state.channel = null; }
+  state.me = null;
+  state.products = []; state.events = [];
+  state.gateMode = myMemberships().length ? "join" : "create";
+  state.authMsg = null;
+  savePrefs();
+  render();
+  renderGate();
+}
+
+async function renameTeam(raw){
+  const team = myTeam();
+  const next = String(raw || "").trim().slice(0,80);
+  if (!team || !next || next === team.name) return;
+  const prev = team.name;
+  team.name = next;
+  renderWho();
+  const {error} = await sb.from("teams").update({name:next}).eq("id", team.id);
+  if (error){
+    team.name = prev;
+    render();
+    toast("Не удалось переименовать: " + error.message);
+    return;
+  }
+  toast("Магазин переименован");
+}
+
+document.getElementById("scroll").addEventListener("change", e => {
+  if (e.target.id === "shopName") renameTeam(e.target.value);
+});
+document.getElementById("scroll").addEventListener("keydown", e => {
+  if (e.target.id !== "shopName") return;
+  if (e.key === "Enter"){ e.preventDefault(); e.target.blur(); }
+  if (e.key === "Escape"){ e.target.value = myTeam()?.name || ""; e.target.blur(); }
+});
 
 function switchIdentity(){ signOut(); }
 
