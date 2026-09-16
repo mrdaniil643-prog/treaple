@@ -207,6 +207,35 @@ drop policy if exists admins_select on public.app_admins;
 create policy admins_select on public.app_admins for select
   using (user_id = auth.uid());
 
+
+-- ─────────────────────────────────────────────────────────────────────
+-- Права на таблицы
+--
+-- Два независимых слоя: GRANT решает, можно ли вообще обратиться к
+-- таблице, RLS — какие строки видно. Без грантов Postgres отвечает
+-- «permission denied for table», не доходя до политик. Раздавать права
+-- широко безопасно ровно потому, что строки закрывает RLS.
+--
+-- Роль anon (посетитель без входа) не получает ничего: приложение
+-- требует входа для всего.
+-- ─────────────────────────────────────────────────────────────────────
+
+grant usage on schema public to authenticated;
+
+-- Магазин и участники создаются только через create_team / join_team,
+-- поэтому insert здесь не выдаётся.
+grant select, update, delete on public.teams       to authenticated;
+grant select, update, delete on public.memberships to authenticated;
+
+grant select, insert, update, delete on public.products to authenticated;
+
+-- Журнал только дополняется.
+grant select, insert on public.events to authenticated;
+grant usage, select on sequence public.events_id_seq to authenticated;
+
+grant select on public.profiles   to authenticated;
+grant select on public.app_admins to authenticated;
+
 -- ─────────────────────────────────────────────────────────────────────
 -- Регистрация профиля
 -- ─────────────────────────────────────────────────────────────────────
