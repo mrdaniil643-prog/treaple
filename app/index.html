@@ -52,6 +52,15 @@
   --edge-top:rgba(255,255,255,.09); --edge-bottom:rgba(255,255,255,.02);
 }
 
+/* Схема оформления для браузера. Объявляется отдельно от токенов: токены
+   красят то, что рисуем мы, схема — то, что рисует браузер сам. */
+:root{color-scheme:light}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){color-scheme:dark}
+}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+
 *{box-sizing:border-box}
 /* Собственный документ: базовые правила, которые обычно даёт окружение.
    Без этого hidden не действует на элементы с заданным display, и панель
@@ -64,7 +73,22 @@ body{
   font-family:var(--sans); font-size:15px; line-height:1.45;
   -webkit-font-smoothing:antialiased; overflow:hidden;
 }
-button,input,select{font:inherit;color:inherit}
+button,input,select,textarea{font:inherit}
+input,select,textarea{
+  color:var(--text);
+  -webkit-text-fill-color:var(--text);
+  caret-color:var(--accent);
+}
+button{color:inherit}
+input::placeholder{color:var(--text-3);-webkit-text-fill-color:var(--text-3);opacity:1}
+input[readonly]{-webkit-text-fill-color:var(--text-2)}
+/* Автозаполнение подставляет свой фон и цвет поверх наших. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus{
+  -webkit-text-fill-color:var(--text);
+  -webkit-box-shadow:0 0 0 1000px var(--surface-alt) inset;
+}
 button{background:none;border:0;cursor:pointer;padding:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 
