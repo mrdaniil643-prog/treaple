@@ -832,6 +832,19 @@ function renderSettings(){
         ${state.teams.length === 1 ? "1 магазин" : state.teams.length + " магазина"} ·
         ${state.members.length === 1 ? "1 участник" : state.members.length + " участника"} всего
       </div>
+      ${(state.profiles || []).length ? `<div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line)">
+        <span class="micro" style="display:block;margin-bottom:8px">Зарегистрировались</span>
+        ${state.profiles.slice(0,40).map(u => {
+          const mm = state.members.filter(x => x.userId === u.id);
+          return `<div class="person-row" style="padding:7px 0">
+            <span class="av" style="width:26px;height:26px;font-size:10px">${esc(initials(mm[0]?.name || u.email || "?"))}</span>
+            <span class="nm">
+              <b style="font-size:13px">${esc(u.email || "без почты")}</b>
+              <span class="micro">${esc(relative(u.createdAt))}${mm.length ? " · " + mm.map(x => esc(state.teams.find(t => t.id === x.teamId)?.name || "магазин")).join(", ") : " · ещё не в магазине"}</span>
+            </span>
+          </div>`;
+        }).join("")}
+      </div>` : ""}
       ${[...state.teams].sort((a,b) => b.createdAt - a.createdAt).map(t => {
         const mm = teamMembers(t.id);
         const goods = state.products.filter(p => p.teamId === t.id);
@@ -1509,9 +1522,11 @@ async function seedSamples(){
 
 async function logEvent(kind, subject, detail){
   if (!state.me?.teamId || !myUserId()) return;
+  // user_id и actor проставляет триггер в базе: значениям от клиента
+  // в журнале доверять нельзя.
   await sb.from("events").insert({
     team_id:state.me.teamId, user_id:myUserId(),
-    actor:myMember()?.name || "", kind, subject:subject || "", detail:detail || ""
+    kind, subject:subject || "", detail:detail || ""
   });
 }
 

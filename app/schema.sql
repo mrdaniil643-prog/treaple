@@ -112,10 +112,6 @@ drop policy if exists profiles_select on public.profiles;
 create policy profiles_select on public.profiles for select
   using (id = auth.uid() or public.is_app_admin());
 
-drop policy if exists profiles_update on public.profiles;
-create policy profiles_update on public.profiles for update
-  using (id = auth.uid()) with check (id = auth.uid());
-
 -- Магазин видят только его участники. Вступление идёт через join_team,
 -- поэтому читать чужие магазины по коду не нужно и нельзя.
 drop policy if exists teams_select on public.teams;
@@ -188,6 +184,24 @@ create policy events_select on public.events for select
 drop policy if exists events_insert on public.events;
 create policy events_insert on public.events for insert
   with check (public.is_member(team_id) and user_id = auth.uid());
+
+-- Имя автора проставляет сервер. Если принимать его от клиента, участник
+-- впишет в журнал чужое имя — и журнал перестанет отвечать на вопрос,
+-- ради которого заведён.
+create or replace function public.stamp_event_actor()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.user_id := auth.uid();
+  new.actor := coalesce(
+    (select display_name from public.memberships
+      where team_id = new.team_id and user_id = auth.uid()), '');
+  new.at := now();
+  return new;
+end $$;
+
+drop trigger if exists events_stamp on public.events;
+create trigger events_stamp before insert on public.events
+  for each row execute function public.stamp_event_actor();
 
 drop policy if exists admins_select on public.app_admins;
 create policy admins_select on public.app_admins for select
