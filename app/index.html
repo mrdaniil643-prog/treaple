@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Склад">
 <title>Склад Treaple</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -96,6 +98,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
 
 .micro{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
+mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
 
 /* ── Каркас ──────────────────────────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:0}
@@ -119,13 +122,21 @@ button{background:none;border:0;cursor:pointer;padding:0}
 
 .search{position:relative;margin-top:10px}
 .search input{
-  width:100%;padding:10px 14px 10px 36px;border-radius:var(--r-control);
+  width:100%;padding:10px 38px 10px 36px;border-radius:var(--r-control);
   background:var(--surface);border:1px solid var(--line);font-size:14px;
 }
+.search input::-webkit-search-cancel-button{display:none}
+.search .clear{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  color:var(--text-3);background:var(--surface-sunk);
+}
+.search .clear:hover{color:var(--text);background:var(--line)}
+.search .clear svg{position:static;transform:none;width:11px;height:11px;color:inherit}
 .search input::placeholder{color:var(--text-3)}
 .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-3)}
 
-.segment{display:flex;gap:2px;margin:10px 0;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:calc(var(--r-control) + 3px)}
+.segment{position:relative;display:flex;gap:2px;margin:10px 0;padding:3px;background:var(--surface);border:1px solid var(--line);border-radius:calc(var(--r-control) + 3px)}
 .segment button{
   position:relative;isolation:isolate;
   flex:1;padding:7px 4px;border-radius:var(--r-control);font-size:13px;font-weight:600;
@@ -135,7 +146,15 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .segment button .cnt{font-variant-numeric:tabular-nums;font-size:11px;font-weight:500;color:var(--text-3)}
 .segment button[aria-pressed="true"]{color:var(--on-accent)}
 .segment button[aria-pressed="true"] .cnt{color:var(--on-accent);opacity:.7}
-.segment .seg-pill{position:absolute;inset:0;border-radius:var(--r-control);background:var(--seg-tint,var(--accent));z-index:-1}
+/* Плашка живёт одна на весь сегмент и переезжает трансформацией: при
+   пересоздании на каждый выбор переход был невозможен в принципе. */
+.segment .seg-pill{
+  position:absolute;top:3px;left:0;height:calc(100% - 6px);border-radius:var(--r-control);
+  background:var(--seg-tint,var(--accent));z-index:0;pointer-events:none;
+  transition:transform .32s cubic-bezier(.2,.8,.3,1),width .32s cubic-bezier(.2,.8,.3,1),background .25s;
+}
+.segment .seg-pill.cold{transition:none}
+.segment button{z-index:1}
 
 /* ── Область прокрутки ───────────────────────────────────────────────── */
 .scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 var(--gutter);padding-block-end:28px}
@@ -143,19 +162,24 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .pane.active{display:block}
 
 /* ── Секции списка ───────────────────────────────────────────────────── */
-.sect{display:flex;align-items:center;gap:10px;padding:18px 4px 8px;width:100%;text-align:left}
+/* Заголовок липнет к верху: при длинном списке видно, в какой ты категории. */
+.sect{display:flex;align-items:center;gap:10px;padding:18px 4px 8px;width:100%;text-align:left;
+  position:sticky;top:0;z-index:2;background:var(--canvas);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .sect .rule{flex:1;height:1px;background:var(--line)}
 .sect .chev{color:var(--text-3);transition:transform .2s;width:11px;height:11px}
 .sect[aria-expanded="false"] .chev{transform:rotate(-90deg)}
 
 /* ── Карточка товара ─────────────────────────────────────────────────── */
+/* Карточка — контейнер, а не кнопка: внутри живёт и переход к правке, и
+   счётчик остатка. Вложенная кнопка в кнопке недопустима. */
 .card{
-  position:relative;display:flex;align-items:center;gap:12px;width:100%;text-align:left;
-  padding:11px 13px;margin-bottom:8px;border-radius:var(--r-card);
+  position:relative;display:flex;align-items:center;gap:10px;
+  padding:9px 11px 9px 13px;margin-bottom:8px;border-radius:var(--r-card);
   background:var(--surface);
   box-shadow:0 1px var(--shadow-contact-r) var(--shadow-contact),
              0 var(--shadow-ambient-y) var(--shadow-ambient-r) var(--shadow-ambient);
-  transition:transform .12s;overflow:hidden;
+  overflow:hidden;
 }
 .card::after{
   content:"";position:absolute;inset:0;border-radius:var(--r-card);pointer-events:none;
@@ -164,8 +188,42 @@ button{background:none;border:0;cursor:pointer;padding:0}
   -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;
 }
-.card:active{transform:scale(.99)}
 .card .mark{position:absolute;left:0;top:0;bottom:0;width:3px}
+.card-open{
+  flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:11px;text-align:left;
+  padding:2px 0;border-radius:10px;transition:opacity .12s;
+}
+.card-open:active{opacity:.6}
+
+/* Счётчик прямо в списке: смена остатка — самое частое действие на складе,
+   ради него не стоит открывать карточку. */
+.qty-ctl{flex:0 0 auto;display:flex;align-items:center;gap:1px}
+.qty-ctl button{
+  width:30px;height:34px;display:grid;place-items:center;border-radius:9px;
+  color:var(--text-2);background:var(--surface-alt);border:1px solid var(--line);
+  font-size:17px;line-height:1;transition:background .13s,color .13s,transform .1s;
+}
+.qty-ctl button:hover{background:var(--accent-wash);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.qty-ctl button:active{transform:scale(.9)}
+.qty-ctl button[disabled]{opacity:.35;pointer-events:none}
+.qty-ctl .qv{
+  min-width:40px;text-align:center;font-variant-numeric:tabular-nums;
+  font-size:14px;font-weight:600;padding:0 1px;line-height:1.15;
+}
+.qty-ctl .qv .u{font-size:10px;font-weight:500;color:var(--text-3);display:block;margin-top:-2px}
+.qty-ctl .qv.low{color:var(--low)}
+.qty-ctl .qv.out{color:var(--out)}
+/* Число дёргается при каждом нажатии — глаз ловит, что правка учтена. */
+@keyframes bump{50%{transform:scale(1.18)}}
+.qty-ctl .qv.hit{animation:bump .22s cubic-bezier(.3,1.4,.5,1)}
+
+/* Появление списка: лесенкой и только когда список действительно сменился,
+   а не на каждую букву в поиске. */
+@keyframes lift{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.pane-enter .card,.pane-enter .sect,.pane-enter .panel{
+  animation:lift .34s cubic-bezier(.2,.8,.3,1) both;
+  animation-delay:calc(var(--i,0) * 26ms);
+}
 .thumb{
   flex:0 0 auto;width:46px;height:46px;border-radius:var(--r-thumb);display:grid;place-items:center;
   background:var(--accent-wash);color:var(--accent);font-weight:600;font-size:17px;
@@ -173,21 +231,36 @@ button{background:none;border:0;cursor:pointer;padding:0}
 }
 .thumb img{width:100%;height:100%;object-fit:cover}
 .card .body{flex:1 1 auto;min-width:0}
-.card .name{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:0 0 2px;overflow-wrap:anywhere}
-.card .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card .side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px}
-.price{font-size:15px;font-weight:600}
+/* Не больше двух строк: третья ломает высоту ряда, а список читают
+   пробегая глазами по левому краю. */
+.card .name{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:0 0 3px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;overflow-wrap:anywhere}
+/* Категория слева, деньги справа: цифры выстраиваются в колонку по всему
+   списку и сравниваются взглядом без чтения. */
+.card .meta{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.card .meta .cat{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .meta .figs{flex:0 0 auto;display:flex;align-items:baseline;gap:6px}
+.price{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.card .meta .cat{font-variant-numeric:tabular-nums;letter-spacing:.05em;text-transform:none}
 
 /* Состояние остатка несут форма точки и текст; цвет только усиливает —
    зелёный и янтарный при протанопии неразличимы (проверено валидатором). */
-.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
-.badge .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge .dot{flex:0 0 auto}
 .badge.ok{color:var(--text-2)}
-.badge.ok .dot{background:var(--ok)}
-.badge.low{color:var(--low);padding:3px 8px;border-radius:999px;background:color-mix(in srgb,var(--low) 12%,transparent);border:1px solid color-mix(in srgb,var(--low) 28%,transparent)}
-.badge.low .dot{background:none;border:2px solid var(--low)}
-.badge.out{color:var(--out);padding:3px 8px;border-radius:999px;background:color-mix(in srgb,var(--out) 12%,transparent);border:1px solid color-mix(in srgb,var(--out) 28%,transparent)}
-.badge.out .dot{background:none;border:2px solid var(--out);opacity:.55}
+.badge.ok .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.badge.low{color:var(--low);padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--low) 12%,transparent);border:1px solid color-mix(in srgb,var(--low) 28%,transparent)}
+.badge.low .dot{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+  border-bottom:8px solid var(--low)}
+.badge.out{color:var(--out);padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--out) 12%,transparent);border:1px solid color-mix(in srgb,var(--out) 28%,transparent)}
+.badge.out .dot{width:9px;height:2.5px;border-radius:2px;background:var(--out)}
+
+/* Итог под списком: сколько позиций, штук и денег видно прямо сейчас. */
+.tally{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;justify-content:center;
+  margin:16px 2px 4px;padding:11px 14px;border-radius:var(--r-control);
+  background:var(--surface-alt);border:1px solid var(--line);font-size:12px;color:var(--text-2)}
+.tally b{font-variant-numeric:tabular-nums;font-weight:600;color:var(--text)}
 
 /* ── Дашборд ─────────────────────────────────────────────────────────── */
 .panel{background:var(--surface);border-radius:var(--r-card);padding:16px;margin-bottom:10px;
@@ -218,8 +291,12 @@ button{background:none;border:0;cursor:pointer;padding:0}
 @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .bar-row .val{font-variant-numeric:tabular-nums;font-size:12px;font-weight:500;color:var(--text-2);min-width:2.5ch;text-align:right}
 
-.att-row{display:flex;align-items:center;gap:11px;padding:10px 0}
+.att-row{display:flex;align-items:center;gap:11px;padding:10px 0;width:100%;text-align:left;
+  border-radius:9px;transition:opacity .12s}
+.att-row:active{opacity:.6}
 .att-row+.att-row{border-top:1px solid var(--line)}
+.att-row .nm{flex:1;min-width:0}
+.att-row .nm .t{display:block;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Настройки ───────────────────────────────────────────────────────── */
 .row{display:flex;align-items:center;gap:12px;padding:12px 0;min-height:30px}
@@ -253,7 +330,9 @@ button{background:none;border:0;cursor:pointer;padding:0}
 /* ── Всплывающее меню ────────────────────────────────────────────────── */
 .pop{position:fixed;z-index:55;min-width:220px;padding:6px;border-radius:14px;
   background:var(--surface);border:1px solid var(--line);
-  box-shadow:0 2px 4px var(--shadow-contact),0 18px 40px var(--shadow-ambient)}
+  box-shadow:0 2px 4px var(--shadow-contact),0 18px 40px var(--shadow-ambient);
+  transform-origin:top right;animation:pop .17s cubic-bezier(.2,.9,.3,1)}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(-5px)}to{opacity:1;transform:none}}
 .pop button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
   padding:10px 11px;border-radius:9px;font-size:14px;color:var(--text)}
 .pop button:hover{background:var(--surface-alt)}
@@ -275,8 +354,9 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 }
 @keyframes rise{from{transform:translateY(22px);opacity:.6}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){
-  .sheet{animation:none}
-  .bar-fill{animation:none}
+  .sheet,.bar-fill,.pop,.qty-ctl .qv.hit{animation:none}
+  .pane-enter .card,.pane-enter .sect,.pane-enter .panel{animation:none}
+  .segment .seg-pill{transition:none}
   *{scroll-behavior:auto}
 }
 .sheet-head{display:flex;align-items:center;gap:12px;padding:14px var(--gutter);border-bottom:1px solid var(--line);background:var(--surface)}
@@ -324,6 +404,18 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 .stat{padding:11px 12px;border-radius:11px;background:var(--surface-alt);border:1px solid var(--line)}
 .stat .v{font-size:16px;font-weight:600;margin-top:3px}
 
+/* ── Скелет загрузки ─────────────────────────────────────────────────── */
+.skel-wrap{padding-top:18px}
+.skel-card{display:flex;align-items:flex-start;gap:12px;padding:13px;margin-bottom:8px;
+  border-radius:var(--r-card);background:var(--surface);border:1px solid var(--line)}
+.skel{display:block;background:var(--surface-sunk);border-radius:6px;
+  animation:pulse 1.4s ease-in-out infinite}
+.skel.sq{width:46px;height:46px;border-radius:var(--r-thumb);flex:0 0 auto}
+.skel.ln{height:11px;margin:5px 0}
+.skel.w60{width:62%} .skel.w30{width:34%} .skel.w20{width:56px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+
 /* ── Пусто ───────────────────────────────────────────────────────────── */
 .empty{text-align:center;padding:52px 18px}
 .empty .ill{width:104px;height:104px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;
@@ -336,9 +428,15 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 .btn.ghost{background:none;color:var(--text-2);padding:9px 12px}
 
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translate(-50%,14px);
+  display:flex;align-items:center;gap:14px;
   background:var(--text);color:var(--canvas);padding:10px 16px;border-radius:999px;font-size:13px;font-weight:500;
   opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.act{pointer-events:auto}
+.toast .undo{flex:0 0 auto;font-weight:600;color:var(--canvas);text-decoration:underline;
+  text-underline-offset:3px;opacity:.85}
+.toast .undo:hover{opacity:1}
+.toast .txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .sync{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-3);padding:4px 9px;
   border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap;flex:0 0 auto}
@@ -388,18 +486,23 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 .who .person{display:block;font-size:11px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── Участники и консоль ─────────────────────────────────────────────── */
-.person-row{display:flex;align-items:center;gap:8px 11px;padding:11px 0;flex-wrap:wrap}
+/* Строго в одну строку: когда роль и кнопка переносились вниз, список
+   участников распадался на куски и было не понять, что к кому относится. */
+.person-row{display:flex;align-items:center;gap:10px;padding:11px 0}
 .person-row+.person-row{border-top:1px solid var(--line)}
 .person-row .av{width:34px;height:34px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
   background:var(--accent-wash);color:var(--accent);font-size:13px;font-weight:600}
-.person-row .nm{flex:1 1 150px;min-width:0}
-.person-row .nm .micro{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person-row .nm{flex:1 1 auto;min-width:0}
 .person-row .nm b{display:block;font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person-row .nm .sub{display:block;font-size:11px;color:var(--text-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person-row .chip,.person-row button{flex:0 0 auto}
+.person-row .me{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--accent);margin-left:6px}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
   font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   background:var(--surface-alt);border:1px solid var(--line);color:var(--text-2);white-space:nowrap}
 .chip.owner{background:var(--accent-wash);border-color:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--accent)}
-.chip.you{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:var(--ok)}
 .code-box{display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:var(--r-control);
   background:var(--accent-wash);border:1px dashed color-mix(in srgb,var(--accent) 40%,transparent);margin-top:8px}
 .code-box .val{flex:1;font-size:22px;font-weight:600;letter-spacing:.22em;color:var(--accent);font-variant-numeric:tabular-nums}
@@ -474,8 +577,13 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <input id="q" type="search" placeholder="Поиск по названию или категории" autocomplete="off" spellcheck="false">
+      <button class="clear" id="qClear" type="button" title="Очистить" aria-label="Очистить поиск" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
-    <div class="segment" id="segment" role="group" aria-label="Фильтр по остатку"></div>
+    <div class="segment" id="segment" role="group" aria-label="Фильтр по остатку">
+      <span class="seg-pill cold" id="segPill" aria-hidden="true"></span>
+    </div>
   </header>
 
   <div class="scroll" id="scroll">
@@ -493,6 +601,7 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 <div id="gate"></div>
 <dialog id="editor"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="csvFile" accept=".csv,text/csv" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
@@ -528,13 +637,11 @@ const SAMPLE = [
 
 const state = {
   products:[], tab:"stock", filter:"all", sort:"name", asc:true,
-  query:"", collapsed:new Set(), threshold:3, theme:"system",
-  db:null, downloads:null, ready:false,
-  // Личность и команда. Без возможности `user` страница не может проверить,
-  // кто её открыл, поэтому участник опознаётся идентификатором, который
-  // хранится в его браузере. Это маршрутизация, а не защита.
-  me:null, teams:[], members:[], events:[], appOwnerId:null,
-  gateMode:"join", gateError:"", consoleOpen:false
+  query:"", collapsed:new Set(), threshold:3, theme:"system", ready:false,
+  // Кто открыл страницу, решает Supabase Auth; magazin — членство в нём.
+  // Всё, что здесь лежит, — отражение ответа базы, а не источник прав.
+  me:null, teams:[], members:[], events:[], profiles:[],
+  isAdmin:false, gateMode:"join", consoleOpen:false
 };
 
 /* ══ Формат ═════════════════════════════════════════════════════════════ */
@@ -549,6 +656,14 @@ const compact = v => {
 };
 const pct = (v,d=0) => (d ? v.toFixed(d).replace(".",",") : Math.round(v)) + NBSP + "%";
 const qty = n => nf.format(n) + NBSP + "шт.";
+/* Русский счёт: «1 позиция», «2 позиции», «5 позиций». */
+const plural = (n, one, few, many) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b === 1) return one;
+  if (b > 1 && b < 5) return few;
+  return many;
+};
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const parseNum = s => {
   const t = String(s).replace(/\s| /g,"").replace(",",".");
@@ -564,6 +679,16 @@ const relative = ts => {
   if (h < 24) return h + " ч назад";
   return new Date(ts).toLocaleDateString("ru-RU",{day:"numeric",month:"short"});
 };
+
+/* Подсветка совпадения. Каждый кусок экранируется отдельно — разметку
+   добавляем мы, а не текст из базы. */
+function hi(text, q){
+  const t = String(text || "");
+  if (!q) return esc(t);
+  const i = t.toLowerCase().indexOf(q);
+  if (i < 0) return esc(t);
+  return esc(t.slice(0,i)) + "<mark>" + esc(t.slice(i, i+q.length)) + "</mark>" + esc(t.slice(i+q.length));
+}
 
 /* ══ Производные величины ═══════════════════════════════════════════════ */
 const stockState = p => (!p.inStock || p.quantity <= 0) ? "out"
@@ -640,6 +765,8 @@ const ICON = {
   wand:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l4 4L8 20l-4-4z"/><path d="M17 3v3M20.5 4.5l-2 2M21 9h-3"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>',
   warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.4v.2"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>'
 };
 
@@ -666,17 +793,33 @@ function render(){
   if (scroller && keepScroll) scroller.scrollTop = keepScroll;
 }
 
+const SEG_TINT = {all:"var(--accent)", low:"var(--low)", out:"var(--text-2)"};
 function renderSegment(){
   const seg = document.getElementById("segment");
-  const tint = {all:"var(--accent)", low:"var(--low)", out:"var(--text-2)"};
-  seg.innerHTML = FILTERS.map(f => {
+  // Кнопки пересобираем (меняются счётчики), плашку — нет: она одна на весь
+  // сегмент и переезжает трансформацией, иначе переход нечему проигрывать.
+  seg.querySelectorAll("button").forEach(b => b.remove());
+  seg.insertAdjacentHTML("beforeend", FILTERS.map(f => {
     const on = state.filter === f.id;
     const n = countFor(f.id);
-    return `<button data-filter="${f.id}" aria-pressed="${on}" style="isolation:isolate">
-      ${on ? `<span class="seg-pill" style="--seg-tint:${tint[f.id]}"></span>` : ""}
+    return `<button data-filter="${f.id}" aria-pressed="${on}">
       <span>${f.title}</span>${n ? `<span class="cnt num">${n}</span>` : ""}
     </button>`;
-  }).join("");
+  }).join(""));
+  positionPill();
+}
+
+function positionPill(){
+  const seg = document.getElementById("segment");
+  const pill = document.getElementById("segPill");
+  if (!pill || !seg || seg.hidden) return;
+  const on = seg.querySelector('[aria-pressed="true"]');
+  if (!on || !on.offsetWidth) return;
+  pill.style.setProperty("--seg-tint", SEG_TINT[state.filter] || "var(--accent)");
+  pill.style.width = on.offsetWidth + "px";
+  pill.style.transform = "translateX(" + on.offsetLeft + "px)";
+  // Первую установку не анимируем: плашка должна появиться на месте.
+  if (pill.classList.contains("cold")) requestAnimationFrame(() => pill.classList.remove("cold"));
 }
 
 function renderTabs(){
@@ -691,33 +834,52 @@ function badge(p){
   return `<span class="badge ${st}"><i class="dot"></i><span class="num">${st==="ok" ? qty(p.quantity) : (st==="out" ? "0 шт." : qty(p.quantity))}</span></span>`;
 }
 
-function cardHTML(p){
+/* Подпись под числом несёт состояние словом: зелёный и янтарный при
+   протанопии неразличимы, цвет один отвечать за смысл не может. */
+const QU = {ok:"шт.", low:"мало", out:"нет"};
+const markStyle = st => `background:linear-gradient(var(--${st}),color-mix(in srgb,var(--${st}) 40%,transparent))`;
+
+function cardHTML(p, i){
   const st = stockState(p);
-  const mk = st === "ok" ? "" :
-    `<i class="mark" style="background:linear-gradient(var(--${st}),color-mix(in srgb,var(--${st}) 40%,transparent))"></i>`;
+  const q = state.query.trim().toLowerCase();
   const m = markup(p);
-  return `<button class="card" data-edit="${p.id}">
-    ${mk}
-    <span class="thumb">${esc((p.name || category(p)).slice(0,1).toUpperCase())}</span>
-    <span class="body">
-      <span class="name">${esc(p.name || "Без названия")}</span>
-      <span class="meta">
-        <span class="micro">${esc(category(p))}</span>
-        ${m > 0 ? `<span class="num" style="font-size:11px;color:var(--text-3)">+${pct(m)}</span>` : ""}
+  return `<div class="card" data-card="${esc(p.id)}" style="--i:${i}">
+    ${st === "ok" ? "" : `<i class="mark" style="${markStyle(st)}"></i>`}
+    <button class="card-open" data-edit="${esc(p.id)}">
+      <span class="thumb">${esc((p.name || category(p)).slice(0,1).toUpperCase())}</span>
+      <span class="body">
+        <span class="name">${hi(p.name || "Без названия", q)}</span>
+        <span class="meta">
+          <span class="micro cat">${m > 0 ? "наценка +" + pct(m) : p.purchasePrice > 0 ? "закуп " + money(p.purchasePrice) : ""}</span>
+          <span class="figs"><span class="price num">${money(p.salePrice)}</span></span>
+        </span>
       </span>
+    </button>
+    <span class="qty-ctl">
+      <button data-adj="-1" data-id="${esc(p.id)}" aria-label="Списать одну штуку ${esc(p.name)}" ${p.quantity <= 0 ? "disabled" : ""}>−</button>
+      <span class="qv num${st === "ok" ? "" : " " + st}" title="${STATE_TITLE[st]}">${nf.format(p.quantity)}<span class="u">${QU[st]}</span></span>
+      <button data-adj="1" data-id="${esc(p.id)}" aria-label="Добавить одну штуку ${esc(p.name)}">+</button>
     </span>
-    <span class="side">
-      <span class="price num">${money(p.salePrice)}</span>
-      ${badge(p)}
-    </span>
-  </button>`;
+  </div>`;
 }
 
 function renderStock(){
   const pane = document.getElementById("pane-stock");
-  if (!state.ready){ pane.innerHTML = `<p style="padding:40px 0;text-align:center;color:var(--text-3)">Загрузка…</p>`; return; }
+  // Пока идёт первый запрос, показываем форму будущего списка, а не слово
+  // «загрузка»: экран не прыгает, когда данные приходят.
+  if (!state.ready){
+    wantEnter = false;
+    pane.innerHTML = `<div class="skel-wrap" aria-hidden="true">` +
+      Array.from({length:6}, () => `<div class="skel-card">
+        <span class="skel sq"></span>
+        <span style="flex:1"><span class="skel ln w60"></span><span class="skel ln w30"></span></span>
+        <span class="skel ln w20" style="align-self:center"></span>
+      </div>`).join("") + `</div>`;
+    return;
+  }
 
   if (!inTeam().length){
+    wantEnter = false;
     pane.innerHTML = `<div class="empty">
       <div class="ill">${ICON.box}</div>
       <h3>Пока нет товаров</h3>
@@ -730,27 +892,55 @@ function renderStock(){
 
   const list = visible();
   if (!list.length){
+    wantEnter = false;
     const searching = state.query.trim().length > 0;
     pane.innerHTML = `<div class="empty">
       <div class="ill">${searching ? ICON.box : ICON.warn}</div>
       <h3>${searching ? "Ничего не найдено" : "В этом срезе пусто"}</h3>
-      <p>${searching ? `По запросу «${esc(state.query)}» товаров нет. Проверьте написание.` : "Ни одна позиция не попадает под фильтр."}</p>
-      ${state.filter !== "all" ? `<button class="btn" data-act="all">Показать все</button>` : ""}
+      <p>${searching ? `По запросу «${esc(state.query)}» товаров нет. Проверьте написание${state.filter !== "all" ? " — или снимите фильтр по остатку" : ""}.` : "Ни одна позиция не попадает под фильтр."}</p>
+      ${searching ? `<button class="btn" data-act="clearq">Очистить поиск</button>` : ""}
+      ${state.filter !== "all" ? `<div style="margin-top:10px"><button class="btn ${searching ? "ghost" : ""}" data-act="all">Показать все остатки</button></div>` : ""}
     </div>`;
     return;
   }
 
+  let i = 0;
   pane.innerHTML = grouped(list).map(g => {
     const open = !state.collapsed.has(g.title);
     const units = g.items.reduce((s,p) => s + Math.max(p.quantity,0), 0);
     return `<button class="sect" data-sect="${esc(g.title)}" aria-expanded="${open}">
-        <span class="micro" style="color:var(--text-2)">${esc(g.title)}</span>
-        <span class="num" style="font-size:11px;color:var(--text-3)">${qty(units)}</span>
+        <span class="micro" style="color:var(--text-2)">${hi(g.title, state.query.trim().toLowerCase())}</span>
+        <span class="num" style="font-size:11px;color:var(--text-3)">${nf.format(g.items.length)} · ${qty(units)}</span>
         <span class="rule"></span>
         <span class="chev">${ICON.chev}</span>
       </button>
-      ${open ? g.items.map(cardHTML).join("") : ""}`;
-  }).join("");
+      ${open ? g.items.map(p => cardHTML(p, i++)).join("") : ""}`;
+  }).join("") + tallyHTML(list);
+  playEnter(pane);
+}
+
+/* Итог по тому, что сейчас на экране: сразу видно, сколько денег в срезе. */
+function tallyHTML(list){
+  const t = totals(list);
+  return `<div class="tally">
+    <span><b>${nf.format(t.titles)}</b> ${plural(t.titles,"позиция","позиции","позиций")}</span>
+    <span><b>${nf.format(t.units)}</b> шт.</span>
+    <span>закупка <b>${compact(t.purchase)}</b></span>
+    <span>продажа <b>${compact(t.sale)}</b></span>
+  </div>`;
+}
+
+/* Лесенку проигрываем только там, где список действительно сменился —
+   на каждую букву в поиске это была бы рябь, а не оживление. */
+let wantEnter = false, enterTimer = null;
+function playEnter(pane){
+  if (!wantEnter) return;
+  wantEnter = false;
+  pane.classList.remove("pane-enter");
+  void pane.offsetWidth;
+  pane.classList.add("pane-enter");
+  clearTimeout(enterTimer);
+  enterTimer = setTimeout(() => pane.classList.remove("pane-enter"), 1200);
 }
 
 function renderDash(){
@@ -806,14 +996,14 @@ function renderDash(){
       <span class="micro" style="flex:1">Требует внимания</span>
       ${att.length ? `<span class="num" style="font-size:11px;font-weight:600;color:var(--low);background:color-mix(in srgb,var(--low) 12%,transparent);padding:2px 7px;border-radius:999px">${att.length}</span>` : ""}
     </div>
-    ${att.length ? att.map(p => `<div class="att-row">
+    ${att.length ? att.map(p => `<button class="att-row" data-edit="${esc(p.id)}">
         <span class="thumb" style="width:34px;height:34px;font-size:13px;border-radius:9px">${esc((p.name || "?").slice(0,1).toUpperCase())}</span>
-        <span style="flex:1;min-width:0">
-          <span style="display:block;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+        <span class="nm">
+          <span class="t">${esc(p.name)}</span>
           <span class="micro">${esc(category(p))}</span>
         </span>
         ${badge(p)}
-      </div>`).join("")
+      </button>`).join("")
       : `<div style="display:flex;align-items:center;gap:9px;padding-top:10px;color:var(--ok)">
            <span style="width:17px;height:17px;display:block">${ICON.check}</span>
            <span style="font-size:13px;font-weight:500;color:var(--text)">Все позиции в норме</span>
@@ -843,23 +1033,24 @@ function renderSettings(){
           Сначала дайте человеку доступ к самой странице через меню «Поделиться».
         </p>` : ""}
       <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:4px">
-        ${mates.map(m => `<div class="person-row">
+        ${mates.map(m => {
+          const self = m.userId === myUserId();
+          return `<div class="person-row">
           <span class="av">${esc(initials(m.name))}</span>
           <span class="nm">
-            <b>${esc(m.name)}</b>
-            <span class="micro">${esc(m.device || "")} · ${m.lastSeenAt ? "был " + relative(m.lastSeenAt) : "ещё не заходил"}</span>
+            <b>${esc(m.name)}${self ? `<span class="me">вы</span>` : ""}</b>
+            <span class="sub">${m.lastSeenAt ? "был " + esc(relative(m.lastSeenAt)) : "в магазине с " + esc(relative(m.joinedAt))}</span>
           </span>
-          ${m.id === state.me?.memberId ? `<span class="chip you">вы</span>` : ""}
           ${m.role === "owner" ? `<span class="chip owner">управляющий</span>` : `<span class="chip">сотрудник</span>`}
-          ${isTeamOwner() && m.id !== state.me?.memberId ? `<button class="iconbtn" style="width:28px;height:28px" data-kick="${m.id}" title="Убрать из магазина" aria-label="Убрать ${esc(m.name)}">${ICON.trash}</button>` : ""}
-        </div>`).join("")}
+          ${isTeamOwner() && !self ? `<button class="iconbtn" style="width:28px;height:28px" data-kick="${esc(m.id)}" title="Убрать из магазина" aria-label="Убрать ${esc(m.name)}">${ICON.trash}</button>` : ""}
+        </div>`;}).join("")}
       </div>
     </div>
 
     <div class="panel" style="padding:2px 16px">
       <button class="linkrow" data-act="switchMe">
         <span style="width:17px;height:17px;display:block">${ICON.swap}</span>
-        <span>Сменить пользователя<span class="sub">Вернуться к экрану входа на этом устройстве</span></span>
+        <span>Выйти из учётной записи<span class="sub">Товары магазина останутся на месте</span></span>
       </button>
     </div>`;
 
@@ -893,7 +1084,7 @@ function renderSettings(){
             <span class="av" style="width:26px;height:26px;font-size:10px">${esc(initials(mm[0]?.name || u.email || "?"))}</span>
             <span class="nm">
               <b style="font-size:13px">${esc(u.email || "без почты")}</b>
-              <span class="micro">${esc(relative(u.createdAt))}${mm.length ? " · " + mm.map(x => esc(state.teams.find(t => t.id === x.teamId)?.name || "магазин")).join(", ") : " · ещё не в магазине"}</span>
+              <span class="sub">${esc(relative(u.createdAt))}${mm.length ? " · " + mm.map(x => esc(state.teams.find(t => t.id === x.teamId)?.name || "магазин")).join(", ") : " · ещё не в магазине"}</span>
             </span>
           </div>`;
         }).join("")}
@@ -912,7 +1103,7 @@ function renderSettings(){
             <span class="av" style="width:28px;height:28px;font-size:11px">${esc(initials(m.name))}</span>
             <span class="nm">
               <b style="font-size:13px">${esc(m.name)}</b>
-              <span class="micro">пришёл ${esc(relative(m.joinedAt))} · ${esc(m.device || "")}${m.lastSeenAt ? " · был " + relative(m.lastSeenAt) : ""}</span>
+              <span class="sub">пришёл ${esc(relative(m.joinedAt))}${m.lastSeenAt ? " · был " + esc(relative(m.lastSeenAt)) : ""}</span>
             </span>
             ${m.role === "owner" ? `<span class="chip owner">управляющий</span>` : ""}
           </div>`).join("")}
@@ -942,7 +1133,7 @@ function renderSettings(){
       </div>
       <button class="linkrow" data-act="applyThreshold" style="border-top:1px solid var(--line)">
         <span style="width:17px;height:17px;display:block">${ICON.wand}</span>
-        <span>Применить порог ко всем товарам<span class="sub">Заменит индивидуальные пороги на ${state.threshold} шт.</span></span>
+        <span>Применить порог ко всем товарам<span class="sub" id="thSub">Заменит индивидуальные пороги на ${state.threshold} шт.</span></span>
       </button>
     </div>
 
@@ -956,7 +1147,11 @@ function renderSettings(){
     <div class="panel" style="margin-top:8px;padding:2px 16px">
       <button class="linkrow" data-act="csv">
         <span style="width:17px;height:17px;display:block">${ICON.table}</span>
-        <span>Скачать CSV<span class="sub">${nf.format(t.titles)} позиций · Excel и Numbers</span></span>
+        <span>Скачать CSV<span class="sub">${nf.format(t.titles)} ${plural(t.titles,"позиция","позиции","позиций")} · Excel и Numbers</span></span>
+      </button>
+      <button class="linkrow" data-act="csvIn">
+        <span style="width:17px;height:17px;display:block">${ICON.upload}</span>
+        <span>Загрузить CSV<span class="sub">Новые добавим, знакомые обновим по названию</span></span>
       </button>
       <button class="linkrow" data-act="seed">
         <span style="width:17px;height:17px;display:block">${ICON.wand}</span>
@@ -996,6 +1191,8 @@ function applyTab(){
   document.getElementById("segment").hidden = !showList;
   document.getElementById("btnSort").hidden = !showList;
   document.getElementById("btnAdd").hidden = state.tab === "settings" && !wide;
+  document.getElementById("qClear").hidden = !showList || !state.query;
+  positionPill();
 }
 
 /* ══ Редактор ═══════════════════════════════════════════════════════════ */
@@ -1019,7 +1216,9 @@ function openEditor(id){
   drawEditor();
   const dlgEl = document.getElementById("editor");
   dlgEl.showModal();
-  dlgEl.querySelector(".sheet")?.focus({preventScroll:true});
+  // Новый товар начинают с названия — ставим курсор туда сразу.
+  const first = id ? dlgEl.querySelector(".sheet") : dlgEl.querySelector("#f-name");
+  first?.focus({preventScroll:true});
 }
 
 function editorErrors(){
@@ -1038,16 +1237,21 @@ function drawEditor(){
   const show = k => draft.touched && errs[k];
   const pp = parseNum(draft.purchase), sp = parseNum(draft.sale);
   const profit = sp - pp;
+  // Подсказка, ровно совпадающая с уже введённым, ничего не даёт.
+  const typed = draft.category.trim().toLowerCase();
   const cats = [...new Set(inTeam().map(p => category(p)).filter(c => c !== NO_CATEGORY))]
-    .filter(c => !draft.category.trim() || c.toLowerCase().includes(draft.category.trim().toLowerCase()))
+    .filter(c => c.toLowerCase() !== typed && (!typed || c.toLowerCase().includes(typed)))
     .slice(0,6);
 
   const costShare = sp > 0 ? Math.min(100, pp/sp*100) : (pp > 0 ? 100 : 0);
   const gainShare = Math.max(0, 100 - costShare);
 
-  dlg.innerHTML = `<form method="dialog" class="sheet" tabindex="-1">
+  // Раньше это была <form method="dialog">, и первой кнопкой в ней шла
+  // «Отмена»: Enter в любом поле неявно нажимал именно её и выбрасывал
+  // правку. Форму убрали, Enter обрабатываем сами.
+  dlg.innerHTML = `<div class="sheet" tabindex="-1">
     <div class="sheet-head">
-      <button value="cancel" type="submit">Отмена</button>
+      <button type="button" data-act="cancel">Отмена</button>
       <h2>${draft.id ? "Товар" : "Новый товар"}</h2>
       <button type="button" data-act="save" ${Object.keys(errs).length ? "disabled" : ""}>Сохранить</button>
     </div>
@@ -1126,10 +1330,15 @@ function drawEditor(){
         </div>
       </div>
 
-      ${draft.id ? `<button type="button" class="btn ghost" data-act="delete" style="color:var(--danger);margin-top:18px;width:100%;justify-content:center">
-        <span style="width:16px;height:16px;display:block">${ICON.trash}</span>Удалить товар</button>` : ""}
+      ${draft.id ? `<div style="display:flex;gap:8px;margin-top:18px">
+        <button type="button" class="btn ghost" data-act="dup" style="flex:1;justify-content:center;border:1px solid var(--line)">
+          <span style="width:16px;height:16px;display:block">${ICON.copy}</span>Дубликат</button>
+        <button type="button" class="btn ghost" data-act="delete" style="flex:1;color:var(--danger);justify-content:center;border:1px solid color-mix(in srgb,var(--danger) 25%,transparent)">
+          <span style="width:16px;height:16px;display:block">${ICON.trash}</span>Удалить</button>
+      </div>` : ""}
+      <p style="text-align:center;color:var(--text-3);font-size:11px;margin:16px 0 0">Enter — сохранить, Esc — закрыть</p>
     </div>
-  </form>`;
+  </div>`;
 
   const body = dlg.querySelector(".sheet-body");
   if (body && keepScroll) body.scrollTop = keepScroll;
@@ -1232,6 +1441,135 @@ function exportCSV(){
   toast("Файл выгружен");
 }
 
+/* ══ Загрузка CSV ═══════════════════════════════════════════════════════
+   Обратная сторона выгрузки: у магазина уже есть таблица, и перебивать её
+   руками никто не станет. Разбор по RFC 4180, разделитель определяем сами —
+   Excel в русской локали ставит «;», выгрузки из других мест — «,». */
+function splitRows(text, d){
+  const rows = [];
+  let row = [], cell = "", quoted = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (quoted){
+      if (c !== '"'){ cell += c; continue; }
+      if (text[i+1] === '"'){ cell += '"'; i++; } else quoted = false;
+      continue;
+    }
+    if (c === '"'){ quoted = true; }
+    else if (c === d){ row.push(cell); cell = ""; }
+    else if (c === "\n"){ row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r"){ cell += c; }
+  }
+  if (cell !== "" || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+
+function parseCSV(text){
+  const clean = text.replace(/^\uFEFF/, "");
+  const head = clean.split(/\r?\n/)[0] || "";
+  const d = (head.split(";").length > head.split(",").length) ? ";"
+          : (head.split("\t").length > head.split(",").length) ? "\t" : ",";
+  const rows = splitRows(clean, d);
+  if (rows.length < 2) return {error:"В файле нет строк с товарами"};
+
+  const norm = v => String(v).trim().toLowerCase();
+  const cols = rows[0].map(norm);
+  // Занятые колонки исключаем: «purchase price» содержит и «price», и
+  // без этого цена продажи забирала себе колонку закупки.
+  const used = new Set();
+  const find = (...keys) => {
+    const i = cols.findIndex((c, ix) => !used.has(ix) && keys.some(k => c.includes(k)));
+    if (i >= 0) used.add(i);
+    return i;
+  };
+  const iName = find("назван", "товар", "name");
+  if (iName < 0) return {error:"Не нашли колонку с названием товара"};
+  const iCat  = find("категор", "бренд", "category");
+  const iPP   = find("закуп", "purchase", "себест", "cost");
+  const iSP   = find("продаж", "sale", "розниц", "price");
+  const iQty  = find("количеств", "остат", "qty", "quantity", "stock");
+  const iTh   = find("порог", "threshold", "минимум");
+
+  const at = (r, i) => i >= 0 && i < r.length ? r[i] : "";
+  const items = [];
+  for (const r of rows.slice(1)){
+    const name = at(r, iName).trim();
+    if (!name) continue;
+    // Колонки сумм в нашей же выгрузке идут после «цены продажи»; берём
+    // только те, что попросили, — суммы пересчитаются сами.
+    items.push({
+      name,
+      category:at(r, iCat).trim(),
+      purchasePrice:Math.max(0, parseNum(at(r, iPP))),
+      salePrice:Math.max(0, parseNum(at(r, iSP))),
+      quantity:iQty >= 0 ? Math.max(0, Math.round(parseNum(at(r, iQty)))) : 0,
+      threshold:iTh >= 0 ? Math.max(0, Math.round(parseNum(at(r, iTh)))) : state.threshold
+    });
+  }
+  if (!items.length) return {error:"Ни одной строки с названием товара"};
+  return {items, hasQty:iQty >= 0, hasPrices:iPP >= 0 || iSP >= 0};
+}
+
+async function importCSV(file){
+  let text;
+  try{ text = await file.text(); }
+  catch(err){ toast("Не удалось прочитать файл"); return; }
+  const parsed = parseCSV(text);
+  if (parsed.error){ toast(parsed.error); return; }
+
+  const key = (n, c) => (n.trim().toLowerCase() + "\u0000" + (c || "").trim().toLowerCase());
+  const known = new Map(inTeam().map(x => [key(x.name, category(x) === NO_CATEGORY ? "" : x.category), x]));
+
+  const add = [], upd = [];
+  for (const it of parsed.items){
+    const found = known.get(key(it.name, it.category));
+    if (found){
+      const next = {...found};
+      if (parsed.hasQty) next.quantity = it.quantity;
+      if (parsed.hasPrices){
+        if (it.purchasePrice > 0) next.purchasePrice = it.purchasePrice;
+        if (it.salePrice > 0) next.salePrice = it.salePrice;
+      }
+      next.lowStockThreshold = it.threshold;
+      next.inStock = next.quantity > 0;
+      next.updatedAt = Date.now();
+      if (next.quantity !== found.quantity || next.purchasePrice !== found.purchasePrice ||
+          next.salePrice !== found.salePrice || next.lowStockThreshold !== found.lowStockThreshold){
+        upd.push(next);
+      }
+    } else {
+      add.push(makeProduct({
+        name:it.name, category:it.category,
+        purchasePrice:it.purchasePrice, salePrice:it.salePrice,
+        quantity:it.quantity, lowStockThreshold:it.threshold, inStock:it.quantity > 0
+      }));
+    }
+  }
+
+  if (!add.length && !upd.length){ toast("В файле нет ничего нового"); return; }
+  const parts = [];
+  if (add.length) parts.push("добавим " + add.length);
+  if (upd.length) parts.push("обновим " + upd.length);
+  // Ничего не удаляем: файл может быть частичным, а молча стереть склад —
+  // худшее, что импорт может сделать.
+  if (!confirm("Из файла: " + parts.join(", ") + ". Товары, которых в файле нет, останутся на месте. Продолжить?")) return;
+
+  const rows = [...add, ...upd].map(productToRow);
+  const {error} = await sb.from("products").upsert(rows);
+  if (error){ toast("Не удалось загрузить: " + error.message); return; }
+  await loadTeamData();
+  logEvent("import", "", String(rows.length));
+  wantEnter = true;
+  renderStock();
+  toast("Загружено: " + parts.join(", "));
+}
+
+document.getElementById("csvFile").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (f) importCSV(f);
+});
+
 function describeEvent(e){
   const what = e.subject ? `«${e.subject}»` : "товар";
   switch(e.kind){
@@ -1244,19 +1582,34 @@ function describeEvent(e){
     case "wipe":      return `очистил склад (${e.detail} поз.)`;
     case "kick":      return `убрал ${what} из магазина`;
     case "seed":      return "добавил демо-товары";
+    case "import":    return `загрузил таблицу (${e.detail} поз.)`;
     default:          return "что-то поменял";
   }
 }
 
 /* ══ Мелочи ═════════════════════════════════════════════════════════════ */
-let toastTimer = null;
-function toast(msg){
+let toastTimer = null, undoAction = null;
+function toast(msg, undo){
   const el = document.getElementById("toast");
-  el.textContent = msg;
+  undoAction = undo || null;
+  el.innerHTML = `<span class="txt">${esc(msg)}</span>` +
+    (undo ? `<button class="undo" type="button" data-undo="1">Отменить</button>` : "");
+  el.classList.toggle("act", !!undo);
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), 2400);
+  toastTimer = setTimeout(hideToast, undo ? 7000 : 2400);
 }
+function hideToast(){
+  clearTimeout(toastTimer);
+  undoAction = null;
+  document.getElementById("toast").classList.remove("show","act");
+}
+document.getElementById("toast").addEventListener("click", e => {
+  if (!e.target.closest("[data-undo]")) return;
+  const fn = undoAction;
+  hideToast();
+  if (fn) fn();
+});
 function applyTheme(){
   const root = document.documentElement;
   if (state.theme === "system") root.removeAttribute("data-theme");
@@ -1265,8 +1618,19 @@ function applyTheme(){
 
 document.getElementById("q").addEventListener("input", e => {
   state.query = e.target.value;
+  document.getElementById("qClear").hidden = !state.query;
   renderStock();
 });
+
+function clearSearch(){
+  const box = document.getElementById("q");
+  box.value = "";
+  state.query = "";
+  document.getElementById("qClear").hidden = true;
+  renderStock();
+  box.focus();
+}
+document.getElementById("qClear").addEventListener("click", clearSearch);
 
 document.getElementById("scroll").addEventListener("scroll", e => {
   document.getElementById("topbar").classList.toggle("scrolled", e.target.scrollTop > 4);
@@ -1278,22 +1642,6 @@ document.getElementById("who").addEventListener("click", () => {
   state.tab = "settings";
   renderTabs(); applyTab();
   document.getElementById("scroll").scrollTop = 0;
-});
-
-document.getElementById("gate").addEventListener("click", e => {
-  const mode = e.target.closest("[data-gate]");
-  if (mode){
-    state.gateMode = mode.dataset.gate;
-    state.gateError = "";
-    state.gateName = document.getElementById("g-name")?.value || state.gateName;
-    renderGate();
-    return;
-  }
-  if (e.target.closest("[data-gate-go]")) gateSubmit();
-});
-
-document.getElementById("gate").addEventListener("keydown", e => {
-  if (e.key === "Enter"){ e.preventDefault(); gateSubmit(); }
 });
 
 /* Раньше кнопка перебирала восемь состояний по кругу и угадать следующее
@@ -1344,19 +1692,27 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeSortMen
 document.getElementById("segment").addEventListener("click", e => {
   const b = e.target.closest("[data-filter]");
   if (!b) return;
+  if (state.filter === b.dataset.filter) return;
   state.filter = b.dataset.filter;
+  wantEnter = true;
   renderSegment(); renderStock();
 });
 
 document.getElementById("tabs").addEventListener("click", e => {
   const b = e.target.closest("[data-tab]");
   if (!b) return;
+  if (state.tab === b.dataset.tab) return;
   state.tab = b.dataset.tab;
-  renderTabs(); applyTab();
+  wantEnter = true;
+  renderTabs(); applyTab(); renderStock();
   document.getElementById("scroll").scrollTop = 0;
 });
 
 document.getElementById("scroll").addEventListener("click", e => {
+  // Счётчик проверяем первым: он вложен в карточку, но открывать её не должен.
+  const adj = e.target.closest("[data-adj]");
+  if (adj){ adjustQty(adj.dataset.id, +adj.dataset.adj); return; }
+
   const card = e.target.closest("[data-edit]");
   if (card){ openEditor(card.dataset.edit); return; }
 
@@ -1364,6 +1720,7 @@ document.getElementById("scroll").addEventListener("click", e => {
   if (sect){
     const k = sect.dataset.sect;
     state.collapsed.has(k) ? state.collapsed.delete(k) : state.collapsed.add(k);
+    savePrefs();
     renderStock();
     return;
   }
@@ -1371,7 +1728,13 @@ document.getElementById("scroll").addEventListener("click", e => {
   const th = e.target.closest("[data-th]");
   if (th){
     state.threshold = Math.max(0, Math.min(999, state.threshold + (+th.dataset.th)));
-    savePrefs(); renderSettings();
+    savePrefs();
+    // Точечно: перерисовка всей вкладки ради одной цифры дёргает и журнал,
+    // и список участников, и позицию прокрутки.
+    const v = document.getElementById("thVal");
+    if (v) v.textContent = state.threshold;
+    const sub = document.getElementById("thSub");
+    if (sub) sub.textContent = "Заменит индивидуальные пороги на " + state.threshold + " шт.";
     return;
   }
 
@@ -1384,23 +1747,8 @@ document.getElementById("scroll").addEventListener("click", e => {
     return;
   }
 
-  const act = e.target.closest("[data-act]")?.dataset.act;
-  if (!act) return;
-  if (act === "add") openEditor(null);
-  if (act === "seed") seedSamples();
-  if (act === "all"){ state.filter = "all"; renderSegment(); renderStock(); }
-  if (act === "csv") exportCSV();
-  if (act === "switchMe"){
-    if (confirm("Выйти из магазина на этом устройстве? Данные магазина останутся на месте.")) switchIdentity();
-  }
-  if (act === "toggleConsole"){ state.consoleOpen = !state.consoleOpen; renderSettings(); }
-  if (act === "copyCode"){
-    const code = myTeam()?.code || "";
-    navigator.clipboard?.writeText(code).then(
-      () => toast("Код " + code + " скопирован"),
-      () => toast("Код магазина: " + code)
-    );
-  }
+  // Кнопка «убрать участника» не несёт data-act, поэтому проверять её нужно
+  // до выхода по его отсутствию — раньше она не срабатывала никогда.
   const kick = e.target.closest("[data-kick]");
   if (kick){
     const m = state.members.find(x => x.id === kick.dataset.kick);
@@ -1413,7 +1761,28 @@ document.getElementById("scroll").addEventListener("click", e => {
         else toast(m.name + " убран из магазина");
       });
     }
+    return;
   }
+
+  const act = e.target.closest("[data-act]")?.dataset.act;
+  if (!act) return;
+  if (act === "add") openEditor(null);
+  if (act === "clearq") clearSearch();
+  if (act === "seed") seedSamples();
+  if (act === "all"){ state.filter = "all"; wantEnter = true; renderSegment(); renderStock(); }
+  if (act === "csv") exportCSV();
+  if (act === "switchMe"){
+    if (confirm("Выйти из учётной записи на этом устройстве? Товары магазина останутся на месте.")) switchIdentity();
+  }
+  if (act === "toggleConsole"){ state.consoleOpen = !state.consoleOpen; renderSettings(); }
+  if (act === "copyCode"){
+    const code = myTeam()?.code || "";
+    navigator.clipboard?.writeText(code).then(
+      () => toast("Код " + code + " скопирован"),
+      () => toast("Код магазина: " + code)
+    );
+  }
+  if (act === "csvIn") document.getElementById("csvFile").click();
   if (act === "applyThreshold"){
     const mine = inTeam();
     if (!mine.length){ toast("Сначала добавьте товары"); return; }
@@ -1427,15 +1796,17 @@ document.getElementById("scroll").addEventListener("click", e => {
     });
   }
   if (act === "wipe"){
-    if (confirm("Удалить все товары? Действие нельзя отменить.")){
-      const ids = inTeam().map(p => p.id);
-      const kill = new Set(ids);
-      logEvent("wipe", "", String(ids.length));
+    const doomed = inTeam();
+    if (!doomed.length){ toast("Склад и так пуст"); return; }
+    if (confirm("Удалить все товары (" + doomed.length + ")? Вернуть можно будет только сразу после.")){
+      const backup = doomed.map(x => ({...x}));
+      const kill = new Set(doomed.map(p => p.id));
+      logEvent("wipe", "", String(kill.size));
       state.products = state.products.filter(p => !kill.has(p.id));
       render();
-      sb.from("products").delete().in("id", ids).then(({error}) => {
+      sb.from("products").delete().in("id", [...kill]).then(({error}) => {
         if (error){ toast("Не удалось очистить: " + error.message); loadTeamData(); }
-        else toast("Склад очищен");
+        else toast("Склад очищен", () => restoreProducts(backup));
       });
     }
   }
@@ -1463,7 +1834,9 @@ dlg.addEventListener("input", e => {
 
 dlg.addEventListener("click", e => {
   const act = e.target.closest("[data-act]")?.dataset.act;
+  if (act === "cancel"){ dlg.close(); return; }
   if (act === "save"){ saveDraft(); return; }
+  if (act === "dup"){ duplicateDraft(); return; }
   if (act === "swap"){ draft.dir = draft.dir === "toPrice" ? "toMarkup" : "toPrice"; recalc(); drawEditor(); return; }
   if (act === "stock"){
     draft.inStock = !draft.inStock;
@@ -1471,12 +1844,13 @@ dlg.addEventListener("click", e => {
     return;
   }
   if (act === "delete"){
-    if (confirm("Удалить «" + (draft.name || "товар") + "»?")){
-      logEvent("delete", draft.name, "");
-      removeProduct(draft.id);
-      dlg.close();
-      toast("Товар удалён");
-    }
+    // Вместо вопроса «точно?» — возможность вернуть: подтверждение крадёт
+    // время у каждого удаления, отмена нужна у одного из ста.
+    const victim = state.products.find(x => x.id === draft.id);
+    logEvent("delete", draft.name, "");
+    removeProduct(draft.id);
+    dlg.close();
+    toast("Товар удалён", victim ? () => restoreProducts([victim]) : null);
     return;
   }
   const preset = e.target.closest("[data-preset]");
@@ -1511,7 +1885,50 @@ dlg.addEventListener("click", e => {
   }
 });
 
-window.matchMedia("(min-width:900px)").addEventListener("change", applyTab);
+/* Enter в поле = «Сохранить». Раньше его перехватывала форма и закрывала
+   лист кнопкой «Отмена». */
+dlg.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || e.target.tagName === "TEXTAREA") return;
+  e.preventDefault();
+  if (Object.keys(editorErrors()).length){ draft.touched = true; drawEditor(); return; }
+  saveDraft();
+});
+
+function duplicateDraft(){
+  const q = Math.max(0, Math.round(parseNum(draft.quantity)));
+  const copy = makeProduct({
+    name:(draft.name.trim() || "Товар") + " (копия)",
+    category:draft.category.trim(),
+    purchasePrice:Math.max(0, parseNum(draft.purchase)),
+    salePrice:Math.max(0, parseNum(draft.sale)),
+    quantity:q, lowStockThreshold:draft.threshold,
+    inStock:q > 0 ? draft.inStock : false
+  });
+  persist(copy);
+  logEvent("add", copy.name, "");
+  dlg.close();
+  toast("Копия создана");
+  // Открываем копию сразу: обычно её заводят, чтобы тут же переименовать.
+  setTimeout(() => openEditor(copy.id), 120);
+}
+
+window.matchMedia("(min-width:900px)").addEventListener("change", () => { applyTab(); });
+window.addEventListener("resize", positionPill);
+
+/* ══ Клавиши на большом экране ══════════════════════════════════════════ */
+document.addEventListener("keydown", e => {
+  if (document.getElementById("editor").open) return;
+  if (document.getElementById("gate").classList.contains("on")) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)){
+    if (e.key === "Escape" && t.id === "q") clearSearch();
+    return;
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  // «n» и «т» — одна и та же клавиша на латинской и русской раскладке.
+  if (e.key === "/" || e.key === "."){ e.preventDefault(); document.getElementById("q").focus(); }
+  else if (/^[nNтТ]$/.test(e.key)){ e.preventDefault(); openEditor(null); }
+});
 
 /* ══ Старт ══════════════════════════════════════════════════════════════ */
 
@@ -1538,6 +1955,7 @@ function loadPrefs(){
     if (p.threshold) state.threshold = p.threshold;
     if (p.theme) state.theme = p.theme;
     if (p.sort){ state.sort = p.sort; state.asc = !!p.asc; }
+    if (Array.isArray(p.collapsed)) state.collapsed = new Set(p.collapsed);
     if (p.teamId) state.me = {teamId:p.teamId};
   }catch(e){}
 }
@@ -1545,7 +1963,8 @@ function savePrefs(){
   try{
     localStorage.setItem(LS_PREFS, JSON.stringify({
       threshold:state.threshold, theme:state.theme,
-      sort:state.sort, asc:state.asc, teamId:state.me?.teamId || null
+      sort:state.sort, asc:state.asc, collapsed:[...state.collapsed],
+      teamId:state.me?.teamId || null
     }));
   }catch(e){}
 }
@@ -1639,6 +2058,81 @@ async function removeProduct(id){
   if (error){ toast("Не удалось удалить: " + error.message); await loadTeamData(); }
 }
 
+/* ══ Остаток прямо в списке ═════════════════════════════════════════════
+   Нажатий подряд бывает много. Показываем изменение мгновенно, а в базу
+   пишем одной пачкой, когда человек остановился. */
+const pendingQty = new Map();
+let qtyTimer = null;
+
+function adjustQty(id, delta){
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  const next = Math.max(0, p.quantity + delta);
+  if (next === p.quantity) return;
+  p.quantity = next;
+  if (next > 0) p.inStock = true;
+  p.updatedAt = Date.now();
+  p.updatedBy = myUserId();
+  paintQty(p);
+  renderSegment();
+  pendingQty.set(p.id, p);
+  clearTimeout(qtyTimer);
+  qtyTimer = setTimeout(flushQty, 900);
+}
+
+/* Точечная перерисовка одной карточки: пересборка списка на каждое нажатие
+   и стоит дорого, и уводит карточку из-под пальца, если сменилась группа. */
+function paintQty(p){
+  const card = document.querySelector('[data-card="' + CSS.escape(p.id) + '"]');
+  if (!card) return;
+  const st = stockState(p);
+  const qv = card.querySelector(".qv");
+  if (qv){
+    qv.className = "qv num" + (st === "ok" ? "" : " " + st);
+    qv.title = STATE_TITLE[st];
+    qv.innerHTML = nf.format(p.quantity) + '<span class="u">' + QU[st] + "</span>";
+    qv.classList.remove("hit");
+    void qv.offsetWidth;
+    qv.classList.add("hit");
+  }
+  const minus = card.querySelector('[data-adj="-1"]');
+  if (minus) minus.disabled = p.quantity <= 0;
+  let mark = card.querySelector(".mark");
+  if (st === "ok"){ if (mark) mark.remove(); return; }
+  if (!mark){
+    mark = document.createElement("i");
+    mark.className = "mark";
+    card.insertAdjacentElement("afterbegin", mark);
+  }
+  mark.setAttribute("style", markStyle(st));
+}
+
+async function flushQty(){
+  if (!pendingQty.size) return;
+  const items = [...pendingQty.values()];
+  pendingQty.clear();
+  const {error} = await sb.from("products").upsert(items.map(productToRow));
+  if (error){ toast("Не удалось сохранить: " + error.message); await loadTeamData(); return; }
+  for (const it of items) logEvent("qty", it.name, String(it.quantity));
+  // Догоняем группировку, фильтр и сводку — но уже после паузы в нажатиях.
+  render();
+}
+// Уход со страницы не должен стоить последних нажатий.
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushQty(); });
+window.addEventListener("pagehide", flushQty);
+
+/* Возврат удалённого. Идентификаторы сохраняем прежние, чтобы ссылки в
+   журнале и на других устройствах остались осмысленными. */
+async function restoreProducts(list){
+  if (!list || !list.length) return;
+  for (const p of list) if (!state.products.some(x => x.id === p.id)) state.products.push(p);
+  render();
+  const {error} = await sb.from("products").upsert(list.map(productToRow));
+  if (error){ toast("Не удалось вернуть: " + error.message); await loadTeamData(); return; }
+  for (const p of list) logEvent("add", p.name, "");
+  toast(list.length === 1 ? "Товар возвращён" : "Возвращено " + list.length + " " + plural(list.length,"позиция","позиции","позиций"));
+}
+
 async function seedSamples(){
   const rows = SAMPLE.map(([name,cat,pp,sp,q,th]) => productToRow(makeProduct({
     name, category:cat, purchasePrice:pp, salePrice:sp,
@@ -1696,6 +2190,7 @@ async function loadTeamData(){
   ]);
   state.products = (p || []).map(rowToProduct);
   state.events = (e || []).map(rowToEvent);
+  if (!state.ready) wantEnter = true;   // первое появление списка — лесенкой
   state.ready = true;
   setSync("live", "Синхронизировано");
   render();
@@ -1978,15 +2473,40 @@ async function signOut(){
 }
 
 /* ══ Старт ══════════════════════════════════════════════════════════════ */
+/* Перерисовка экрана входа пересоздаёт поля. Всё, что человек успел
+   набрать, до неё нужно сложить в состояние, иначе оно исчезнет вместе со
+   старыми узлами — на этом уже погорели и название магазина, и код. */
+function captureGate(){
+  const v = id => document.getElementById(id)?.value;
+  const name = v("g-name") ?? v("a-name");
+  if (name !== undefined) state.gateName = name;
+  if (v("g-shop") !== undefined) state.gateShop = v("g-shop");
+  if (v("g-code") !== undefined) state.gateCode = v("g-code").toUpperCase();
+  if (v("a-email") !== undefined) state.authEmail = v("a-email");
+  // Пароль намеренно не запоминаем: незачем держать его в памяти дольше,
+  // чем длится отправка.
+}
+
 document.getElementById("gate").addEventListener("click", async e => {
   const mode = e.target.closest("[data-auth]");
   if (mode){
+    captureGate();
     state.authMode = mode.dataset.auth;
     state.authMsg = null;
     renderGate();
     return;
   }
   if (e.target.closest("[data-auth-go]")){ await authSubmit(); return; }
+
+  const gate = e.target.closest("[data-gate]");
+  if (gate){
+    captureGate();
+    state.gateMode = gate.dataset.gate;
+    state.authMsg = null;
+    renderGate();
+    return;
+  }
+  if (e.target.closest("[data-gate-go]")){ await gateSubmit(); return; }
 
   const pick = e.target.closest("[data-pick]");
   if (pick){
