@@ -53,6 +53,11 @@
 }
 
 *{box-sizing:border-box}
+/* Собственный документ: базовые правила, которые обычно даёт окружение.
+   Без этого hidden не действует на элементы с заданным display, и панель
+   фильтров оставалась видна там, где скрыта. */
+[hidden]{display:none!important}
+img{max-width:100%}
 html,body{height:100%}
 body{
   margin:0; background:var(--canvas); color:var(--text);
@@ -170,18 +175,22 @@ button{background:none;border:0;cursor:pointer;padding:0}
   -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude}
 .hero-figure{white-space:nowrap;font-size:38px;font-weight:600;letter-spacing:-.025em;line-height:1.1;margin:8px 0 6px}
-.strip{display:flex;align-items:stretch}
-.strip>div{flex:1;min-width:0}
-.strip .vrule{flex:0 0 1px;background:var(--line);margin:2px 12px}
-.strip .figure{white-space:nowrap;font-size:19px;font-weight:600;letter-spacing:-.02em;margin-top:5px}
+/* Строками, а не колонками: три суммы не помещаются по ширине ни в телефон,
+   ни в узкую правую колонку на большом экране. */
+.strip{display:flex;flex-direction:column}
+.strip>div{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:9px 0}
+.strip>div:first-child{padding-top:0}
+.strip>div:last-child{padding-bottom:0}
+.strip>div+div{border-top:1px solid var(--line)}
+.strip .figure{white-space:nowrap;font-size:19px;font-weight:600;letter-spacing:-.02em}
 
 /* Столбцы одного цвета: длина уже кодирует величину, второй канал был бы
    избыточен, а перекраска при смене порядка — прямая ошибка. */
 .bars{display:flex;flex-direction:column;gap:9px;margin-top:14px}
 .bar-row{display:grid;grid-template-columns:minmax(58px,26%) 1fr auto;align-items:center;gap:10px}
 .bar-row .cat{font-size:12px;color:var(--text-2);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar-track{height:18px;border-radius:5px;background:var(--surface-sunk);overflow:hidden}
-.bar-fill{height:100%;border-radius:5px;background:var(--accent-mark);transform-origin:left center;animation:grow .6s cubic-bezier(.2,.7,.3,1) both}
+.bar-track{display:block;height:18px;border-radius:5px;background:var(--surface-sunk);overflow:hidden}
+.bar-fill{display:block;height:100%;border-radius:5px;background:var(--accent-mark);transform-origin:left center;animation:grow .6s cubic-bezier(.2,.7,.3,1) both}
 @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .bar-row .val{font-variant-numeric:tabular-nums;font-size:12px;font-weight:500;color:var(--text-2);min-width:2.5ch;text-align:right}
 
@@ -216,6 +225,19 @@ button{background:none;border:0;cursor:pointer;padding:0}
   font-size:10px;font-weight:500;color:var(--text-3);position:relative}
 .tabs button[aria-selected="true"]{color:var(--accent)}
 .tabs svg{width:21px;height:21px}
+
+/* ── Всплывающее меню ────────────────────────────────────────────────── */
+.pop{position:fixed;z-index:55;min-width:220px;padding:6px;border-radius:14px;
+  background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 2px 4px var(--shadow-contact),0 18px 40px var(--shadow-ambient)}
+.pop button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:10px 11px;border-radius:9px;font-size:14px;color:var(--text)}
+.pop button:hover{background:var(--surface-alt)}
+.pop button[aria-checked="true"]{color:var(--accent);font-weight:600}
+.pop .tick{width:15px;flex:0 0 auto;opacity:0}
+.pop button[aria-checked="true"] .tick{opacity:1}
+.pop .sep{height:1px;background:var(--line);margin:5px 4px}
+.pop .dir{color:var(--text-2);font-size:13px}
 
 /* ── Диалог ──────────────────────────────────────────────────────────── */
 dialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
@@ -374,6 +396,7 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
   #gate{padding-top:64px}
   .gate-wrap{max-width:430px}
   .topbar{padding-top:16px}
+  .segment{max-width:540px}
   .cols{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:24px;align-items:start}
   .pane{display:block}
   #pane-settings{display:none}
@@ -442,6 +465,7 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
   <nav class="tabs" id="tabs" role="tablist"></nav>
 </div>
 
+<div class="pop" id="sortMenu" hidden></div>
 <div id="gate"></div>
 <dialog id="editor"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -606,6 +630,8 @@ function renderWho(){
 }
 
 function render(){
+  const scroller = document.getElementById("scroll");
+  const keepScroll = scroller ? scroller.scrollTop : 0;
   renderWho();
   renderSegment();
   renderTabs();
@@ -613,6 +639,7 @@ function render(){
   renderDash();
   renderSettings();
   applyTab();
+  if (scroller && keepScroll) scroller.scrollTop = keepScroll;
 }
 
 function renderSegment(){
@@ -735,9 +762,7 @@ function renderDash(){
 
   <div class="panel strip">
     <div><span class="micro">Закупка</span><div class="figure num">${compact(t.purchase)}</div></div>
-    <div class="vrule"></div>
     <div><span class="micro">Продажа</span><div class="figure num">${compact(t.sale)}</div></div>
-    <div class="vrule"></div>
     <div><span class="micro">Маржа</span><div class="figure num">${pct(t.margin)}</div></div>
   </div>
 
@@ -982,6 +1007,9 @@ function editorErrors(){
 
 function drawEditor(){
   const dlg = document.getElementById("editor");
+  // Перерисовка заменяет разметку целиком, вместе с ней теряется и позиция
+  // прокрутки. Запоминаем её до и возвращаем после.
+  const keepScroll = dlg.querySelector(".sheet-body")?.scrollTop || 0;
   const errs = editorErrors();
   const show = k => draft.touched && errs[k];
   const pp = parseNum(draft.purchase), sp = parseNum(draft.sale);
@@ -1078,6 +1106,29 @@ function drawEditor(){
         <span style="width:16px;height:16px;display:block">${ICON.trash}</span>Удалить товар</button>` : ""}
     </div>
   </form>`;
+
+  const body = dlg.querySelector(".sheet-body");
+  if (body && keepScroll) body.scrollTop = keepScroll;
+}
+
+/* Обновление отдельных мест без перерисовки. Счётчик остатка жмут подряд
+   по многу раз — перестраивать ради этого всю карточку и дорого, и заметно. */
+function refreshSplit(){
+  const dlg = document.getElementById("editor");
+  const bar = dlg.querySelector(".split-bar");
+  if (!bar) return;
+  const pp = parseNum(draft.purchase), sp = parseNum(draft.sale);
+  const profit = sp - pp;
+  const cost = sp > 0 ? Math.min(100, pp/sp*100) : (pp > 0 ? 100 : 0);
+  bar.children[0].style.width = cost + "%";
+  bar.children[1].style.width = Math.max(0, 100 - cost) + "%";
+  bar.children[1].className = profit >= 0 ? "gain" : "loss";
+  const lg = dlg.querySelectorAll(".split-legend b");
+  if (lg.length === 2){
+    lg[0].textContent = money(pp);
+    lg[1].textContent = money(Math.abs(profit));
+    lg[1].parentElement.firstChild.textContent = profit >= 0 ? "Прибыль " : "Убыток ";
+  }
 }
 
 function recalc(){
@@ -1167,6 +1218,7 @@ function describeEvent(e){
     case "qty":       return `поставил остаток ${what} — ${e.detail} шт.`;
     case "threshold": return `поставил порог «мало» — ${e.detail} шт.`;
     case "wipe":      return `очистил склад (${e.detail} поз.)`;
+    case "kick":      return `убрал ${what} из магазина`;
     case "seed":      return "добавил демо-товары";
     default:          return "что-то поменял";
   }
@@ -1220,16 +1272,50 @@ document.getElementById("gate").addEventListener("keydown", e => {
   if (e.key === "Enter"){ e.preventDefault(); gateSubmit(); }
 });
 
-document.getElementById("btnSort").addEventListener("click", () => {
-  const i = SORTS.findIndex(s => s.id === state.sort);
-  if (state.asc && state.sort !== "name"){ state.asc = false; }
-  else if (!state.asc){ state.sort = SORTS[(i+1) % SORTS.length].id; state.asc = state.sort === "name"; }
-  else { state.sort = SORTS[(i+1) % SORTS.length].id; state.asc = state.sort === "name"; }
-  savePrefs();
-  renderStock();
-  const s = SORTS.find(s => s.id === state.sort);
-  toast(s.title + (state.asc ? " ↑" : " ↓"));
+/* Раньше кнопка перебирала восемь состояний по кругу и угадать следующее
+   было невозможно. Теперь порядок виден списком, а направление — отдельно. */
+function openSortMenu(){
+  const menu = document.getElementById("sortMenu");
+  const btn = document.getElementById("btnSort");
+  const tick = `<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+  menu.innerHTML = SORTS.map(o =>
+      `<button data-sort="${o.id}" role="menuitemradio" aria-checked="${state.sort === o.id}">${tick}<span>${o.title}</span></button>`
+    ).join("")
+    + `<div class="sep"></div>`
+    + `<button data-dir="1" class="dir">${tick.replace('class="tick"','class="tick" style="opacity:1"')}<span>${state.asc ? "По возрастанию" : "По убыванию"}</span></button>`;
+
+  const r = btn.getBoundingClientRect();
+  menu.hidden = false;
+  const w = menu.offsetWidth;
+  menu.style.top = (r.bottom + 8) + "px";
+  menu.style.left = Math.max(12, Math.min(r.right - w, window.innerWidth - w - 12)) + "px";
+}
+function closeSortMenu(){ document.getElementById("sortMenu").hidden = true; }
+
+document.getElementById("btnSort").addEventListener("click", e => {
+  e.stopPropagation();
+  const menu = document.getElementById("sortMenu");
+  menu.hidden ? openSortMenu() : closeSortMenu();
 });
+
+document.getElementById("sortMenu").addEventListener("click", e => {
+  const pick = e.target.closest("[data-sort]");
+  if (pick){
+    state.sort = pick.dataset.sort;
+    state.asc = SORTS.find(o => o.id === state.sort)?.id === "name";
+    savePrefs(); renderStock(); closeSortMenu();
+    return;
+  }
+  if (e.target.closest("[data-dir]")){
+    state.asc = !state.asc;
+    savePrefs(); renderStock(); openSortMenu();
+  }
+});
+
+document.addEventListener("click", e => {
+  if (!e.target.closest("#sortMenu") && !e.target.closest("#btnSort")) closeSortMenu();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSortMenu(); });
 
 document.getElementById("segment").addEventListener("click", e => {
   const b = e.target.closest("[data-filter]");
@@ -1306,10 +1392,15 @@ document.getElementById("scroll").addEventListener("click", e => {
   }
   if (act === "applyThreshold"){
     const mine = inTeam();
-    mine.forEach(p => { p.lowStockThreshold = state.threshold; });
-    mine.forEach(p => persist(p));
-    logEvent("threshold", "", String(state.threshold));
-    toast("Порог применён ко всем товарам");
+    if (!mine.length){ toast("Сначала добавьте товары"); return; }
+    // Раньше здесь уходил отдельный запрос на каждый товар и столько же
+    // перерисовок. Одна запись пачкой — и одна перерисовка.
+    mine.forEach(x => { x.lowStockThreshold = state.threshold; x.updatedAt = Date.now(); });
+    render();
+    sb.from("products").upsert(mine.map(productToRow)).then(({error}) => {
+      if (error){ toast("Не удалось применить: " + error.message); loadTeamData(); }
+      else { logEvent("threshold", "", String(state.threshold)); toast("Порог применён ко всем товарам"); }
+    });
   }
   if (act === "wipe"){
     if (confirm("Удалить все товары? Действие нельзя отменить.")){
@@ -1332,20 +1423,8 @@ dlg.addEventListener("input", e => {
   if (!k) return;
   draft[k] = e.target.value;
   if (k === "purchase" || k === "markup" || k === "sale") recalc();
-  // Перерисовываем только зависимые части, чтобы не сбивать каретку.
-  const pp = parseNum(draft.purchase), sp = parseNum(draft.sale);
-  const profit = sp - pp;
-  const costShare = sp > 0 ? Math.min(100, pp/sp*100) : (pp > 0 ? 100 : 0);
-  const bar = dlg.querySelector(".split-bar");
-  if (bar){
-    bar.children[0].style.width = costShare + "%";
-    bar.children[1].style.width = Math.max(0, 100 - costShare) + "%";
-    bar.children[1].className = profit >= 0 ? "gain" : "loss";
-    const lg = dlg.querySelectorAll(".split-legend b");
-    lg[0].textContent = money(pp);
-    lg[1].textContent = money(Math.abs(profit));
-    lg[1].parentElement.firstChild.textContent = (profit >= 0 ? "Прибыль " : "Убыток ");
-  }
+  // Обновляем только зависимые места, чтобы не сбивать каретку в поле.
+  refreshSplit();
   if (k === "purchase" || k === "markup"){
     const f = dlg.querySelector('[data-k="sale"]');
     if (f && document.activeElement !== f) f.value = draft.sale;
@@ -1362,7 +1441,11 @@ dlg.addEventListener("click", e => {
   const act = e.target.closest("[data-act]")?.dataset.act;
   if (act === "save"){ saveDraft(); return; }
   if (act === "swap"){ draft.dir = draft.dir === "toPrice" ? "toMarkup" : "toPrice"; recalc(); drawEditor(); return; }
-  if (act === "stock"){ draft.inStock = !draft.inStock; drawEditor(); return; }
+  if (act === "stock"){
+    draft.inStock = !draft.inStock;
+    e.target.closest("[data-act]").setAttribute("aria-checked", String(draft.inStock));
+    return;
+  }
   if (act === "delete"){
     if (confirm("Удалить «" + (draft.name || "товар") + "»?")){
       logEvent("delete", draft.name, "");
@@ -1373,17 +1456,35 @@ dlg.addEventListener("click", e => {
     return;
   }
   const preset = e.target.closest("[data-preset]");
-  if (preset){ draft.dir = "toPrice"; draft.markup = preset.dataset.preset; recalc(); drawEditor(); return; }
-  const cat = e.target.closest("[data-cat]");
-  if (cat){ draft.category = cat.dataset.cat; drawEditor(); return; }
-  const q = e.target.closest("[data-qty]");
-  if (q){
-    draft.quantity = String(Math.max(0, Math.round(parseNum(draft.quantity)) + (+q.dataset.qty)));
+  if (preset){
+    draft.dir = "toPrice";
+    draft.markup = preset.dataset.preset;
+    recalc();
     drawEditor();
     return;
   }
+  const cat = e.target.closest("[data-cat]");
+  if (cat){
+    draft.category = cat.dataset.cat;
+    const field = dlg.querySelector('[data-k="category"]');
+    if (field) field.value = draft.category;
+    return;
+  }
+  const q = e.target.closest("[data-qty]");
+  if (q){
+    draft.quantity = String(Math.max(0, Math.round(parseNum(draft.quantity)) + (+q.dataset.qty)));
+    const field = dlg.querySelector('[data-k="quantity"]');
+    if (field) field.value = draft.quantity;
+    const save = dlg.querySelector('[data-act="save"]');
+    if (save) save.disabled = Object.keys(editorErrors()).length > 0;
+    return;
+  }
   const dth = e.target.closest("[data-dth]");
-  if (dth){ draft.threshold = Math.max(0, Math.min(999, draft.threshold + (+dth.dataset.dth))); drawEditor(); }
+  if (dth){
+    draft.threshold = Math.max(0, Math.min(999, draft.threshold + (+dth.dataset.dth)));
+    const v = dth.parentElement.querySelector(".v");
+    if (v) v.textContent = draft.threshold;
+  }
 });
 
 window.matchMedia("(min-width:900px)").addEventListener("change", applyTab);
@@ -1590,14 +1691,22 @@ async function loadAdminView(){
   state.profiles = (pr || []).map(r => ({id:r.id, email:r.email, createdAt:ms(r.created_at)}));
 }
 
+/* Пачка правок с другого устройства прилетает несколькими событиями подряд.
+   Перечитывать склад на каждое — лишние запросы и мигание списка. */
+let reloadTimer = null;
+function scheduleReload(){
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(loadTeamData, 300);
+}
+
 /* Живое обновление: одна подписка на магазин, пересобирается при смене. */
 function watchTeam(){
   if (state.channel){ sb.removeChannel(state.channel); state.channel = null; }
   const team = state.me?.teamId;
   if (!team) return;
   state.channel = sb.channel("team:" + team)
-    .on("postgres_changes", {event:"*", schema:"public", table:"products", filter:"team_id=eq." + team}, loadTeamData)
-    .on("postgres_changes", {event:"*", schema:"public", table:"events",   filter:"team_id=eq." + team}, loadTeamData)
+    .on("postgres_changes", {event:"*", schema:"public", table:"products", filter:"team_id=eq." + team}, scheduleReload)
+    .on("postgres_changes", {event:"*", schema:"public", table:"events",   filter:"team_id=eq." + team}, scheduleReload)
     .on("postgres_changes", {event:"*", schema:"public", table:"memberships", filter:"team_id=eq." + team}, async () => {
       await loadMemberships(); render();
     })
