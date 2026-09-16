@@ -900,7 +900,7 @@ function renderSettings(){
     <span class="micro">Оформление</span>
     <div class="themes">
       ${themes.map(([id,label,icon]) =>
-        `<button data-theme="${id}" aria-pressed="${state.theme===id}">${icon}<span>${label}</span></button>`).join("")}
+        `<button data-set-theme="${id}" aria-pressed="${state.theme===id}">${icon}<span>${label}</span></button>`).join("")}
     </div>
 
     <div style="margin-top:22px"><span class="micro">Данные</span></div>
@@ -1265,9 +1265,11 @@ document.getElementById("scroll").addEventListener("click", e => {
     return;
   }
 
-  const theme = e.target.closest("[data-theme]");
+  // Ищем именно кнопку: атрибут data-theme живёт ещё и на корне страницы,
+  // и closest() нашёл бы его у любого клика, съев все остальные нажатия.
+  const theme = e.target.closest("[data-set-theme]");
   if (theme){
-    state.theme = theme.dataset.theme;
+    state.theme = theme.dataset.setTheme;
     applyTheme(); savePrefs(); renderSettings();
     return;
   }
