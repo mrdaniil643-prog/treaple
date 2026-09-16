@@ -69,7 +69,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .micro{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)}
 
 /* ── Каркас ──────────────────────────────────────────────────────────── */
-#app{display:flex;flex-direction:column;height:100%;min-height:0}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:0}
 .topbar{
   flex:0 0 auto;background:var(--canvas);
   padding:10px var(--gutter) 0;
@@ -106,7 +106,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .segment button .cnt{font-variant-numeric:tabular-nums;font-size:11px;font-weight:500;color:var(--text-3)}
 .segment button[aria-pressed="true"]{color:var(--on-accent)}
 .segment button[aria-pressed="true"] .cnt{color:var(--on-accent);opacity:.7}
-.segment .thumb{position:absolute;inset:0;border-radius:var(--r-control);background:var(--seg-tint,var(--accent));z-index:-1}
+.segment .seg-pill{position:absolute;inset:0;border-radius:var(--r-control);background:var(--seg-tint,var(--accent));z-index:-1}
 
 /* ── Область прокрутки ───────────────────────────────────────────────── */
 .scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 var(--gutter);padding-block-end:28px}
@@ -295,7 +295,11 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 .sync{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-3);padding:4px 9px;
-  border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap}
+  border-radius:999px;background:var(--surface);border:1px solid var(--line);white-space:nowrap;flex:0 0 auto}
+@media (max-width:520px){
+  .sync{padding:6px;gap:0}
+  .sync span{display:none}
+}
 .sync .led{width:6px;height:6px;border-radius:50%;background:var(--text-3)}
 .sync.live .led{background:var(--ok)}
 .sync.local .led{background:var(--low)}
@@ -384,7 +388,7 @@ dialog::backdrop{background:rgba(10,10,14,.45);backdrop-filter:blur(3px)}
 </style><style>
 /* Правила, которых не было в версии для артефакта: экран настройки
    подключения и формы входа. */
-:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.topbar{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .auth-tabs{display:flex;gap:18px;margin-bottom:18px;border-bottom:1px solid var(--line)}
 .auth-tabs button{padding:0 0 10px;font-size:14px;font-weight:600;color:var(--text-3);border-bottom:2px solid transparent;margin-bottom:-1px}
 .auth-tabs button[aria-pressed="true"]{color:var(--text);border-bottom-color:var(--accent)}
@@ -618,7 +622,7 @@ function renderSegment(){
     const on = state.filter === f.id;
     const n = countFor(f.id);
     return `<button data-filter="${f.id}" aria-pressed="${on}" style="isolation:isolate">
-      ${on ? `<span class="thumb" style="--seg-tint:${tint[f.id]}"></span>` : ""}
+      ${on ? `<span class="seg-pill" style="--seg-tint:${tint[f.id]}"></span>` : ""}
       <span>${f.title}</span>${n ? `<span class="cnt num">${n}</span>` : ""}
     </button>`;
   }).join("");

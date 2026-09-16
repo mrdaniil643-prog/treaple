@@ -95,7 +95,7 @@ button{background:none;border:0;cursor:pointer;padding:0}
 .segment button .cnt{font-variant-numeric:tabular-nums;font-size:11px;font-weight:500;color:var(--text-3)}
 .segment button[aria-pressed="true"]{color:var(--on-accent)}
 .segment button[aria-pressed="true"] .cnt{color:var(--on-accent);opacity:.7}
-.segment .thumb{position:absolute;inset:0;border-radius:var(--r-control);background:var(--seg-tint,var(--accent));z-index:-1}
+.segment .seg-pill{position:absolute;inset:0;border-radius:var(--r-control);background:var(--seg-tint,var(--accent));z-index:-1}
 
 /* ── Область прокрутки ───────────────────────────────────────────────── */
 .scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 var(--gutter);padding-block-end:28px}
@@ -790,7 +790,7 @@ function renderSegment(){
     const on = state.filter === f.id;
     const n = countFor(f.id);
     return `<button data-filter="${f.id}" aria-pressed="${on}" style="isolation:isolate">
-      ${on ? `<span class="thumb" style="--seg-tint:${tint[f.id]}"></span>` : ""}
+      ${on ? `<span class="seg-pill" style="--seg-tint:${tint[f.id]}"></span>` : ""}
       <span>${f.title}</span>${n ? `<span class="cnt num">${n}</span>` : ""}
     </button>`;
   }).join("");
