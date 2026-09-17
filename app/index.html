@@ -243,6 +243,9 @@ mark{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit;b
 .card .meta .figs{flex:0 0 auto;display:flex;align-items:baseline;gap:6px}
 .price{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
 .card .meta .cat{font-variant-numeric:tabular-nums;letter-spacing:.05em;text-transform:none}
+/* На совсем узком экране цена важнее наценки: обрезанное «н…» не значит
+   ничего, а сама цифра остаётся видна в карточке товара. */
+@media (max-width:340px){ .card .meta .cat{display:none} }
 
 /* Состояние остатка несут форма точки и текст; цвет только усиливает —
    зелёный и янтарный при протанопии неразличимы (проверено валидатором). */
@@ -861,7 +864,7 @@ function cardHTML(p, i){
       <span class="body">
         <span class="name">${hi(p.name || "Без названия", q)}</span>
         <span class="meta">
-          <span class="micro cat">${m > 0 ? "наценка +" + pct(m) : p.purchasePrice > 0 ? "закуп " + money(p.purchasePrice) : ""}</span>
+          <span class="micro cat">${m > 0 ? "+" + pct(m) : p.purchasePrice > 0 ? "закуп " + money(p.purchasePrice) : ""}</span>
           <span class="figs"><span class="price num">${money(p.salePrice)}</span></span>
         </span>
       </span>
