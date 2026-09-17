@@ -2009,16 +2009,6 @@ const teamMembers = id => state.members.filter(m => m.teamId === id)
 const initials = n => (n || "?").trim().split(/\s+/).slice(0,2).map(w => w[0] || "").join("").toUpperCase() || "?";
 const myMemberships = () => state.members.filter(m => m.userId === myUserId());
 
-function deviceHint(){
-  const ua = navigator.userAgent || "";
-  if (/iPhone|iPod/.test(ua)) return "iPhone";
-  if (/iPad/.test(ua)) return "iPad";
-  if (/Android/.test(ua)) return "Android";
-  if (/Macintosh/.test(ua)) return "Mac";
-  if (/Windows/.test(ua)) return "Windows";
-  return "браузер";
-}
-
 function setSync(kind, text){
   const el = document.getElementById("sync");
   if (!el) return;
@@ -2058,7 +2048,7 @@ const productToRow = p => ({
 });
 const rowToMember = r => ({
   id:r.id, teamId:r.team_id, userId:r.user_id, name:r.display_name || "Участник",
-  role:r.role, joinedAt:ms(r.created_at), lastSeenAt:ms(r.last_seen_at), device:""
+  role:r.role, joinedAt:ms(r.created_at), lastSeenAt:ms(r.last_seen_at)
 });
 const rowToTeam = r => ({id:r.id, name:r.name, code:r.code, ownerId:r.owner_id, createdAt:ms(r.created_at)});
 const rowToEvent = r => ({
