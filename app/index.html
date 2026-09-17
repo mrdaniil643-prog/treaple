@@ -2065,6 +2065,9 @@ const rowToEvent = r => ({
 
 /* ══ Запись ═════════════════════════════════════════════════════════════ */
 async function persist(product){
+  // Правка карточки записывает весь товар целиком, включая остаток, — и
+  // отложенное нажатие по нему стало бы записью устаревшей строки поверх.
+  pendingQty.delete(product.id);
   product.updatedAt = Date.now();
   product.teamId = product.teamId || state.me?.teamId;
   product.updatedBy = myUserId();
@@ -2076,6 +2079,7 @@ async function persist(product){
 }
 
 async function removeProduct(id){
+  pendingQty.delete(id);
   state.products = state.products.filter(p => p.id !== id);
   render();
   const {error} = await sb.from("products").delete().eq("id", id);
@@ -2129,6 +2133,25 @@ function paintQty(p){
     card.insertAdjacentElement("afterbegin", mark);
   }
   mark.setAttribute("style", markStyle(st));
+}
+
+/* Снимок из хранилища приходит без ещё не записанных нажатий и возвращает
+   старую цифру на экран — на секунду, до записи. Переносим незаписанное на
+   свежие объекты: и на экране верно, и записывать будем уже их. */
+function reapplyPending(){
+  if (!pendingQty.size) return;
+  const carried = [];
+  for (const [id, p] of pendingQty){
+    const live = state.products.find(x => x.id === id);
+    if (!live) continue;
+    live.quantity = p.quantity;
+    live.inStock = p.inStock;
+    live.updatedAt = p.updatedAt;
+    live.updatedBy = p.updatedBy;
+    carried.push([id, live]);
+  }
+  pendingQty.clear();
+  for (const [id, live] of carried) pendingQty.set(id, live);
 }
 
 async function flushQty(){
@@ -2214,6 +2237,7 @@ async function loadTeamData(){
   ]);
   state.products = (p || []).map(rowToProduct);
   state.events = (e || []).map(rowToEvent);
+  reapplyPending();
   if (!state.ready) wantEnter = true;   // первое появление списка — лесенкой
   state.ready = true;
   setSync("live", "Синхронизировано");
