@@ -18,6 +18,9 @@ enum Palette {
     // не спорит с зелёным и янтарным, которыми размечен остаток.
     static let accent = dynamic(light: 0x2F3D9E, dark: 0x9AA5FF)
     static let accentWash = dynamic(light: 0xEDEEF9, dark: 0x1B1D33)
+    /// Заливка столбцов графика: тот же тон, чуть мягче основного акцента,
+    /// чтобы данные не спорили с кнопками. Те же значения, что в веб-версии.
+    static let accentMark = dynamic(light: 0x4453C8, dark: 0x8E9AF5)
 
     // Поверхности: тёплый нейтральный фон, карточка светлее фона.
     static let canvas = dynamic(light: 0xF4F3F1, dark: 0x0C0C10)
@@ -46,27 +49,6 @@ enum Palette {
         case .low: stockLow
         case .out: stockOut
         }
-    }
-
-    /// Ступень акцента по рангу — для графиков. Один тон разной насыщенности
-    /// вместо радуги: порядок виден, пестроты нет.
-    static func accentStep(rank: Int, of total: Int) -> Color {
-        guard total > 1 else { return accent }
-        let step = min(Double(rank) / Double(total - 1), 1)
-        return Color(uiColor: UIColor { traits in
-            let dark = traits.userInterfaceStyle == .dark
-            let base = dark
-                ? UIColor(hex: 0x9AA5FF)
-                : UIColor(hex: 0x2F3D9E)
-            var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
-            base.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-            return UIColor(
-                hue: hue,
-                saturation: saturation * (1 - step * 0.62),
-                brightness: dark ? brightness * (1 - step * 0.28) : min(brightness + step * 0.34, 1),
-                alpha: 1
-            )
-        })
     }
 
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {

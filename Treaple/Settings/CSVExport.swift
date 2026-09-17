@@ -74,7 +74,8 @@ enum CSVExport {
     }
 
     private static func escape(_ field: String) -> String {
-        guard field.contains(separator) || field.contains("\"") || field.contains("\n") else {
+        guard field.contains(separator) || field.contains("\"")
+            || field.contains("\n") || field.contains("\r") else {
             return field
         }
         return "\"\(field.replacingOccurrences(of: "\"", with: "\"\""))\""

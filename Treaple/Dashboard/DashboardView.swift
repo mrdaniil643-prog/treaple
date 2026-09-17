@@ -119,9 +119,12 @@ struct DashboardView: View {
                     x: .value("Значение", chartGrown ? value(for: slice) : 0),
                     y: .value("Категория", slice.category)
                 )
-                // Один акцент разной насыщенности по рангу: порядок виден
-                // без легенды, а список категорий не превращается в радугу.
-                .foregroundStyle(Palette.accentStep(rank: slice.rank, of: slices.count))
+                // Все столбцы одного цвета. Ступень по рангу выглядела
+                // осмысленной, но означала не сущность, а её текущее место:
+                // стоило остатку сместить порядок — и категории меняли цвет,
+                // ничего при этом не изменив по сути. Длина уже кодирует
+                // величину, второй канал был бы избыточен и обманчив.
+                .foregroundStyle(Palette.accentMark)
                 .cornerRadius(5)
                 .annotation(position: .trailing, alignment: .leading, spacing: 6) {
                     Text(

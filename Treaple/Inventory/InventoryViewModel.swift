@@ -79,7 +79,11 @@ enum InventorySort: String, CaseIterable, Identifiable, Hashable {
                 ? lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
                 : lhs.quantity < rhs.quantity
         case .updatedAt:
-            lhs.updatedAt < rhs.updatedAt
+            // Без разрешения ничьей порядок одинаковых дат не определён и
+            // список тасуется при каждой перерисовке.
+            lhs.updatedAt == rhs.updatedAt
+                ? lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
+                : lhs.updatedAt < rhs.updatedAt
         }
     }
 }
@@ -165,7 +169,9 @@ final class InventoryViewModel {
     private func matchesSearch(_ product: Product) -> Bool {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return true }
+        // Именно displayCategory: товар без категории показан как
+        // «Без категории», и искаться должен так же, как показан.
         return product.name.localizedCaseInsensitiveContains(query)
-            || product.category.localizedCaseInsensitiveContains(query)
+            || product.displayCategory.localizedCaseInsensitiveContains(query)
     }
 }
