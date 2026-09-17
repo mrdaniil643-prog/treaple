@@ -1,9 +1,24 @@
 import SwiftUI
 
-/// Метка состояния. Цвет здесь работает по назначению — он единственный
-/// носитель смысла, поэтому форма его дублирует: норма — залитая точка,
-/// заканчивается — кольцо, закончился — перечёркнутый круг. Так состояние
-/// читается и при дальтонизме, и в чёрно-белой печати.
+/// Равносторонний треугольник — знак «мало». Круглых форм рядом с цифрой
+/// быть не должно: см. комментарий к StockDot.
+private struct TriangleMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Метка состояния. Цвет здесь единственный носитель смысла — зелёный и
+/// янтарный при протанопии неразличимы, — поэтому форма его дублирует.
+///
+/// Раньше «мало» было кольцом, а «нет» — блёклым кругом. Рядом с цифрой обе
+/// формы читались как буква «о»: «о 1 шт.». Теперь формы непохожи ни на
+/// букву, ни друг на друга: норма — точка, мало — треугольник, нет — черта.
 struct StockDot: View {
     let state: StockState
     var size: CGFloat = 7
@@ -13,13 +28,15 @@ struct StockDot: View {
             switch state {
             case .ok:
                 Circle().fill(Palette.stockOK)
+                    .frame(width: size, height: size)
             case .low:
-                Circle().strokeBorder(Palette.stockLow, lineWidth: size * 0.3)
+                TriangleMark().fill(Palette.stockLow)
+                    .frame(width: size * 1.25, height: size * 1.1)
             case .out:
-                Circle().fill(Palette.stockOut.opacity(0.45))
+                Capsule().fill(Palette.stockOut)
+                    .frame(width: size * 1.3, height: max(2, size * 0.34))
             }
         }
-        .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
 }
