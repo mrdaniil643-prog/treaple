@@ -73,6 +73,19 @@ def build_parser() -> argparse.ArgumentParser:
     publish_cmd.add_argument("-n", "--limit", type=int)
     publish_cmd.add_argument("--dry-run", action="store_true")
 
+    notify_cmd = sub.add_parser(
+        "notify", help="send a status line to the Telegram chat"
+    )
+    notify_cmd.add_argument("text")
+    notify_cmd.add_argument("--chat-id", help="default $TELEGRAM_CHAT_ID")
+    notify_cmd.add_argument("--silent", action="store_true")
+
+    fetch_cmd = sub.add_parser(
+        "fetch", help="download a video the user sent to the bot"
+    )
+    fetch_cmd.add_argument("file_id")
+    fetch_cmd.add_argument("-o", "--output", default="inbox/source.mp4")
+
     return parser
 
 
@@ -172,6 +185,40 @@ def main(argv: list[str] | None = None) -> int:
             out = Path(args.output) if args.output else work_dir / "review.json"
             export_for_review(candidates, out, limit=args.limit)
             print(f"wrote {out} -- score the clips, then: clipper clips {work_dir} --review {out}")
+            return 0
+
+        if args.command == "notify":
+            import os
+
+            from .publish.telegram import TelegramError, send_message
+
+            token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+            chat_id = args.chat_id or os.environ.get("TELEGRAM_CHAT_ID", "")
+            if not token or not chat_id:
+                log.warning("no telegram credentials, status not sent")
+                return 0
+            try:
+                send_message(token, chat_id, args.text, silent=args.silent)
+            except TelegramError as exc:
+                # A status line failing must never fail the pipeline around it.
+                log.warning("status not sent: %s", exc)
+            return 0
+
+        if args.command == "fetch":
+            import os
+
+            from .publish.telegram import TelegramError, download_file
+
+            token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+            if not token:
+                log.error("TELEGRAM_BOT_TOKEN is not set")
+                return 1
+            try:
+                path = download_file(token, args.file_id, Path(args.output))
+            except TelegramError as exc:
+                log.error("%s", exc)
+                return 1
+            print(path)
             return 0
 
         if args.command == "publish":

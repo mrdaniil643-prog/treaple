@@ -1,8 +1,8 @@
 name: Clip
 
-# Two ways in, both reachable from a phone:
-#   - workflow_dispatch: the "Run workflow" button on github.com
-#   - repository_dispatch: an iOS Shortcut POSTing to the API (see docs/iphone.md)
+# Two ways in:
+#   - repository_dispatch: the Telegram bot (bot/worker.js) -- the normal path
+#   - workflow_dispatch: the "Run workflow" button, for running it by hand
 on:
   workflow_dispatch:
     inputs:
@@ -41,7 +41,7 @@ on:
     types: [clip]
 
 concurrency:
-  group: clip-${{ github.ref }}
+  group: clip-${{ github.event.client_payload.chat_id || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -52,6 +52,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      # Answer whoever asked; fall back to the owner for manual runs.
+      TELEGRAM_CHAT_ID: ${{ github.event.client_payload.chat_id || secrets.TELEGRAM_CHAT_ID }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -60,27 +66,26 @@ jobs:
         env:
           # github.event.* covers both trigger shapes; the `inputs` context
           # does not exist on repository_dispatch. Values travel through env
-          # rather than being inlined, so a URL cannot break out of the shell.
+          # rather than being inlined, so nothing can break out of the shell.
           I_URL: ${{ github.event.inputs.url || github.event.client_payload.url }}
+          I_FILE_ID: ${{ github.event.client_payload.file_id }}
           I_COUNT: ${{ github.event.inputs.count || github.event.client_payload.count }}
           I_LANG: ${{ github.event.inputs.language || github.event.client_payload.language }}
           I_MODEL: ${{ github.event.inputs.model || github.event.client_payload.model }}
           I_REFRAME: ${{ github.event.inputs.reframe || github.event.client_payload.reframe }}
         run: |
           set -euo pipefail
-          if [ -z "${I_URL:-}" ]; then
-            echo "::error::no url supplied"
+          if [ -z "${I_URL:-}" ] && [ -z "${I_FILE_ID:-}" ]; then
+            echo "::error::neither a url nor a file_id was supplied"
             exit 1
           fi
           {
+            echo "has_file=$([ -n "${I_FILE_ID:-}" ] && echo yes || echo no)"
             echo "count=${I_COUNT:-6}"
             echo "language=${I_LANG:-}"
             echo "model=${I_MODEL:-small}"
             echo "reframe=${I_REFRAME:-smart}"
           } >> "$GITHUB_OUTPUT"
-          # The URL is echoed to the summary only, never into an output that
-          # later steps interpolate into a shell line.
-          echo "Clipping: ${I_URL}" >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-python@v5
         with:
@@ -105,20 +110,36 @@ jobs:
       - name: Install dependencies
         run: pip install -q -r requirements.txt
 
+      - name: Say hello
+        run: |
+          python -m clipper notify "Взялся за работу. Модель ${{ steps.cfg.outputs.model }}, клипов до ${{ steps.cfg.outputs.count }}."
+
+      - name: Fetch the uploaded video
+        id: fetch
+        if: steps.cfg.outputs.has_file == 'yes'
+        env:
+          FILE_ID: ${{ github.event.client_payload.file_id }}
+        run: |
+          set -euo pipefail
+          python -m clipper fetch "$FILE_ID" -o inbox/source.mp4
+          echo "path=inbox/source.mp4" >> "$GITHUB_OUTPUT"
+
       - name: Render clips
         env:
           # Datacenter IPs get challenged by YouTube far more often than home
           # ones; cookies from a signed-in account are the reliable way past it.
           YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
           URL: ${{ github.event.inputs.url || github.event.client_payload.url }}
+          LOCAL: ${{ steps.fetch.outputs.path }}
           COUNT: ${{ steps.cfg.outputs.count }}
           LANGUAGE: ${{ steps.cfg.outputs.language }}
           MODEL: ${{ steps.cfg.outputs.model }}
           REFRAME: ${{ steps.cfg.outputs.reframe }}
         run: |
           set -euo pipefail
+          source_ref="${LOCAL:-$URL}"
 
-          args=(-m clipper run "$URL" -n "$COUNT" --model "$MODEL" --reframe "$REFRAME")
+          args=(-m clipper run "$source_ref" -n "$COUNT" --model "$MODEL" --reframe "$REFRAME")
 
           # Plain `if` blocks rather than `[ x ] && args+=(...)`: an AND-list
           # whose test fails returns non-zero, which is harmless mid-script but
@@ -126,13 +147,28 @@ jobs:
           if [ -n "${LANGUAGE:-}" ]; then
             args+=(--language "$LANGUAGE")
           fi
-          if [ -n "${YOUTUBE_COOKIES:-}" ]; then
+          if [ -n "${YOUTUBE_COOKIES:-}" ] && [ -z "${LOCAL:-}" ]; then
             printf '%s' "$YOUTUBE_COOKIES" > cookies.txt
             args+=(--cookies cookies.txt)
             echo "using supplied cookies"
           fi
 
           python "${args[@]}"
+
+      - name: Send clips
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          sent=0
+          for dir in out/*/; do
+            if [ -f "${dir}clips.json" ]; then
+              python -m clipper publish telegram "$dir"
+              sent=1
+            fi
+          done
+          if [ "$sent" -eq 0 ]; then
+            python -m clipper notify "Клипов не вышло: ничего не прошло порог качества. Попробуйте другое видео."
+          fi
 
       - name: Summarise
         if: always()
@@ -145,7 +181,6 @@ jobs:
             exit 0
           fi
           {
-            echo ""
             echo "| clip | size |"
             echo "|---|---|"
             for f in "${clips[@]}"; do
@@ -153,22 +188,12 @@ jobs:
             done
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Send to Telegram
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Report failure
+        # Without this a failed run is silence in the chat, which is the
+        # worst possible outcome for someone waiting on their phone.
+        if: failure()
         run: |
-          set -euo pipefail
-          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
-            echo "::warning::TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set, skipping delivery"
-            exit 0
-          fi
-          shopt -s nullglob
-          for dir in out/*/; do
-            if [ -f "${dir}clips.json" ]; then
-              python -m clipper publish telegram "$dir"
-            fi
-          done
+          python -m clipper notify "Прогон упал. Лог: $RUN_URL" || true
 
       - name: Attach clips to the run
         if: github.event.inputs.keep_artifact == 'true'
@@ -179,6 +204,6 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Clean up cookies
+      - name: Clean up
         if: always()
         run: rm -f cookies.txt

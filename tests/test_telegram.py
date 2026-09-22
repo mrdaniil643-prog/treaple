@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from clipper.publish import telegram
 
 received: dict = {}
+FILE_BYTES = b"\x00\x01binary video payload\xff"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -47,17 +48,35 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 received["fields"][name] = payload.decode("utf-8")
 
-        payload = (
-            {"ok": True, "result": {"message_id": 1}}
-            if self.reply_ok
-            else {"ok": False, "description": "Bad Request: chat not found"}
-        )
+        if self.path.endswith("/getFile"):
+            payload = {
+                "ok": True,
+                "result": {"file_path": "videos/file_7.mp4", "file_size": 9},
+            }
+        else:
+            payload = (
+                {"ok": True, "result": {"message_id": 1}}
+                if self.reply_ok
+                else {"ok": False, "description": "Bad Request: chat not found"}
+            )
         raw = json.dumps(payload).encode()
         self.send_response(200 if self.reply_ok else 400)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
+
+    def do_GET(self):  # noqa: N802 - http.server API
+        if "/file/bot" in self.path:
+            body = FILE_BYTES
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def log_message(self, *args):  # silence the test output
         pass
@@ -137,3 +156,23 @@ def test_publish_dir_dry_run_needs_no_credentials(tmp_path, capsys):
     )
     assert telegram.publish_dir(tmp_path, dry_run=True) == 0
     assert "Hook here" in capsys.readouterr().out
+
+
+def test_download_file_writes_the_bytes(server, tmp_path):
+    dest = tmp_path / "nested" / "source.mp4"
+    result = telegram.download_file("TOKEN123", "FILEID", dest)
+
+    assert result == dest
+    assert dest.read_bytes() == FILE_BYTES
+
+
+def test_send_message_posts_the_text(server):
+    telegram.send_message("TOKEN123", "77", "Взялся за работу")
+    assert received["path"].endswith("/sendMessage")
+    assert received["fields"]["chat_id"] == "77"
+    assert received["fields"]["text"] == "Взялся за работу"
+
+
+def test_send_message_truncates_to_the_api_limit(server):
+    telegram.send_message("TOKEN123", "77", "x" * 9000)
+    assert len(received["fields"]["text"]) <= 4096

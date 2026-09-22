@@ -1,4 +1,4 @@
-"""Deliver rendered clips into a Telegram chat via the Bot API.
+"""Talk to a Telegram chat via the Bot API: clips, status, and downloads.
 
 This is the phone-friendly path: the pipeline runs somewhere with a CPU
 (a GitHub Actions runner, say) and drops the finished vertical clips
@@ -140,6 +140,51 @@ def send_clip(token: str, chat_id: str, path: Path, caption: str) -> None:
     finally:
         if temp is not None:
             temp.unlink(missing_ok=True)
+
+
+def send_message(token: str, chat_id: str, text: str,
+                 *, silent: bool = False) -> None:
+    """Post a plain text status line into the chat."""
+    _call(
+        token, "sendMessage",
+        {
+            "chat_id": chat_id,
+            "text": text[:4096],
+            "disable_notification": "true" if silent else "false",
+            "link_preview_options": json.dumps({"is_disabled": True}),
+        },
+        timeout=30,
+    )
+
+
+def download_file(token: str, file_id: str, dest: Path) -> Path:
+    """Fetch a file the user sent to the bot.
+
+    The Bot API caps downloads at 20 MB, which is a few minutes of video --
+    long sources have to arrive as a link instead. The limit lives on
+    Telegram's side, so there is nothing to work around here.
+    """
+    meta = _call(token, "getFile", {"file_id": file_id}, timeout=60)
+    remote = meta.get("file_path")
+    if not remote:
+        raise TelegramError("getFile returned no file_path")
+
+    size = meta.get("file_size") or 0
+    log.info("downloading %s (%.1f MB)", remote, size / 1024 / 1024)
+
+    url = f"{API_ROOT}/file/bot{token}/{remote}"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with urllib.request.urlopen(url, timeout=600) as response, \
+                dest.open("wb") as handle:
+            while chunk := response.read(1 << 20):
+                handle.write(chunk)
+    except urllib.error.HTTPError as exc:
+        raise TelegramError(f"download failed: HTTP {exc.code}") from None
+    except urllib.error.URLError as exc:
+        raise TelegramError(f"download failed: {exc.reason}") from None
+
+    return dest
 
 
 def publish_dir(
