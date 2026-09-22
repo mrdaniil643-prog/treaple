@@ -18,7 +18,20 @@ Shorts / Reels  →  Telegram-канал  →  бот  →  продукт за 
 речь, поэтому клипы не попадают под политику YouTube о неаутентичном
 контенте, из-за которой штампованные AI-каналы теряют монетизацию.
 
+## Без компьютера, с телефона
+
+Если машины нет вообще, считает бесплатный раннер GitHub Actions, а
+готовые клипы приходят в Telegram — телефон остаётся пультом и
+загрузчиком:
+
+```
+iPhone ──ссылка──▶ GitHub Actions ──клипы──▶ Telegram ──▶ Shorts / Reels
+```
+
+Настройка целиком в браузере телефона: **[docs/iphone.md](docs/iphone.md)**.
+
 ## Установка
+
 
 Нужен `ffmpeg` с `ffprobe` в PATH.
 
@@ -119,6 +132,19 @@ python -m clipper clips work/podcast --review work/podcast/review.json
 
 ## Публикация
 
+### В Telegram
+
+```bash
+export TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=...
+python -m clipper publish telegram out/podcast
+```
+
+Зависимостей не требует — только стандартная библиотека. Токен берётся у
+[@BotFather](https://t.me/BotFather), chat_id — из `getUpdates`. Лимит
+загрузки для ботов 50 МБ; клип сверх лимита автоматически пережимается.
+
+### На YouTube
+
 ```bash
 python -m clipper publish youtube out/podcast --dry-run
 python -m clipper publish youtube out/podcast --privacy unlisted
@@ -133,6 +159,15 @@ OAuth-клиента типа Desktop app из Google Cloud Console (`client_sec
 объёмы нужно несколько проектов или запрос на увеличение квоты. Instagram
 Graph API отдельно ограничивает 25 публикаций за 24 часа и требует
 Business-аккаунт, связанный со страницей Facebook.
+
+## Автоматизация
+
+`.github/workflows/clip.yml` гоняет весь конвейер на раннере GitHub.
+Запускается кнопкой в Actions или через `repository_dispatch` (например,
+из iOS-команды по шерингу ссылки). Результат уходит в Telegram, если
+заданы секреты `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`.
+
+Воркфлоу виден в интерфейсе, только если лежит в ветке по умолчанию.
 
 ## Конфигурация
 

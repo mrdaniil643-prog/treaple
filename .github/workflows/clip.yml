@@ -1,0 +1,184 @@
+name: Clip
+
+# Two ways in, both reachable from a phone:
+#   - workflow_dispatch: the "Run workflow" button on github.com
+#   - repository_dispatch: an iOS Shortcut POSTing to the API (see docs/iphone.md)
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Video URL"
+        required: true
+        type: string
+      count:
+        description: "How many clips"
+        required: false
+        default: "6"
+        type: string
+      language:
+        description: "Transcript language (ru, en, ...); blank = autodetect"
+        required: false
+        default: ""
+        type: string
+      model:
+        description: "Whisper model"
+        required: false
+        default: "small"
+        type: choice
+        options: ["tiny", "base", "small", "medium", "large-v3"]
+      reframe:
+        description: "Vertical framing"
+        required: false
+        default: "smart"
+        type: choice
+        options: ["smart", "center", "blur"]
+      keep_artifact:
+        description: "Also attach clips to the run (public on a public repo)"
+        required: false
+        default: false
+        type: boolean
+  repository_dispatch:
+    types: [clip]
+
+concurrency:
+  group: clip-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve inputs
+        id: cfg
+        env:
+          # github.event.* covers both trigger shapes; the `inputs` context
+          # does not exist on repository_dispatch. Values travel through env
+          # rather than being inlined, so a URL cannot break out of the shell.
+          I_URL: ${{ github.event.inputs.url || github.event.client_payload.url }}
+          I_COUNT: ${{ github.event.inputs.count || github.event.client_payload.count }}
+          I_LANG: ${{ github.event.inputs.language || github.event.client_payload.language }}
+          I_MODEL: ${{ github.event.inputs.model || github.event.client_payload.model }}
+          I_REFRAME: ${{ github.event.inputs.reframe || github.event.client_payload.reframe }}
+        run: |
+          set -euo pipefail
+          if [ -z "${I_URL:-}" ]; then
+            echo "::error::no url supplied"
+            exit 1
+          fi
+          {
+            echo "count=${I_COUNT:-6}"
+            echo "language=${I_LANG:-}"
+            echo "model=${I_MODEL:-small}"
+            echo "reframe=${I_REFRAME:-smart}"
+          } >> "$GITHUB_OUTPUT"
+          # The URL is echoed to the summary only, never into an output that
+          # later steps interpolate into a shell line.
+          echo "Clipping: ${I_URL}" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Check ffmpeg
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -version | head -1
+
+      - name: Cache Whisper model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-${{ steps.cfg.outputs.model }}-v1
+
+      - name: Install dependencies
+        run: pip install -q -r requirements.txt
+
+      - name: Render clips
+        env:
+          # Datacenter IPs get challenged by YouTube far more often than home
+          # ones; cookies from a signed-in account are the reliable way past it.
+          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
+          URL: ${{ github.event.inputs.url || github.event.client_payload.url }}
+          COUNT: ${{ steps.cfg.outputs.count }}
+          LANGUAGE: ${{ steps.cfg.outputs.language }}
+          MODEL: ${{ steps.cfg.outputs.model }}
+          REFRAME: ${{ steps.cfg.outputs.reframe }}
+        run: |
+          set -euo pipefail
+
+          args=(-m clipper run "$URL" -n "$COUNT" --model "$MODEL" --reframe "$REFRAME")
+
+          # Plain `if` blocks rather than `[ x ] && args+=(...)`: an AND-list
+          # whose test fails returns non-zero, which is harmless mid-script but
+          # fails the step when it lands last. `if` has no such edge.
+          if [ -n "${LANGUAGE:-}" ]; then
+            args+=(--language "$LANGUAGE")
+          fi
+          if [ -n "${YOUTUBE_COOKIES:-}" ]; then
+            printf '%s' "$YOUTUBE_COOKIES" > cookies.txt
+            args+=(--cookies cookies.txt)
+            echo "using supplied cookies"
+          fi
+
+          python "${args[@]}"
+
+      - name: Summarise
+        if: always()
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          clips=(out/*/*.mp4)
+          if [ ${#clips[@]} -eq 0 ]; then
+            echo "No clips produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo ""
+            echo "| clip | size |"
+            echo "|---|---|"
+            for f in "${clips[@]}"; do
+              echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Send to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+            echo "::warning::TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set, skipping delivery"
+            exit 0
+          fi
+          shopt -s nullglob
+          for dir in out/*/; do
+            if [ -f "${dir}clips.json" ]; then
+              python -m clipper publish telegram "$dir"
+            fi
+          done
+
+      - name: Attach clips to the run
+        if: github.event.inputs.keep_artifact == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clips
+          path: out/**/*.mp4
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Clean up cookies
+        if: always()
+        run: rm -f cookies.txt

@@ -20,12 +20,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    def add_overrides(cmd) -> None:
+        """Config overrides worth having on the command line (CI passes these)."""
+        cmd.add_argument("--language", help="force transcript language, e.g. ru")
+        cmd.add_argument("--model", help="whisper model: tiny|base|small|medium|large-v3")
+        cmd.add_argument("--reframe", choices=["center", "smart", "blur"])
+        cmd.add_argument("--cookies", help="cookies.txt for age/region locked sources")
+        cmd.add_argument("--min-score", type=float)
+
     run_cmd = sub.add_parser("run", help="full pipeline: download -> clips")
     run_cmd.add_argument("source", help="video URL or local file path")
     run_cmd.add_argument("-n", "--limit", type=int, help="max clips to render")
     run_cmd.add_argument("--review", help="review JSON to blend into scores")
     run_cmd.add_argument("--force-download", action="store_true")
     run_cmd.add_argument("--force-transcribe", action="store_true")
+    add_overrides(run_cmd)
 
     analyze_cmd = sub.add_parser(
         "analyze", help="download + transcribe + rank, render nothing"
@@ -35,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_cmd.add_argument("--force-transcribe", action="store_true")
     analyze_cmd.add_argument("--top", type=int, default=15)
     analyze_cmd.add_argument("--explain", action="store_true", help="show feature scores")
+    add_overrides(analyze_cmd)
 
     clips_cmd = sub.add_parser("clips", help="render clips from an analyzed source")
     clips_cmd.add_argument("work_dir", help="work/<slug> directory")
@@ -53,15 +63,31 @@ def build_parser() -> argparse.ArgumentParser:
     export_cmd.add_argument("-o", "--output")
     export_cmd.add_argument("--limit", type=int, default=40)
 
-    publish_cmd = sub.add_parser("publish", help="upload rendered clips")
-    publish_cmd.add_argument("target", choices=["youtube"])
+    publish_cmd = sub.add_parser("publish", help="upload or deliver rendered clips")
+    publish_cmd.add_argument("target", choices=["youtube", "telegram"])
     publish_cmd.add_argument("clips_dir", help="out/<slug> directory")
     publish_cmd.add_argument("--privacy", default="private",
-                             choices=["private", "unlisted", "public"])
+                             choices=["private", "unlisted", "public"],
+                             help="youtube only")
+    publish_cmd.add_argument("--chat-id", help="telegram only; default $TELEGRAM_CHAT_ID")
     publish_cmd.add_argument("-n", "--limit", type=int)
     publish_cmd.add_argument("--dry-run", action="store_true")
 
     return parser
+
+
+def apply_overrides(cfg, args) -> None:
+    """Command line wins over config file, config file wins over defaults."""
+    if getattr(args, "language", None):
+        cfg.transcribe.language = args.language
+    if getattr(args, "model", None):
+        cfg.transcribe.model = args.model
+    if getattr(args, "reframe", None):
+        cfg.render.reframe = args.reframe
+    if getattr(args, "cookies", None):
+        cfg.source.cookies_file = args.cookies
+    if getattr(args, "min_score", None) is not None:
+        cfg.clips.min_score = args.min_score
 
 
 def _print_candidates(candidates, top: int, show_explain: bool) -> None:
@@ -88,6 +114,8 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, FileNotFoundError) as exc:
         log.error("config error: %s", exc)
         return 2
+
+    apply_overrides(cfg, args)
 
     from . import pipeline
 
@@ -147,6 +175,16 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "publish":
+            if args.target == "telegram":
+                from .publish.telegram import publish_dir as send_to_telegram
+
+                return send_to_telegram(
+                    Path(args.clips_dir),
+                    chat_id=args.chat_id,
+                    limit=args.limit,
+                    dry_run=args.dry_run,
+                )
+
             from .publish.youtube import publish_dir
 
             return publish_dir(
