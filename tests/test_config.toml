@@ -1,0 +1,24 @@
+# Fast settings for the fixture: tiny model, short clips.
+[paths]
+work_dir = "work"
+out_dir  = "out"
+
+[transcribe]
+model = "tiny"
+language = "en"
+beam_size = 1
+
+[clips]
+min_seconds = 8.0
+max_seconds = 24.0
+target_count = 3
+min_score = 0.25
+
+[render]
+preset = "veryfast"
+crf = 24
+reframe = "smart"
+
+[subtitles]
+font_size = 72
+group_size = 3

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+work/
+out/
+config.toml
+client_secret*.json
+token_*.json
+*.log
+tests/fixtures/

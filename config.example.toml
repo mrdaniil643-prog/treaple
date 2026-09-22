@@ -1,0 +1,58 @@
+# Copy to config.toml and adjust. Everything here has a working default.
+
+[paths]
+work_dir = "work"      # per-source intermediate files
+out_dir  = "out"       # finished vertical clips
+
+[source]
+# Max height to download. 1080 is plenty for a 1080x1920 export.
+max_height = 1080
+# Cookies file for age/region restricted sources (Netscape format), optional.
+cookies_file = ""
+
+[transcribe]
+# tiny | base | small | medium | large-v3  -- "small" is the sweet spot on CPU.
+model = "small"
+# "" = autodetect. Set e.g. "ru" or "en" to skip detection and avoid mistakes.
+language = ""
+compute_type = "int8"
+beam_size = 5
+vad_filter = true
+
+[clips]
+min_seconds = 18.0
+max_seconds = 59.0
+# Candidates are built from whole sentences, so these are soft bounds.
+target_count = 12
+# Minimum score (0..1) for a candidate to be rendered.
+min_score = 0.35
+# Seconds of padding kept around the chosen span.
+pad_start = 0.25
+pad_end = 0.45
+
+[render]
+width = 1080
+height = 1920
+fps = 30
+crf = 20
+preset = "medium"
+audio_bitrate = "160k"
+# center | smart | blur
+#   center = fixed centre crop
+#   smart  = crop window placed where the motion/detail is
+#   blur   = whole frame over a blurred fill, nothing cropped away
+reframe = "smart"
+loudnorm = true
+
+[subtitles]
+enabled = true
+font = "DejaVu Sans"
+font_size = 78
+# Words shown on screen at once.
+group_size = 4
+primary_color = "&H00FFFFFF"   # white, &HAABBGGRR
+highlight_color = "&H0000E5FF" # amber
+outline = 5
+shadow = 2
+margin_v = 620
+uppercase = false
