@@ -56,7 +56,7 @@ export function createStaff(db, { now = () => new Date() } = {}) {
 
   function list() {
     return db.prepare(`SELECT d.id, d.name, d.created_at AS createdAt, d.expires_at AS expiresAt, d.last_used_at AS lastUsedAt,
-        (SELECT COUNT(*) FROM ticket_log l WHERE l.action = 'checked_in' AND l.note IN ('staff:' || d.id, 'staff:' || d.id || ':manual')) AS checkins
+        (SELECT COUNT(*) FROM ticket_log l WHERE l.action = 'checked_in' AND (l.note = 'staff:' || d.id OR l.note LIKE 'staff:' || d.id || ':%')) AS checkins
       FROM staff_devices d WHERE d.revoked_at IS NULL AND d.expires_at > ? ORDER BY d.created_at DESC`).all(iso());
   }
 

@@ -98,6 +98,16 @@ ADMIN_TOKEN=длинный-случайный-пароль npm start   # бое�
 - **Сервер.** Отдаются только файлы из `public/` с известными расширениями, без скрытых файлов. Лимит тела запроса 64 КБ, таймауты медленных соединений, ограничение числа открытых потоков схемы.
 - **Данные.** Весь SQL — подготовленные запросы. Текст от пользователей очищается от управляющих и невидимых символов, длина ограничена.
 
+**Проверка.** В `.claude/skills/` установлены скиллы безопасности из [Claude-Code-CyberSecurity-Skill](https://github.com/Masriyan/Claude-Code-CyberSecurity-Skill) (MIT): `cyber-web-security`, `cyber-vulnerability-scanner`, `cyber-blue-team-defense`, `cyber-supply-chain-security`. Повторить проверку:
+
+```bash
+npm test                                                        # логика бронирования, QR, контролёры
+npm run dev   # в другом окне, с ADMIN_TOKEN
+ADMIN_TOKEN=... TARGET=http://localhost:3000 python3 scripts/security-check.py   # 64 атаки по OWASP Top 10
+python3 .claude/skills/cyber-web-security/scripts/owasp_scanner.py --url http://localhost:3000
+python3 .claude/skills/cyber-supply-chain-security/scripts/supply_chain_auditor.py --project-dir .
+```
+
 Перед запуском в работу: поставьте сайт за HTTPS (nginx или Caddy), задайте `ADMIN_TOKEN`, `TRUST_PROXY=1` и `PUBLIC_ORIGIN`, регулярно копируйте `data/mt.db` — в ней контакты гостей.
 
 ## Что поменять под себя

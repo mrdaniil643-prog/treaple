@@ -123,6 +123,7 @@ function staffCookie(req, value, maxAge) {
   return `${STAFF_COOKIE}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${secure ? '; Secure' : ''}`;
 }
 
+route('GET', '/api/settings', () => ({ timeZone: process.env.TZ }));
 route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: DEMO_PAYMENTS }));
 route('GET', '/api/events', () => booking.listEvents());
 route('GET', '/api/events/:id', ({ id }) => booking.getEvent(id));

@@ -246,6 +246,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return {
       code: o.code, secret: o.secret, status: o.status, total: o.total, name: o.name, phone: o.phone, email: o.email,
       createdAt: o.created_at, expiresAt: o.expires_at, paidAt: o.paid_at,
+      // сколько секунд осталось держать места — таймер на клиенте не зависит от его часов
+      expiresIn: o.status === 'held' && o.expires_at ? Math.max(0, Math.floor((new Date(o.expires_at) - now()) / 1000)) : null,
       canCancel: o.status === 'paid' && hoursLeft >= CANCEL_BEFORE_HOURS && !tickets.some((t) => t.status === 'used'),
       event: { id: event.id, title: event.title, startsAt: event.starts_at, doorsAt: event.doors_at, lineup: event.lineup, deposit: event.deposit },
       tickets,
@@ -273,6 +275,14 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   function pay(secret, { name, phone, email, guests } = {}) {
     if (!demoPayments) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     const o = findOrder({ secret });
+    // Пока гость оформлял, событие могли закрыть, отменить или оно уже началось
+    if (o.status === 'held') {
+      const ev = getEvent(o.event_id);
+      if (ev.status !== 'on_sale' || new Date(ev.starts_at) < now()) {
+        release(secret);
+        throw new BookingError(409, ev.status === 'cancelled' ? 'Событие отменено, бронь снята.' : 'Продажа на это событие уже закрыта, бронь снята.');
+      }
+    }
     const guestNames = guests && typeof guests === 'object' && !Array.isArray(guests) ? guests : {};
     if (o.status === 'paid') return orderView(o);
     if (o.status !== 'held') throw new BookingError(410, 'Время брони истекло, места освобождены. Выберите столы заново.');
@@ -466,6 +476,9 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     const o = q.orderByCode.get(String(orderCode).trim().toUpperCase());
     if (!o) throw new BookingError(404, 'Заказ не найден');
     if (o.status !== 'paid') throw new BookingError(409, 'Вернуть можно только оплаченный заказ');
+    if (q.orderTickets.all(o.id).some((t) => t.status === 'used')) {
+      throw new BookingError(409, 'Часть гостей по этому заказу уже прошла — вернуть весь заказ нельзя. Оформите частичный возврат через кассу.');
+    }
     return refund(o, 'admin');
   }
 
@@ -477,6 +490,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     const price = Math.round(Number(data.price));
     if (!title) throw new BookingError(400, 'Укажите название');
     if (Number.isNaN(startsAt.getTime())) throw new BookingError(400, 'Укажите дату и время начала');
+    if (Number.isNaN(doorsAt.getTime())) throw new BookingError(400, 'Проверьте время открытия дверей');
+    if (doorsAt > startsAt) throw new BookingError(400, 'Двери должны открываться до начала события');
     if (!halls.length) throw new BookingError(400, 'Выберите хотя бы один зал');
     if (!(price > 0 && price <= 1e6)) throw new BookingError(400, 'Укажите цену билета');
     const slug = `${title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').slice(0, 40)}-${code(4).toLowerCase()}`;

@@ -109,7 +109,17 @@ async function start() {
 
 let report;
 async function loadReport() {
-  report = await adm(`/api/admin/events/${currentId}/report`);
+  if (!currentId) {
+    $('#stats').innerHTML = '<p class="muted">Событий пока нет. Создайте первое внизу страницы.</p>';
+    return;
+  }
+  try {
+    report = await adm(`/api/admin/events/${currentId}/report`);
+  } catch (err) {
+    if (err.status === 401) { sessionStorage.removeItem('mt.admin'); return login('Пароль изменился, войдите снова'); }
+    toast(err.message, { error: true });
+    return;
+  }
   const s = report.stats;
   const e = report.event;
   $('#stats').innerHTML = `
@@ -122,9 +132,11 @@ async function loadReport() {
     ${e.status !== 'cancelled' ? '<button class="btn ghost small" data-status="cancelled">Отменить событие</button>' : ''}`;
   $$('#sale-controls [data-status]').forEach((b) => b.addEventListener('click', async () => {
     if (b.dataset.status === 'cancelled' && !confirm('Отменить событие? Продажа остановится. Возвраты по оплаченным заказам оформите в списке заказов.')) return;
-    await adm(`/api/admin/events/${e.id}/status`, { method: 'POST', body: { status: b.dataset.status } });
-    toast('Статус события обновлён');
-    start();
+    try {
+      await adm(`/api/admin/events/${e.id}/status`, { method: 'POST', body: { status: b.dataset.status } });
+      toast('Статус события обновлён');
+      start();
+    } catch (err) { toast(err.message, { error: true }); }
   }));
 
   const halls = config.halls.filter((h) => e.halls.includes(h.id));
@@ -167,7 +179,7 @@ function drawOrders() {
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
         <td>${places}<br><span class="muted">${seatsWord(o.tickets.length)}</span></td>
         <td>${money(o.total)}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
-        <td>${o.status === 'paid' ? `${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>` : ''}</td></tr>`;
+        <td>${o.status === 'paid' ? `${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
   // Запасной путь, если у гостя сел телефон: находим заказ по имени и впускаем по одному.
   $$('[data-admit]').forEach((b) => b.addEventListener('click', async () => {
@@ -261,8 +273,10 @@ async function loadStaff() {
     : '<p class="muted">Пока ни одного телефона контролёра.</p>';
   $$('[data-revoke]').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm('Отключить этот телефон? Он сразу перестанет гасить билеты.')) return;
-    await adm(`/api/admin/staff/${b.dataset.revoke}/revoke`, { method: 'POST' });
-    toast('Телефон контролёра отключён');
+    try {
+      await adm(`/api/admin/staff/${b.dataset.revoke}/revoke`, { method: 'POST' });
+      toast('Телефон контролёра отключён');
+    } catch (err) { toast(err.message, { error: true }); }
     loadStaff();
   }));
 }
@@ -289,8 +303,7 @@ async function createEvent(e) {
   const f = e.currentTarget;
   const data = Object.fromEntries(new FormData(f));
   data.halls = $$('[name=halls]:checked', f).map((i) => i.value);
-  data.startsAt = data.startsAt ? new Date(data.startsAt).toISOString() : '';
-  data.doorsAt = data.doorsAt ? new Date(data.doorsAt).toISOString() : '';
+  // datetime-local без пояса: сервер понимает его как время заведения, а не браузера
   try {
     const ev = await adm('/api/admin/events', { method: 'POST', body: data });
     currentId = ev.id;

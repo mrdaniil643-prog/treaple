@@ -14,6 +14,7 @@ const state = {
   activeTable: null,
   order: null,
   holding: false,
+  blocked: '', // почему продажа недоступна — показываем при каждой перерисовке корзины
   map: null,
 };
 
@@ -32,7 +33,7 @@ function render() {
   <section class="wrap event-hero">
     <a class="back" href="/#afisha">← Вся афиша</a>
     <h1>${esc(e.title)}</h1>
-    <div class="event-meta"><span class="genre">${esc(e.genre)}</span><span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
+    <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}<span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
     <p class="desc">${esc(e.description)}</p>
     ${e.lineup ? `<p class="desc"><b>${esc(e.lineup)}</b></p>` : ''}
   </section>
@@ -180,7 +181,8 @@ function renderCart(bump = false) {
     <div class="pop-row"><h3>Ваш выбор</h3><span class="live-dot" id="live">Схема обновляется вживую</span></div>
     ${items ? `<ul class="cart-list">${items}</ul>` : '<p class="cart-empty">Нажмите на стол на схеме, чтобы выбрать места. Можно выбрать несколько столов в одном заказе.</p>'}
     <div class="cart-total"><span>${seats ? `${seatsWord(seats)}` : 'Итого'}</span><b>${money(total)}</b></div>
-    <button class="btn block" id="go" ${seats ? '' : 'disabled'}>Забронировать на ${state.config.holdMinutes} минут</button>
+    ${state.blocked ? `<p class="form-error">${esc(state.blocked)}</p>` : ''}
+    <button class="btn block" id="go" ${seats && !state.blocked ? '' : 'disabled'}>Забронировать на ${state.config.holdMinutes} минут</button>
     <p class="cart-note">После брони места закрепляются за вами, пока вы оплачиваете. Каждый гость получит свой билет с QR-кодом.</p>`;
   cart.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
     state.selection.delete(b.dataset.remove);
@@ -235,9 +237,10 @@ async function hold() {
   } catch (err) {
     toast(err.message, { error: true, ms: 6000 });
     if (err.status === 409) {
-      const av = await api(`/api/events/${eventId}/availability`);
-      state.availability = av.tables;
       for (const c of err.data?.conflicts || []) state.selection.delete(c.tableId);
+      try {
+        state.availability = (await api(`/api/events/${eventId}/availability`)).tables;
+      } catch { /* схема обновится из живого потока */ }
     }
     renderCart();
   } finally {
@@ -274,9 +277,10 @@ function openCheckout() {
     </form>`;
   dlg.showModal();
   dlg.querySelector('[name=name]').focus();
-  dlg.addEventListener('cancel', (ev) => ev.preventDefault(), { once: true });
+  // Esc не закрывает окно молча: иначе бронь осталась бы висеть. Закрывает только «Отменить бронь».
+  dlg.oncancel = (ev) => ev.preventDefault();
 
-  const expires = new Date(o.expiresAt).getTime();
+  const expires = Date.now() + (o.expiresIn ?? 0) * 1000;
   clearInterval(timerId);
   const tick = () => {
     const left = Math.max(0, expires - Date.now());
@@ -343,10 +347,9 @@ async function main() {
     document.title = `${event.title} — выбор стола — МТ`;
     render();
     if (event.status !== 'on_sale' || !config.paymentsEnabled) {
-      $('#go').disabled = true;
-      const why = !config.paymentsEnabled ? 'Онлайн-продажа пока не работает. Позвоните нам, чтобы забронировать стол.'
+      state.blocked = !config.paymentsEnabled ? 'Онлайн-продажа пока не работает. Позвоните нам, чтобы забронировать стол.'
         : event.status === 'cancelled' ? 'Событие отменено.' : 'Продажа билетов закрыта.';
-      $('#cart-body').insertAdjacentHTML('afterbegin', `<p class="form-error">${esc(why)}</p>`);
+      renderCart();
     }
     if (event.status === 'on_sale') connectStream();
   } catch (err) {

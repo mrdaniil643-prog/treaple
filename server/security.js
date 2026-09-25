@@ -98,9 +98,12 @@ export function securityHeaders(req) {
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
     'X-Permitted-Cross-Domain-Policies': 'none',
+    // старый XSS-фильтр браузеров сам порождал уязвимости; OWASP советует выключать его явно
+    'X-XSS-Protection': '0',
   };
   const https = req.socket.encrypted || (TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https');
-  if (https) headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+  // В боевом режиме сайт работает только по HTTPS, поэтому HSTS отдаём всегда (по HTTP браузер его игнорирует).
+  if (https || PROD) headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
   return headers;
 }
 

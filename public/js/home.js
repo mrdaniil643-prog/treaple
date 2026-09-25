@@ -11,7 +11,7 @@ function eventRow(e) {
     <div class="stub-date"><b>${fmt.day(e.starts_at)}</b><span>${fmt.month(e.starts_at)}, ${fmt.weekdayShort(e.starts_at)}</span></div>
     <div class="stub-body">
       <h3>${esc(e.title)}</h3>
-      <div class="event-meta"><span class="genre">${esc(e.genre)}</span><span>${esc(e.lineup)}</span><span>Начало в ${fmt.time(e.starts_at)}</span></div>
+      <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}${e.lineup ? `<span>${esc(e.lineup)}</span>` : ''}<span>Начало в ${fmt.time(e.starts_at)}</span></div>
     </div>
     <div class="event-side">
       <span class="price">${soldOut ? 'Мест нет' : `от ${money(e.minPrice)}`}</span>

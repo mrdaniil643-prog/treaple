@@ -173,3 +173,28 @@ test('на отменённое событие не пускают и QR не в
   assert.equal(booking.liveTickets([c]).tickets[c].qr, undefined);
   assert.equal(booking.checkIn(qr, { by: 'staff:1' }).result, 'event_cancelled');
 });
+
+test('бронь нельзя оплатить, если событие закрыли во время оформления', () => {
+  const { booking, event } = setup();
+  const held = booking.hold(event.id, [{ tableId: 'K31', seats: 2 }]);
+  assert.ok(held.expiresIn > 500 && held.expiresIn <= 600);
+  booking.setEventStatus(event.id, 'cancelled');
+  assert.throws(() => booking.pay(held.secret, guest), (e) => e.status === 409);
+  assert.equal(booking.getOrder({ secret: held.secret }).status, 'cancelled');
+  assert.equal(booking.availability(event.id).tables.K31.free, 4, 'места вернулись');
+});
+
+test('админ не может вернуть заказ, по которому гости уже прошли', () => {
+  const { booking, event } = setup();
+  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K33', seats: 2 }]).secret, guest);
+  booking.checkIn(paid.tickets[0].code, { eventId: event.id });
+  assert.throws(() => booking.adminRefund(paid.code), (e) => e.status === 409);
+});
+
+test('время открытия дверей проверяется', () => {
+  const { booking } = setup();
+  const base = { title: 'Вечер', startsAt: '2026-10-10T21:00', price: 1000, halls: ['main'] };
+  assert.throws(() => booking.createEvent({ ...base, doorsAt: 'завтра' }), (e) => e.status === 400);
+  assert.throws(() => booking.createEvent({ ...base, doorsAt: '2026-10-10T22:00' }), (e) => e.status === 400);
+  assert.equal(booking.createEvent(base).title, 'Вечер');
+});

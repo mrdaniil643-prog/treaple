@@ -15,7 +15,7 @@
 
   --f-display: 'Unbounded', 'Manrope', system-ui, sans-serif;
   --f-body: 'Manrope', system-ui, sans-serif;
-  --f-brush: 'Amatic SC', 'Unbounded', cursive;
+  --f-brush: 'Amatic SC', 'Arial Narrow', 'Roboto Condensed', sans-serif;
 
   --r-s: 6px;
   --r-m: 14px;
@@ -426,7 +426,7 @@ dialog[open] { animation: pop-in .35s var(--ease); }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 20px); } }
 
 /* ---------- меню ---------- */
-.menu-switch { display: flex; gap: 8px; margin-top: 28px; }
+.menu-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
 .menu-switch button { border: 0; cursor: pointer; background: none; padding: 0 4px 6px; font: 700 clamp(44px, 7vw, 80px)/1 var(--f-brush); color: #56637a; transition: color .25s; border-bottom: 4px solid transparent; }
 .menu-switch button[aria-selected='true'] { color: var(--orange); border-bottom-color: var(--orange); }
 .menu-switch button:hover { color: var(--orange-2); }
@@ -532,3 +532,27 @@ video.scanner { width: 100%; border-radius: 12px; background: #000; max-height: 
 .ticket.is-offline .t-pin b { opacity: .2; }
 .gate-bad .gate-mark { animation: alarm .5s ease-in-out 3; }
 @keyframes alarm { 50% { transform: scale(1.18); background: rgba(255, 255, 255, .35); } }
+
+/* ---------- узкие экраны (320–380 px) ---------- */
+h1, h2, h3, .t-event, .gate-name { overflow-wrap: break-word; }
+.stub-body, .event-side, .cart-list li > div, .order-head > div { min-width: 0; }
+.event-row h3, .event-hero h1, .page-head h1, .order-head h2 { overflow-wrap: anywhere; }
+.nav a { white-space: nowrap; }
+@media (max-width: 380px) {
+  .site-header .wrap { gap: 4px; }
+  .logo svg { width: 48px; }
+  .nav { gap: 0; }
+  .nav a { padding: 7px 8px; font-size: 13px; }
+  .nav .tickets-count { min-width: 16px; height: 16px; margin-left: 3px; font-size: 10px; }
+  .page-head h1 { font-size: 28px !important; }
+  .event-row { --cut: 70px; grid-template-columns: 70px 1fr; }
+  .event-row .stub-date { width: 70px; padding: 14px 4px; }
+  .event-row .stub-date b { font-size: 26px; }
+  .stub-date span { font-size: 12px; }
+  .hero .stub { --cut: 84px !important; }
+  .hero .stub-date { width: 84px; }
+  .hero .stub-date b { font-size: 34px; }
+  .stub-body { padding: 16px 14px; }
+  .btn { padding: 0 16px; }
+}
+.menu-layout > *, .booking > *, .admin-grid > * { min-width: 0; }
