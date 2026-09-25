@@ -10,6 +10,10 @@
   --copper: #b87a4c;     /* сепия-иллюстрации */
   --text: #eef0f3;
   --muted: #9aa7ba;
+  --placeholder: #8a97aa;
+  --ticket-muted: #6f5438;  /* мелкие подписи на кремовом билете, контраст 5.7:1 */
+  --chart-sold: #e0661f;    /* цвета графиков проверены dataviz-валидатором */
+  --chart-held: #4089e0;
   --ok: #7fcf9b;
   --bad: #ff7a6b;
 
@@ -396,7 +400,7 @@ dialog[open] { animation: pop-in .35s var(--ease); }
 .ticket-top .t-when { font-weight: 700; color: #6d5238; font-size: 14px; }
 .t-place { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 18px; margin-top: 6px; }
 .t-place div { display: grid; }
-.t-place small { font-size: 12px; font-weight: 700; color: #8d7358; }
+.t-place small { font-size: 12px; font-weight: 700; color: var(--ticket-muted); }
 .t-place b { font: 800 26px/1.05 var(--f-display); }
 .t-guest { font-weight: 700; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 .ticket-bottom { border-top: 2px dashed rgba(26, 34, 48, .25); padding: 18px 20px 20px; display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: center; }
@@ -486,7 +490,7 @@ video.scanner { width: 100%; border-radius: 12px; background: #000; max-height: 
 
 /* ---------- живой QR ---------- */
 .qr-wrap { position: relative; display: grid; gap: 6px; }
-.qr-wait { display: grid; place-items: center; height: 100%; font-size: 12px; font-weight: 700; color: #8d7358; text-align: center; }
+.qr-wait { display: grid; place-items: center; height: 100%; font-size: 12px; font-weight: 700; color: var(--ticket-muted); text-align: center; }
 .qr-live { height: 4px; border-radius: 2px; background: rgba(26, 34, 48, .15); overflow: hidden; }
 .qr-live i { display: block; height: 100%; background: var(--orange); transform-origin: left; transition: transform .25s linear; }
 .t-clock { display: block; font: 700 13px var(--f-display); font-variant-numeric: tabular-nums; color: #9a4c14; min-height: 1.2em; }
@@ -528,7 +532,7 @@ video.scanner { width: 100%; border-radius: 12px; background: #000; max-height: 
 @media (max-width: 520px) { .invite { grid-template-columns: 1fr; } }
 
 .t-pin { display: grid; margin: 2px 0 4px; }
-.t-pin small { font-size: 11px; font-weight: 700; color: #8d7358; }
+.t-pin small { font-size: 11px; font-weight: 700; color: var(--ticket-muted); }
 .t-pin b { font: 800 22px/1.1 var(--f-display); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
 .ticket.is-offline .t-pin b { opacity: .2; }
 .gate-bad .gate-mark { animation: alarm .5s ease-in-out 3; }
@@ -638,3 +642,51 @@ a, button, summary, label.check, .tbl, .event-row { touch-action: manipulation; 
 @media (max-width: 1000px) {
   .cart-body > .pop-row:first-child { display: none; }
 }
+
+/* ---------- графики админки (dataviz) ---------- */
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.occ-row { display: grid; gap: 6px; }
+.occ-head { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.occ-value { color: var(--muted); font-variant-numeric: tabular-nums; }
+.occ-bar { display: flex; gap: 2px; height: 16px; border-radius: 4px; background: var(--line); }
+.occ-bar .sold, .chart-legend .sold { background: var(--chart-sold); }
+.occ-bar .held, .chart-legend .held { background: var(--chart-held); }
+.chart-legend i { background: var(--line); }
+.sales-svg .bar { fill: var(--chart-sold); }
+.occ-bar { overflow: visible; }
+.occ-bar .seg { position: relative; height: 100%; min-width: 3px; cursor: default; }
+.occ-bar .seg:first-child { border-radius: 4px 0 0 4px; }
+/* видимая полоса 16px, а зона нажатия 44px */
+.occ-bar .seg::after { content: ''; position: absolute; inset: -14px 0; }
+.occ-bar .seg:last-child { border-radius: 0 4px 4px 0; }
+.occ-bar .seg:focus-visible { outline: 2px solid var(--cream); outline-offset: 1px; }
+#occupancy { display: grid; gap: 14px; }
+.sales-svg { width: 100%; height: auto; overflow: visible; }
+.sales-svg .grid { stroke: var(--line); stroke-width: 1; }
+.sales-svg .tick { fill: var(--muted); font: 500 11px var(--f-body); text-anchor: end; dominant-baseline: middle; }
+.sales-svg .day { fill: var(--muted); font: 500 11px var(--f-body); text-anchor: middle; }
+.sales-svg .val { fill: var(--text); font: 700 12px var(--f-body); text-anchor: middle; }
+.sales-svg .hit { fill: rgba(0, 0, 0, 0); }
+.sales-svg .col:hover .hit, .sales-svg .col:focus-visible .hit { fill: rgba(255, 255, 255, .04); }
+.sales-svg .col { outline: none; }
+.sales-svg .col:focus-visible .hit { fill: rgba(255, 255, 255, .08); stroke: var(--cream); stroke-width: 2; }
+.chart-table summary { cursor: pointer; color: var(--muted); font-size: 14px; min-height: 44px; display: flex; align-items: center; }
+.chart-tip {
+  position: absolute; left: 0; top: 0; z-index: 90; pointer-events: none;
+  background: var(--night-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; line-height: 1.4; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .7);
+}
+.meter-head { display: flex; justify-content: space-between; font-size: 14px; }
+.meter-head b { font-variant-numeric: tabular-nums; }
+.meter { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.meter i { display: block; height: 100%; background: var(--ok); border-radius: 5px; transition: width .4s var(--ease); }
+
+/* ---------- доступность ---------- */
+.input::placeholder { color: var(--placeholder); opacity: 1; }
+.skip-link { position: absolute; left: 16px; top: -60px; z-index: 100; padding: 10px 16px; border-radius: 10px; background: var(--cream); color: var(--night-2); font-weight: 800; text-decoration: none; transition: top .2s; }
+.skip-link:focus { top: 12px; }
+
+.sales-svg { max-width: 100%; }
+.chart-note { font-size: 13px; margin-top: 6px; }

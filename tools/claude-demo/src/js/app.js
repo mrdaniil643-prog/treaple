@@ -62,6 +62,14 @@ document.addEventListener('click', (e) => {
   if (!a) return;
   const href = a.getAttribute('href');
   if (!href.startsWith('/') && !href.startsWith('#')) return; // внешние ссылки открываются как обычно
+  // ссылка на элемент этой же страницы (переход к содержимому, разделы меню) — не маршрут
+  const target = href.startsWith('#') && document.getElementById(href.slice(1));
+  if (target) {
+    e.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth' });
+    if (target.tabIndex < 0) target.focus({ preventScroll: true });
+    return;
+  }
   e.preventDefault();
   navigate(href.startsWith('#') ? href.slice(1) : toToken(href));
 });

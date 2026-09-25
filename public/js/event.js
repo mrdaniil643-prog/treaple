@@ -294,7 +294,7 @@ function openCheckout() {
     grouped.set(key, (grouped.get(key) || 0) + 1);
   }
   dlg.innerHTML = `
-    <div class="dlg-head"><h2>Оформление</h2><span class="timer" id="timer-box" title="Столько времени места держатся за вами"><small>Места за вами</small> <b id="timer"></b></span></div>
+    <div class="dlg-head"><h2 id="checkout-title">Оформление</h2><span class="timer" id="timer-box" title="Столько времени места держатся за вами"><small>Места за вами</small> <b id="timer"></b></span></div>
     <form class="dlg-body" id="pay-form" novalidate>
       <div class="summary-lines">
         ${[...grouped].map(([k, n]) => `<div><span>${esc(k)}</span><span>${seatsWord(n)}</span></div>`).join('')}
@@ -313,6 +313,7 @@ function openCheckout() {
       </div>
       <p class="demo-note">Тестовый режим: деньги не списываются.</p>
     </form>`;
+  dlg.setAttribute('aria-labelledby', 'checkout-title');
   dlg.showModal();
   // на телефоне не открываем клавиатуру сразу: сначала человек видит сумму и таймер
   if (wide.matches) dlg.querySelector('[name=name]').focus();

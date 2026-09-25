@@ -89,6 +89,22 @@ export function renderHeader(current) {
     <nav class="nav" aria-label="Разделы">${links.map(([href, label, id]) => `<a href="${href}"${id === current ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
   </div>`;
   document.body.prepend(header);
+  // для клавиатуры и экранных чтецов: сразу к содержимому, минуя меню
+  document.getElementById('app')?.setAttribute('tabindex', '-1');
+  if (!document.querySelector('.skip-link')) {
+    const skip = document.createElement('a');
+    skip.className = 'skip-link';
+    skip.href = '#app';
+    skip.textContent = 'Перейти к содержимому';
+    // адрес не меняем: во фрагменте живут #order=…, #bar и #invite=…
+    skip.addEventListener('click', (e) => {
+      e.preventDefault();
+      const app = document.getElementById('app');
+      app?.focus({ preventScroll: true });
+      app?.scrollIntoView();
+    });
+    document.body.prepend(skip);
+  }
 }
 
 // Данные заведения для подвала. Пустые поля на сайте не показываются.

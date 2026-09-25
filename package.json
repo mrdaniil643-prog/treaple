@@ -11,6 +11,7 @@
     "start": "node --no-warnings server/index.js --prod",
     "dev": "node --no-warnings --watch server/index.js",
     "demo": "node --no-warnings server/index.js",
-    "test": "node --no-warnings --test test/*.test.js"
+    "test": "node --no-warnings --test test/*.test.js",
+    "lint": "node scripts/check-syntax.mjs"
   }
 }

@@ -1,5 +1,6 @@
 import { api, esc, fmt, money, seatsWord, renderHeader, toast, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';
 import { mountHall } from './hallmap.js';
+import { occupancyChart, salesChart, entryMeter } from './charts.js';
 
 renderHeader('');
 const app = $('#app');
@@ -55,7 +56,12 @@ async function start() {
         <div id="scan-result" aria-live="assertive"></div>
       </div>
       <div class="card"><h3>Продажи</h3><div class="stats" id="stats"></div>
+        <div id="entry-meter"></div>
         <div class="row" id="sale-controls"></div></div>
+    </div>
+    <div class="admin-grid" style="margin-top:20px">
+      <div class="card"><h3>Заполненность залов</h3><div id="occupancy"></div></div>
+      <div class="card"><h3>Продано мест по дням</h3><div id="sales-chart"></div></div>
     </div>
     <div class="card" style="margin-top:20px">
       <div class="row" style="justify-content:space-between;align-items:center"><h3>Контролёры</h3>
@@ -140,6 +146,8 @@ async function loadReport() {
   }));
 
   const halls = config.halls.filter((h) => e.halls.includes(h.id));
+  eventHalls = halls;
+  drawCharts();
   $('#admin-halls').innerHTML = halls.map((h, i) => `<button data-h="${h.id}" aria-selected="${i === 0}">${esc(h.title)}</button>`).join('');
   const show = (id) => {
     const hall = config.halls.find((h) => h.id === id);
@@ -160,10 +168,18 @@ async function loadReport() {
     t = setTimeout(async () => {
       report = await adm(`/api/admin/events/${currentId}/report`).catch(() => report);
       drawOrders();
+      drawCharts();
       const s2 = report.stats;
       $('#stats').querySelectorAll('b').forEach((b, i) => { b.textContent = [s2.seatsSold, s2.checkedIn, s2.seatsHeld, money(s2.revenue)][i]; });
     }, 400);
   };
+}
+
+let eventHalls = [];
+function drawCharts() {
+  occupancyChart($('#occupancy'), eventHalls, report.availability.tables);
+  salesChart($('#sales-chart'), report.orders);
+  entryMeter($('#entry-meter'), report.stats.checkedIn, report.stats.seatsSold);
 }
 
 function drawOrders() {
