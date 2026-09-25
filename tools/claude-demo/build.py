@@ -72,7 +72,7 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['hallmap.js', 'menu-data.js']:
+for f in ['hallmap.js', 'seat-layout.js', 'menu-data.js']:
     write(f, read(f))
 
 s = read('ticket-card.js')

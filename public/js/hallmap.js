@@ -1,35 +1,16 @@
 import { esc, money, seatsWord } from './common.js';
-
-const NS = 'http://www.w3.org/2000/svg';
-
-function seatPositions(t) {
-  const horizontal = t.w >= t.h;
-  const a = Math.ceil(t.seats / 2), b = t.seats - a;
-  const off = 9;
-  const out = [];
-  const along = (count, fixed, start, len, isX) => {
-    for (let i = 0; i < count; i++) {
-      const p = start + (len * (i + 1)) / (count + 1);
-      out.push(isX ? [p, fixed] : [fixed, p]);
-    }
-  };
-  if (horizontal) {
-    along(a, t.y - off, t.x, t.w, true);
-    along(b, t.y + t.h + off, t.x, t.w, true);
-  } else {
-    along(a, t.x - off, t.y, t.h, false);
-    along(b, t.x + t.w + off, t.y, t.h, false);
-  }
-  return out;
-}
+import { layoutHall, seatBox, CHAIR_R } from './seat-layout.js';
 
 // При повороте схемы подписи поворачиваем обратно, чтобы они читались.
 let upright = () => '';
 
-// Стол на телефоне мельче пальца: расширяем зону нажатия на сторону, где стоят места.
-function hitArea(t) {
-  const [dx, dy] = t.w >= t.h ? [4, 14] : [18, 4];
-  return `<rect class="hit" x="${t.x - dx}" y="${t.y - dy}" width="${t.w + dx * 2}" height="${t.h + dy * 2}"/>`;
+// Стол на телефоне мельче пальца: зона нажатия охватывает стол вместе с его местами.
+function hitArea(t, seats) {
+  let x0 = t.x, y0 = t.y, x1 = t.x + t.w, y1 = t.y + t.h;
+  for (const b of seats.map(seatBox)) {
+    x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h);
+  }
+  return `<rect class="hit" x="${x0 - 2}" y="${y0 - 2}" width="${x1 - x0 + 4}" height="${y1 - y0 + 4}"/>`;
 }
 
 function decorEl(d) {
@@ -45,6 +26,7 @@ function decorEl(d) {
 export function mountHall(container, hall, { onPick, readonly = false, rotate = false } = {}) {
   const [vx, vy, vw, vh] = hall.viewBox;
   upright = rotate ? (x, y) => ` transform="rotate(90 ${x} ${y})"` : () => '';
+  const layout = layoutHall(hall);
   const box = rotate ? [vy, -(vx + vw), vh, vw] : [vx, vy, vw, vh];
   container.innerHTML = `<svg class="hall-svg${readonly ? ' readonly' : ''}${rotate ? ' rotated' : ''}" viewBox="${box.join(' ')}" role="group" aria-label="Схема: ${esc(hall.title)}">
     <defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(90)">
@@ -52,9 +34,11 @@ export function mountHall(container, hall, { onPick, readonly = false, rotate = 
     <g${rotate ? ' transform="rotate(-90)"' : ''}>
     ${hall.decor.map(decorEl).join('')}
     ${hall.tables.map((t) => {
-      const seats = seatPositions(t).map(([x, y]) => `<circle class="seat" cx="${x}" cy="${y}" r="5"/>`).join('');
+      const seats = layout.get(t.id).map((s) => (s.kind === 'chair'
+        ? `<circle class="seat" cx="${s.cx}" cy="${s.cy}" r="${CHAIR_R}"/>`
+        : `<rect class="seat cushion" x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="3"/>`)).join('');
       return `<g class="tbl" data-id="${t.id}" ${readonly ? '' : 'tabindex="0" role="button"'}>
-        ${hitArea(t)}${seats}<rect class="top" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="5"/>
+        ${hitArea(t, layout.get(t.id))}${seats}<rect class="top" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="5"/>
         <text x="${t.x + t.w / 2}" y="${t.y + t.h / 2}"${upright(t.x + t.w / 2, t.y + t.h / 2)}>${t.n}</text></g>`;
     }).join('')}
     </g>

@@ -290,6 +290,7 @@ textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
 .tbl rect.top { fill: var(--cream); stroke: var(--cream); stroke-width: 0; transition: fill .3s, transform .3s var(--ease), stroke-width .2s; transform-box: fill-box; transform-origin: center; }
 .tbl text { fill: var(--night-2); font: 800 15px var(--f-display); text-anchor: middle; dominant-baseline: central; pointer-events: none; transition: fill .3s; }
 .tbl .seat { fill: transparent; stroke: rgba(251, 229, 181, .55); stroke-width: 1.5; transition: fill .25s, stroke .25s, r .25s; }
+.tbl .seat.cushion { fill: rgba(251, 229, 181, .06); }
 .tbl .seat.taken { fill: #56637a; stroke: #56637a; }
 .tbl .seat.held { fill: none; stroke: #8b98ad; stroke-dasharray: 2 2; }
 .tbl .seat.mine { fill: var(--orange); stroke: var(--orange); }
