@@ -39,8 +39,9 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     ticketByCode: db.prepare('SELECT * FROM tickets WHERE code = ?'),
     insOrder: db.prepare(`INSERT INTO orders (code, secret, event_id, status, total, created_at, expires_at)
       VALUES (?, ?, ?, 'held', ?, ?, ?)`),
-    insTicket: db.prepare(`INSERT INTO tickets (code, order_id, event_id, table_id, seat_no, price, whole_table, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'held')`),
+    insTicket: db.prepare(`INSERT INTO tickets (code, order_id, event_id, table_id, seat_no, price, whole_table, status, gate_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'held', ?)`),
+    ticketByGate: db.prepare('SELECT * FROM tickets WHERE gate_id = ?'),
     log: db.prepare('INSERT INTO ticket_log (ticket_id, order_id, action, at, note) VALUES (?, ?, ?, ?, ?)'),
     expired: db.prepare("SELECT id, event_id FROM orders WHERE status = 'held' AND expires_at <= ?"),
     setOrderStatus: db.prepare('UPDATE orders SET status = ?, cancelled_at = ? WHERE id = ?'),
@@ -74,9 +75,10 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return Math.ceil(((windowAt(ms) + 1) * QR_WINDOW_SECONDS * 1000 - ms) / 1000);
   };
 
-  function qrToken(ticketCode) {
+  // В QR — номер для входа и подпись на текущие 30 секунд. Код билета в QR не попадает.
+  function qrToken(t) {
     const w = windowAt(now().getTime());
-    return { token: `${ticketCode}.${sign(ticketCode, w)}`, pin: pinOf(ticketCode, w), validFor: validFor() };
+    return { token: `${t.gate_id}.${sign(t.gate_id, w)}`, pin: pinOf(t.code, w), validFor: validFor() };
   }
 
   function verifySig(ticketCode, sig) {
@@ -220,7 +222,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
         let seatNo = 1;
         for (let i = 0; i < seats; i++) {
           while (busy.has(seatNo)) seatNo++;
-          const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, table.id, seatNo, seatPrice(event, table), whole ? 1 : 0);
+          const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, table.id, seatNo, seatPrice(event, table), whole ? 1 : 0, randomBytes(9).toString('base64url'));
           log(Number(lastInsertRowid), Number(orderId), 'held');
           seatNo++;
         }
@@ -376,7 +378,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       if (!t || t.status === 'held' || t.status === 'released') continue;
       const cancelled = parseEvent(q.event.get(t.event_id)).status === 'cancelled';
       const status = cancelled && t.status === 'active' ? 'cancelled' : t.status;
-      const live = status === 'active' ? qrToken(t.code) : null;
+      const live = status === 'active' ? qrToken(t) : null;
       out[t.code] = { status, checkedInAt: t.checked_in_at, ...(live ? { qr: live.token, pin: live.pin } : {}) };
     }
     return { tickets: out, validFor: validFor(), window: QR_WINDOW_SECONDS };
@@ -387,8 +389,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   //  • код, набранный вручную: CODE — запасной путь, если у гостя сел телефон (решение контролёра).
   function parseGateInput(input) {
     const raw = String(input ?? '').trim().slice(0, 300);
-    const signed = raw.match(/(?:\/c\/)?([A-Za-z0-9]{8,20})\.([A-Za-z0-9_-]{12})(?:[?#].*)?$/);
-    if (signed) return { kind: 'qr', code: signed[1].toUpperCase(), sig: signed[2] };
+    const signed = raw.match(/(?:\/c\/)?([A-Za-z0-9_-]{12})\.([A-Za-z0-9_-]{12})(?:[?#].*)?$/);
+    if (signed) return { kind: 'qr', gate: signed[1], sig: signed[2] };
     const fromUrl = raw.match(/[?&]t=([A-Za-z0-9-]+)/);
     const clean = (fromUrl ? fromUrl[1] : raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
     if (clean.length === 6) return { kind: 'pin', pin: clean };
@@ -409,8 +411,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   // Что видит контролёр: только место и имя гостя, без номера заказа и контактов.
   function gateView(t) {
     const full = ticketView(t);
-    const { code, table, hall, seat, whole, status, guestName, checkedInAt, event } = full;
-    return { code, table, hall, seat, whole, status, guestName, checkedInAt, event: { title: event.title, startsAt: event.startsAt } };
+    const { table, hall, seat, whole, status, guestName, checkedInAt, event } = full;
+    return { ref: t.gate_id.slice(-4), table, hall, seat, whole, status, guestName, checkedInAt, event: { title: event.title, startsAt: event.startsAt } };
   }
 
   // Что может прийти на вход:
@@ -428,12 +430,14 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       if (requireSigned) throw new BookingError(404, 'Такого билета нет');
       t = findByPin(parsed.pin);
       if (!t) return { result: 'expired_qr' };
+    } else if (parsed.kind === 'qr') {
+      t = q.ticketByGate.get(parsed.gate) || null;
     } else {
       t = parsed.code ? q.ticketByCode.get(parsed.code) : null;
     }
     if (!t || t.status === 'held' || t.status === 'released') throw new BookingError(404, 'Такого билета нет');
     const fresh = () => view(q.ticketByCode.get(t.code));
-    if (parsed.kind === 'qr' && !verifySig(t.code, parsed.sig)) return { result: 'expired_qr', ticket: fresh() };
+    if (parsed.kind === 'qr' && !verifySig(t.gate_id, parsed.sig)) return { result: 'expired_qr', ticket: fresh() };
     if (parsed.kind === 'code' && (!isAdmin || requireSigned)) return { result: 'expired_qr', ticket: fresh() };
     if (eventId && t.event_id !== Number(eventId)) return { result: 'wrong_event', ticket: fresh() };
     const event = getEvent(t.event_id);

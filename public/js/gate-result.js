@@ -25,7 +25,7 @@ function detail(r) {
   return `<p class="gate-name">${esc(t.guestName || 'Гость')}</p>
     <p class="gate-place">${place}</p>
     ${hints[r.result] ? `<p class="gate-hint">${hints[r.result]}</p>` : `<p class="gate-hint">${esc(t.event.title)}</p>`}
-    <p class="gate-code">Билет …${esc(t.code.slice(-4))}</p>`;
+    <p class="gate-code">Билет …${esc(t.ref || t.code?.slice(-4) || '')}</p>`;
 }
 
 let audio;

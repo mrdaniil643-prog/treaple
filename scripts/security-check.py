@@ -127,12 +127,16 @@ line = next(l for l in live.iter_lines() if l.startswith(b'data:'))
 live.close()
 tok = json.loads(line[5:])['tickets'][code]['qr']
 check('Гашение: полный код билета контролёру не годится', post('/api/staff/checkin', {'code': code}, SC).json()['result'] == 'expired_qr')
-check('Гашение: подделанная подпись', post('/api/staff/checkin', {'code': code + '.' + 'A' * 12, 'source': 'scan'}, SC).json()['result'] == 'expired_qr')
+gate = tok.split('.')[0]
+check('QR не содержит код билета', code not in tok)
+check('По номеру из QR нельзя получить новые QR', requests.get(f'{B}/api/tickets/live?codes={gate}', timeout=5).status_code in (400, 404))
+check('По номеру из QR не открывается билет', requests.get(f'{B}/api/tickets/{gate}').status_code == 404)
+check('Гашение: подделанная подпись', post('/api/staff/checkin', {'code': gate + '.' + 'A' * 12, 'source': 'scan'}, SC).json()['result'] == 'expired_qr')
 with cf.ThreadPoolExecutor(20) as ex:
     res = list(ex.map(lambda _: post('/api/staff/checkin', {'code': tok, 'source': 'scan'}, SC).json()['result'], range(20)))
 check('Гашение: 20 одновременных сканов → ровно один проход', res.count('ok') == 1 and res.count('already_used') == 19, str({k: res.count(k) for k in set(res)}))
-g = post('/api/staff/checkin', {'code': o1['tickets'][0]['code'] + '.' + 'A' * 12, 'source': 'scan'}, SC).json()
-check('Гашение: ответ контролёру без номера заказа', 'order' not in g.get('ticket', {}))
+g = post('/api/staff/checkin', {'code': tok, 'source': 'scan'}, SC).json()
+check('Гашение: ответ контролёру без номера заказа и кода билета', 'ticket' in g and 'order' not in g['ticket'] and 'code' not in g['ticket'])
 
 post('/api/staff/logout', {}, SC)
 check('A07 после выхода cookie контролёра недействительна', requests.get(B + '/api/staff/me', headers=SC).status_code == 401)

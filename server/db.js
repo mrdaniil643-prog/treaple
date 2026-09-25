@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import { randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -87,11 +88,23 @@ CREATE TABLE IF NOT EXISTS ticket_log (
 );
 `;
 
+// Номер для входа (gate_id): его несёт QR. Он отделён от кода билета, иначе по фото
+// чужого QR можно было бы получать свежие QR и войти раньше владельца.
+function migrate(db) {
+  const cols = db.prepare('PRAGMA table_info(tickets)').all().map((c) => c.name);
+  if (!cols.includes('gate_id')) db.exec('ALTER TABLE tickets ADD COLUMN gate_id TEXT');
+  const missing = db.prepare('SELECT id FROM tickets WHERE gate_id IS NULL').all();
+  const set = db.prepare('UPDATE tickets SET gate_id = ? WHERE id = ?');
+  for (const { id } of missing) set.run(randomBytes(9).toString('base64url'), id);
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tickets_gate_id ON tickets(gate_id)');
+}
+
 export function openDb(file) {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

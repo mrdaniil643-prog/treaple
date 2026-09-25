@@ -126,7 +126,8 @@ test('живой QR гасит билет один раз, а скриншот �
   const old = booking.liveTickets([b]).tickets[b].qr;
   tick((QR_WINDOW_SECONDS * 2 + 1) / 60);
   assert.equal(booking.checkIn(old, { requireSigned: true }).result, 'expired_qr');
-  assert.equal(booking.checkIn(`${b}.${'A'.repeat(12)}`, {}).result, 'expired_qr', 'подделанная подпись');
+  const gateB = booking.liveTickets([b]).tickets[b].qr.split('.')[0];
+  assert.equal(booking.checkIn(`${gateB}.${'A'.repeat(12)}`, {}).result, 'expired_qr', 'подделанная подпись');
   assert.equal(booking.checkIn(b, { requireSigned: true }).result, 'expired_qr', 'со сканера нужен живой QR');
   assert.equal(booking.checkIn(b, { by: 'staff:1' }).result, 'expired_qr', 'полный код билета контролёру не годится');
   const pin = booking.liveTickets([b]).tickets[b].pin;
@@ -197,4 +198,19 @@ test('время открытия дверей проверяется', () => {
   assert.throws(() => booking.createEvent({ ...base, doorsAt: 'завтра' }), (e) => e.status === 400);
   assert.throws(() => booking.createEvent({ ...base, doorsAt: '2026-10-10T22:00' }), (e) => e.status === 400);
   assert.equal(booking.createEvent(base).title, 'Вечер');
+});
+
+test('по фото QR нельзя получить новые QR: в QR нет кода билета', () => {
+  const { booking, event, tick } = setup();
+  tick(6 * 60);
+  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K24', seats: 1 }]).secret, guest);
+  const code = paid.tickets[0].code;
+  const qr = booking.liveTickets([code]).tickets[code].qr;
+  const gate = qr.split('.')[0];
+  assert.ok(!qr.includes(code), 'QR не содержит код билета');
+  assert.deepEqual(booking.liveTickets([gate]).tickets, {}, 'номер из QR не выдаёт живые QR');
+  assert.throws(() => booking.getTicket(gate), (e) => e.status === 404, 'номер из QR не открывает билет');
+  const r = booking.checkIn(qr, { by: 'staff:1', requireSigned: true });
+  assert.equal(r.result, 'ok');
+  assert.equal(r.ticket.code, undefined, 'контролёру не отдаём код билета');
 });

@@ -286,9 +286,11 @@ async function liveTickets(codes) {
     if (!t || t.status === 'held' || t.status === 'released') continue;
     const entry = { status: t.status, checkedInAt: t.checked_in_at || null };
     if (t.status === 'active') {
-      const b = await digest(`${c}:${w}`);
-      entry.qr = `${c}.${b.slice(0, 9).map((x) => ALPHABET[x % 32]).join('')}`;
-      entry.pin = b.slice(9, 15).map((x) => ALPHABET[x % 32]).join('');
+      // как на сайте: в QR номер для входа, а не код билета
+      const gate = (await digest(`gate:${c}`)).slice(0, 12).map((x) => ALPHABET[x % 32]).join('');
+      const b = await digest(`${gate}:${w}`);
+      entry.qr = `${gate}.${b.slice(0, 12).map((x) => ALPHABET[x % 32]).join('')}`;
+      entry.pin = b.slice(12, 18).map((x) => ALPHABET[x % 32]).join('');
     }
     out[c] = entry;
   }
