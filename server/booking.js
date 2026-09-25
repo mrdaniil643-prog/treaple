@@ -395,7 +395,10 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       const cancelled = parseEvent(q.event.get(t.event_id)).status === 'cancelled';
       const status = cancelled && t.status === 'active' ? 'cancelled' : t.status;
       const live = status === 'active' ? qrToken(t) : null;
-      out[t.code] = { status, checkedInAt: t.checked_in_at, ...(live ? { qr: live.token, pin: live.pin } : {}) };
+      // место и имя тоже: администратор мог пересадить гостя, экран билета обновится сам
+      const table = findTable(t.table_id);
+      const place = { hall: HALLS.find((h) => h.id === table.hallId).title, table: table.n, seat: t.seat_no, whole: Boolean(t.whole_table), guestName: t.guest_name };
+      out[t.code] = { status, checkedInAt: t.checked_in_at, ...place, ...(live ? { qr: live.token, pin: live.pin } : {}) };
     }
     return { tickets: out, validFor: validFor(), window: QR_WINDOW_SECONDS };
   }
@@ -502,6 +505,80 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return refund(o, 'admin');
   }
 
+  // ---- Правка билета и заказа из админки ----
+  // Меняются: имя гостя, стол и место, цена, статус (действует / прошёл / аннулирован),
+  // номер для входа (новый QR: старые живой QR и PDF перестают пускать).
+  const TICKET_STATUSES = ['active', 'used', 'cancelled'];
+  function adminEditTicket(ticketCode, patch = {}) {
+    const t = q.ticketByCode.get(String(ticketCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20));
+    if (!t || t.status === 'held' || t.status === 'released') throw new BookingError(404, 'Билет не найден');
+    const o = db.prepare('SELECT * FROM orders WHERE id = ?').get(t.order_id);
+    if (o.status !== 'paid') throw new BookingError(409, 'Править можно билеты только оплаченного заказа');
+    const event = getEvent(t.event_id);
+    const changes = [];
+    tx(db, () => {
+      let status = t.status;
+      if (patch.status !== undefined && patch.status !== t.status) {
+        if (!TICKET_STATUSES.includes(patch.status)) throw new BookingError(400, 'Неизвестный статус билета');
+        status = patch.status;
+      }
+      // стол и место: проверяем, что место есть в зале события и свободно
+      let tableId = t.table_id, seat = t.seat_no, whole = t.whole_table;
+      if (patch.tableId !== undefined || patch.seat !== undefined) {
+        const table = findTable(typeof patch.tableId === 'string' ? patch.tableId : t.table_id);
+        if (!table || !event.halls.includes(table.hallId)) throw new BookingError(400, 'Этого стола нет на событии');
+        const s = Math.floor(Number(patch.seat ?? t.seat_no));
+        if (!(s >= 1 && s <= table.seats)) throw new BookingError(400, `За столом ${table.n} места с 1 по ${table.seats}`);
+        if (table.id !== t.table_id) whole = 0;
+        tableId = table.id; seat = s;
+      }
+      if (status !== 'cancelled' && (tableId !== t.table_id || seat !== t.seat_no || t.status === 'cancelled')) {
+        const busy = db.prepare("SELECT 1 FROM tickets WHERE event_id = ? AND table_id = ? AND seat_no = ? AND status IN ('held', 'active', 'used') AND id != ?")
+          .get(t.event_id, tableId, seat, t.id);
+        if (busy) throw new BookingError(409, `Место ${seat} за столом ${findTable(tableId).n} уже занято`);
+      }
+      let price = t.price;
+      if (patch.price !== undefined) {
+        price = Math.round(Number(patch.price));
+        if (!(price >= 0 && price <= 1e6)) throw new BookingError(400, 'Проверьте цену');
+      }
+      const guest = patch.guestName !== undefined ? cleanText(patch.guestName, 80) || o.name : t.guest_name;
+      const checkedInAt = status === 'used' ? t.checked_in_at || iso() : null;
+      const gate = patch.newQr ? randomBytes(9).toString('base64url') : t.gate_id;
+
+      if (tableId !== t.table_id || seat !== t.seat_no) changes.push(`место ${findTable(t.table_id).n}/${t.seat_no} → ${findTable(tableId).n}/${seat}`);
+      if (status !== t.status) changes.push(`статус ${t.status} → ${status}`);
+      if (price !== t.price) changes.push(`цена ${t.price} → ${price}`);
+      if (guest !== t.guest_name) changes.push('имя гостя');
+      if (gate !== t.gate_id) changes.push('новый QR');
+      if (!changes.length) return;
+      db.prepare(`UPDATE tickets SET table_id = ?, seat_no = ?, whole_table = ?, price = ?, status = ?, guest_name = ?, checked_in_at = ?, gate_id = ?
+        WHERE id = ?`).run(tableId, seat, whole, price, status, guest, checkedInAt, gate, t.id);
+      // сумма заказа — по билетам, которые не аннулированы
+      db.prepare("UPDATE orders SET total = (SELECT COALESCE(SUM(price), 0) FROM tickets WHERE order_id = ? AND status IN ('active', 'used')) WHERE id = ?").run(o.id, o.id);
+      log(t.id, o.id, 'admin_edit', changes.join('; '));
+    });
+    if (changes.length) {
+      onChange(t.event_id);
+      onTickets([t.code]);
+    }
+    return ticketView(q.ticketByCode.get(t.code));
+  }
+
+  function adminEditOrder(orderCode, patch = {}) {
+    const o = q.orderByCode.get(String(orderCode ?? '').trim().toUpperCase());
+    if (!o) throw new BookingError(404, 'Заказ не найден');
+    const name = patch.name !== undefined ? cleanText(patch.name, 80) : o.name;
+    const phone = patch.phone !== undefined ? normalizePhone(patch.phone) : o.phone;
+    const email = patch.email !== undefined ? cleanText(patch.email, 120) || null : o.email;
+    if (!name || name.length < 2) throw new BookingError(400, 'Укажите имя');
+    if (phone?.length !== 10) throw new BookingError(400, 'Укажите телефон в формате +7 900 000-00-00');
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BookingError(400, 'Проверьте адрес почты');
+    db.prepare('UPDATE orders SET name = ?, phone = ?, email = ? WHERE id = ?').run(name, phone, email, o.id);
+    log(null, o.id, 'admin_edit', 'контакты');
+    return orderView(q.orderByCode.get(o.code));
+  }
+
   function createEvent(data) {
     const title = cleanText(data.title, 120);
     const startsAt = new Date(data.startsAt);
@@ -532,7 +609,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder,
-    cancelByGuest, renameGuest, getTicket, printQr, checkIn, liveTickets, qrToken, eventReport, adminRefund, createEvent, setEventStatus,
+    cancelByGuest, renameGuest, getTicket, printQr, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };
 }

@@ -176,6 +176,8 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
   return { ok: true };
 }, { staff: true });
 route('POST', '/api/admin/orders/:code/refund', ({ code }) => booking.adminRefund(code), { admin: true });
+route('POST', '/api/admin/orders/:code', ({ code }, body) => booking.adminEditOrder(code, body), { admin: true });
+route('POST', '/api/admin/tickets/:code', ({ code }, body) => booking.adminEditTicket(code, body), { admin: true });
 
 function openStream(req, res, eventId, ip) {
   const id = Number(eventId);

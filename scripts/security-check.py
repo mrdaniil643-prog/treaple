@@ -42,6 +42,8 @@ check('A01 чужой заказ с чужим телефоном не откр�
 check('A01 угаданный секрет не открывает заказ', requests.get(f"{B}/api/orders/{'A' * 24}").status_code == 404)
 r = post(f"/api/orders/{o2['secret']}/guest", {'ticket': o1['tickets'][0]['code'], 'name': 'Взлом'})
 check('A01 нельзя переименовать билет из чужого заказа', r.status_code == 404, r.text)
+check('A01 без пароля админки билет не править', post(f"/api/admin/tickets/{o1['tickets'][0]['code']}", {'guestName': 'Взлом', 'price': 0}).status_code == 401)
+check('A01 без пароля админки контакты заказа не править', post(f"/api/admin/orders/{o1['code']}", {'phone': '9000000000'}).status_code == 401)
 t = requests.get(f"{B}/api/tickets/{o1['tickets'][0]['code']}").json()
 check('A01 публичный билет без номера заказа/контактов/секрета', not any(k in json.dumps(t, ensure_ascii=False) for k in [o1['code'], o1['secret'], '9111111111']))
 for p in ['/api/admin/events', f'/api/admin/events/{EID}/report', '/api/admin/staff']:

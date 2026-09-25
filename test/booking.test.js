@@ -258,3 +258,35 @@ test('QR из PDF пускает один раз и не открывает би
   assert.notEqual(booking.checkIn(printed, { by: 'staff:1', requireSigned: true }).result, 'ok');
   assert.ok(b);
 });
+
+test('админ правит билет: место, цена, статус, имя, новый QR', () => {
+  const { booking, event, tick } = setup();
+  tick(6 * 60);
+  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K24', seats: 2 }]).secret, guest);
+  const [a, b] = paid.tickets.map((t) => t.code);
+  // пересадка на свободное место и на занятое
+  let t = booking.adminEditTicket(a, { tableId: 'K25', seat: 3, guestName: 'Вера', price: 1500 });
+  assert.equal(t.table, '25'); assert.equal(t.seat, 3); assert.equal(t.guestName, 'Вера'); assert.equal(t.price, 1500);
+  assert.equal(booking.availability(event.id).tables.K24.sold, 1, 'старое место освободилось');
+  assert.throws(() => booking.adminEditTicket(b, { tableId: 'K25', seat: 3 }), (e) => e.status === 409);
+  assert.throws(() => booking.adminEditTicket(b, { tableId: 'K25', seat: 9 }), (e) => e.status === 400);
+  assert.equal(booking.getOrder({ secret: paid.secret }).total, 1500 + paid.tickets[1].price, 'сумма заказа пересчитана');
+  // отметить проход и отменить отметку
+  assert.equal(booking.adminEditTicket(b, { status: 'used' }).status, 'used');
+  const back = booking.adminEditTicket(b, { status: 'active' });
+  assert.equal(back.status, 'active'); assert.equal(back.checkedInAt, null);
+  // новый QR: старый перестаёт пускать
+  const oldQr = booking.printQr(b).qr;
+  booking.adminEditTicket(b, { newQr: true });
+  assert.throws(() => booking.checkIn(oldQr, { by: 'staff:1', requireSigned: true }), (e) => e.status === 404, 'старый QR больше не пускает');
+  assert.equal(booking.checkIn(booking.printQr(b).qr, { by: 'staff:1', requireSigned: true }).result, 'ok');
+  // аннулировать: место освобождается, сумма уменьшается
+  booking.adminEditTicket(a, { status: 'cancelled' });
+  assert.equal(booking.availability(event.id).tables.K25.sold, 0);
+  assert.equal(booking.getOrder({ secret: paid.secret }).total, paid.tickets[1].price);
+  assert.throws(() => booking.adminEditTicket(a, { status: 'lost' }), (e) => e.status === 400);
+  // контакты заказа
+  const o = booking.adminEditOrder(paid.code, { name: 'Анна Петрова', phone: '8 (900) 111-22-33', email: 'a@b.ru' });
+  assert.equal(o.name, 'Анна Петрова'); assert.equal(o.phone, '9001112233');
+  assert.throws(() => booking.adminEditOrder(paid.code, { phone: '123' }), (e) => e.status === 400);
+});

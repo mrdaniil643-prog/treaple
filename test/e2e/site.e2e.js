@@ -135,6 +135,21 @@ test('PDF-билет скачивается, его QR пускает один �
   assert.match(await staff.textContent('h1'), /Уже прошёл/);
 });
 
+test('админ меняет имя гостя, экран билета обновляется сам', async () => {
+  const admin = await page();
+  admin.on('dialog', (d) => d.accept());
+  await admin.goto(`${B}/admin`);
+  await admin.fill('[name=p]', TOKEN);
+  await admin.click('#login button');
+  await admin.click('[data-edit]');
+  const form = admin.locator(`.edit-ticket[data-code="${ticketCode}"]`);
+  await form.locator('[name=guestName]').fill('Вера Смирнова');
+  await form.locator('button').click();
+  await admin.waitForSelector('.toast');
+  assert.equal((await admin.textContent('.toast')).trim(), 'Билет сохранён');
+  await guest.waitForFunction((c) => document.querySelector(`.ticket[data-code="${c}"] .t-guest span`)?.textContent === 'Вера Смирнова', ticketCode, { timeout: 5000 });
+});
+
 // Мобильная вёрстка: нет горизонтальной прокрутки, зоны нажатия не меньше 44 px, поля не мельче 16 px
 async function mobileProblems(p) {
   return p.evaluate(() => {

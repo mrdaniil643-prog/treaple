@@ -195,7 +195,7 @@ function drawOrders() {
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
         <td>${places}<br><span class="muted">${seatsWord(o.tickets.length)}</span></td>
         <td>${money(o.total)}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
-        <td>${o.status === 'paid' ? `${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
+        <td>${o.status === 'paid' ? `<button class="link-btn" data-edit="${esc(o.code)}">Изменить</button><br>${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
   // Запасной путь, если у гостя сел телефон: находим заказ по имени и впускаем по одному.
   $$('[data-admit]').forEach((b) => b.addEventListener('click', async () => {
@@ -203,6 +203,7 @@ function drawOrders() {
     await checkIn(b.dataset.admit);
     loadReport();
   }));
+  $$('[data-edit]').forEach((b) => b.addEventListener('click', () => openEditor(b.dataset.edit)));
   $$('[data-refund]').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm(`Оформить возврат по заказу ${b.dataset.refund}? Все билеты заказа перестанут действовать, места освободятся.`)) return;
     try {
@@ -211,6 +212,98 @@ function drawOrders() {
       loadReport();
     } catch (err) { toast(err.message, { error: true }); }
   }));
+}
+
+// ---- Правка заказа и билетов ----
+const EDIT_STATUS = [['active', 'Действует'], ['used', 'Прошёл'], ['cancelled', 'Аннулирован']];
+let editing = null; // номер заказа в окне правки
+
+function editorDialog() {
+  let dlg = $('#edit-dlg');
+  if (dlg) return dlg;
+  dlg = document.createElement('dialog');
+  dlg.id = 'edit-dlg';
+  dlg.setAttribute('aria-labelledby', 'edit-title');
+  document.body.append(dlg);
+  dlg.addEventListener('close', () => { editing = null; });
+  return dlg;
+}
+
+function tableOptions(current) {
+  return eventHalls.map((h) => `<optgroup label="${esc(h.title)}">${h.tables.map((t) => `<option value="${t.id}" data-seats="${t.seats}" ${t.id === current ? 'selected' : ''}>Стол ${esc(t.n)}, мест ${t.seats}${t.wholeOnly ? ', только целиком' : ''}</option>`).join('')}</optgroup>`).join('');
+}
+
+const seatOptions = (count, current) => Array.from({ length: count }, (_, i) => `<option ${i + 1 === current ? 'selected' : ''}>${i + 1}</option>`).join('');
+
+function renderEditor() {
+  const o = report.orders.find((x) => x.code === editing);
+  const dlg = editorDialog();
+  if (!o) { dlg.close(); return; }
+  const tickets = o.tickets.filter((t) => t.status !== 'held' && t.status !== 'released');
+  dlg.innerHTML = `<div class="dlg-head"><h2 id="edit-title">Заказ <span style="white-space:nowrap">${esc(o.code)}</span></h2>
+      <button class="icon-close" data-close aria-label="Закрыть">×</button></div>
+    <div class="dlg-body">
+      <form id="edit-order" class="edit-block">
+        <h3>Покупатель</h3>
+        <label class="field"><span>Имя</span><input class="input" name="name" value="${esc(o.name || '')}" required maxlength="80" autocomplete="off"></label>
+        <div class="row">
+          <label class="field"><span>Телефон</span><input class="input" name="phone" type="tel" inputmode="tel" value="${o.phone ? `+7 ${esc(o.phone)}` : ''}" required autocomplete="off"></label>
+          <label class="field"><span>Почта</span><input class="input" name="email" type="email" value="${esc(o.email || '')}" autocomplete="off"></label>
+        </div>
+        <button class="btn small">Сохранить покупателя</button>
+      </form>
+      ${tickets.map((t) => `<form class="edit-block edit-ticket" data-code="${t.code}">
+        <h3>Билет ${prettyCode(t.code)} <span class="status ${t.status}">${STATUS_TEXT[t.status]}</span></h3>
+        <label class="field"><span>Имя гостя</span><input class="input" name="guestName" value="${esc(t.guestName || '')}" maxlength="80" autocomplete="off"></label>
+        <div class="row">
+          <label class="field"><span>Стол</span><select class="input" name="tableId">${tableOptions(t.tableId)}</select></label>
+          <label class="field" style="flex:0 1 110px"><span>Место</span><select class="input" name="seat">${seatOptions(eventHalls.flatMap((h) => h.tables).find((x) => x.id === t.tableId)?.seats || t.seat, t.seat)}</select></label>
+        </div>
+        <div class="row">
+          <label class="field"><span>Цена, ₽</span><input class="input" name="price" type="number" inputmode="numeric" min="0" step="50" value="${t.price}"></label>
+          <label class="field"><span>Статус</span><select class="input" name="status">${EDIT_STATUS.map(([v, l]) => `<option value="${v}" ${v === t.status ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        </div>
+        <label class="check"><input type="checkbox" name="newQr"> Выдать новый QR: старый QR и PDF перестанут пускать</label>
+        <button class="btn small">Сохранить билет</button>
+      </form>`).join('')}
+    </div>`;
+  dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
+  // при смене стола — список мест этого стола
+  dlg.querySelectorAll('[name=tableId]').forEach((sel) => sel.addEventListener('change', () => {
+    const seats = Number(sel.selectedOptions[0].dataset.seats);
+    sel.form.seat.innerHTML = seatOptions(seats, 1);
+  }));
+  dlg.querySelector('#edit-order').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    await saveEdit(`/api/admin/orders/${encodeURIComponent(o.code)}`, { name: f.name.value, phone: f.phone.value, email: f.email.value }, 'Покупатель сохранён');
+  });
+  dlg.querySelectorAll('.edit-ticket').forEach((f) => f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const t = tickets.find((x) => x.code === f.dataset.code);
+    const body = {
+      guestName: f.guestName.value, tableId: f.tableId.value, seat: Number(f.seat.value),
+      price: Number(f.price.value), status: f.status.value, newQr: f.newQr.checked,
+    };
+    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm('Аннулировать билет? Место освободится, QR перестанет пускать. Деньги верните на кассе.')) return;
+    if (body.newQr && !confirm('Выдать новый QR? Гостю нужно открыть билет заново или скачать новый PDF.')) return;
+    await saveEdit(`/api/admin/tickets/${encodeURIComponent(t.code)}`, body, 'Билет сохранён');
+  }));
+}
+
+async function saveEdit(path, body, done) {
+  try {
+    await adm(path, { method: 'POST', body });
+    toast(done);
+    await loadReport();
+    renderEditor();
+  } catch (err) { toast(err.message, { error: true }); }
+}
+
+function openEditor(code) {
+  editing = code;
+  renderEditor();
+  editorDialog().showModal();
 }
 
 const RESULT = {

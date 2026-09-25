@@ -691,3 +691,12 @@ a, button, summary, label.check, .tbl, .event-row { touch-action: manipulation; 
 
 .sales-svg { max-width: 100%; }
 .chart-note { font-size: 13px; margin-top: 6px; }
+
+/* правка заказа в админке */
+.icon-close { width: 44px; height: 44px; display: grid; place-items: center; margin: -8px -8px -8px 0; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 28px; line-height: 1; cursor: pointer; }
+.icon-close:hover, .icon-close:active { background: rgba(255, 255, 255, .08); color: var(--text); }
+.edit-block { display: grid; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.edit-block:last-child { border-bottom: 0; padding-bottom: 0; }
+.edit-block h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 17px; }
+.edit-block .btn { justify-self: start; }
+.edit-block .check { font-weight: 500; font-size: 14px; }

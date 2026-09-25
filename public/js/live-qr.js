@@ -35,6 +35,14 @@ export function startLiveTickets(root) {
       if (!card) continue;
       const was = card.dataset.status;
       card.dataset.status = t.status;
+      if (t.table) {
+        const [hall, table, seat] = card.querySelectorAll('.t-place b');
+        hall.textContent = t.hall;
+        table.textContent = t.table;
+        seat.textContent = t.seat;
+        card.querySelector('.t-place small').textContent = t.whole ? 'Стол целиком' : 'Зал';
+        card.querySelector('.t-guest span').textContent = t.guestName || 'Гость';
+      }
       const pin = card.querySelector('.t-pin b');
       if (t.status === 'active' && t.qr) {
         card.querySelector('.qr').innerHTML = qrSvg(`${location.origin}/c/${t.qr}`);
