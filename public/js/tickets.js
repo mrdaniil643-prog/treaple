@@ -1,6 +1,7 @@
 import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, copyText, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
 import { ticketCard } from './ticket-card.js';
 import { startLiveTickets } from './live-qr.js';
+import { downloadTicketsPdf } from './ticket-pdf.js';
 
 let stopLive = () => {};
 
@@ -24,6 +25,7 @@ function renderOrder(o, { fresh = false } = {}) {
     ${fresh ? `<p style="margin-top:18px">Оплата прошла. Друзьям отправьте их билеты кнопкой «Отправить гостю». Запишите номер заказа <b>${esc(o.code)}</b>: по нему и телефону билеты найдутся на любом устройстве.</p>` : ''}
     <div class="ticket-grid">${o.tickets.map((t) => ticketCard(t, o.event)).join('')}</div>
     <div class="row" style="margin-top:24px">
+      ${active > 1 ? '<button class="btn ghost small" id="pdf-all">Скачать все билеты в PDF</button>' : ''}
       ${active ? '<button class="btn ghost small" id="share-all">Скопировать ссылки на все билеты</button>' : ''}
       ${o.canCancel ? '<button class="btn ghost small" id="cancel">Вернуть билеты</button>' : ''}
     </div>
@@ -36,6 +38,16 @@ function renderOrder(o, { fresh = false } = {}) {
   box.onclick = async (ev) => {
     const share = ev.target.closest('[data-share]')?.dataset.share;
     const rename = ev.target.closest('[data-rename]')?.dataset.rename;
+    const pdf = ev.target.closest('[data-pdf]')?.dataset.pdf;
+    if (pdf || ev.target.id === 'pdf-all') {
+      const btn = ev.target.closest('button');
+      btn.disabled = true;
+      try {
+        await downloadTicketsPdf(pdf ? o.tickets.filter((t) => t.code === pdf) : o.tickets, o.event);
+      } catch (err) { toast(err.message, { error: true }); }
+      btn.disabled = false;
+      return;
+    }
     if (share) {
       const t = o.tickets.find((x) => x.code === share);
       const url = ticketUrl(share);

@@ -147,6 +147,7 @@ route('POST', '/api/orders/:secret/release', ({ secret }) => booking.release(sec
 route('POST', '/api/orders/:secret/cancel', ({ secret }) => booking.cancelByGuest(secret), { limit: 'order' });
 route('POST', '/api/orders/:secret/guest', ({ secret }, body) => booking.renameGuest(secret, body.ticket, body.name), { limit: 'order' });
 route('GET', '/api/tickets/:code', ({ code }) => booking.getTicket(code), { limit: 'ticket' });
+route('GET', '/api/tickets/:code/print', ({ code }) => booking.printQr(code), { limit: 'ticket' });
 
 route('GET', '/api/admin/events', () => booking.allEvents(), { admin: true });
 route('POST', '/api/admin/events', (_, body) => booking.createEvent(body), { admin: true });

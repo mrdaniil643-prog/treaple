@@ -28,6 +28,7 @@ export function ticketCard(t, event, { actions = true } = {}) {
         ${actions && t.status === 'active' ? `<div class="ticket-actions">
           <button data-share="${t.code}">Отправить гостю</button>
           <button data-rename="${t.code}">Изменить имя</button>
+          <button data-pdf="${t.code}">Скачать PDF</button>
         </div>` : ''}
       </div>
     </div>

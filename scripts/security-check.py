@@ -131,6 +131,7 @@ gate = tok.split('.')[0]
 check('QR не содержит код билета', code not in tok)
 check('По номеру из QR нельзя получить новые QR', requests.get(f'{B}/api/tickets/live?codes={gate}', timeout=5).status_code in (400, 404))
 check('По номеру из QR не открывается билет', requests.get(f'{B}/api/tickets/{gate}').status_code == 404)
+check('По номеру из QR не выдаётся QR для PDF', requests.get(f'{B}/api/tickets/{gate}/print').status_code == 404)
 check('Гашение: подделанная подпись', post('/api/staff/checkin', {'code': gate + '.' + 'A' * 12, 'source': 'scan'}, SC).json()['result'] == 'expired_qr')
 with cf.ThreadPoolExecutor(20) as ex:
     res = list(ex.map(lambda _: post('/api/staff/checkin', {'code': tok, 'source': 'scan'}, SC).json()['result'], range(20)))

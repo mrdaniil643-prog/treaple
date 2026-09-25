@@ -283,6 +283,17 @@ async function liveTickets(codes) {
   return { tickets: out, validFor, window: QR_WINDOW };
 }
 
+// QR для PDF: постоянный, как на сайте (в демо проверки на входе нет)
+async function printQr(code) {
+  sweep();
+  const t = memory.tickets[String(code).toUpperCase()];
+  if (!t || t.status === 'held' || t.status === 'released') throw new DemoError(404, 'Билет не найден на этом устройстве');
+  if (t.status !== 'active') throw new DemoError(409, 'Билет уже не действует');
+  const gate = (await digest(`gate:${t.code}`)).slice(0, 12).map((x) => ALPHABET[x % 32]).join('');
+  const sig = (await digest(`${gate}:print`)).slice(0, 12).map((x) => ALPHABET[x % 32]).join('');
+  return { qr: `${gate}.${sig}` };
+}
+
 export function watchAvailability(eventId, cb) {
   const push = () => cb(availability(eventId));
   listeners.add(push);
@@ -317,6 +328,7 @@ export async function handle(path, { method = 'GET', body = {} } = {}) {
   if ((m = p.match(/^\/api\/orders\/([^/]+)\/cancel$/))) return cancel(decodeURIComponent(m[1]));
   if ((m = p.match(/^\/api\/orders\/([^/]+)\/guest$/))) return rename(decodeURIComponent(m[1]), body.ticket, body.name);
   if ((m = p.match(/^\/api\/orders\/([^/]+)$/))) return orderView(findOrder(decodeURIComponent(m[1])));
+  if ((m = p.match(/^\/api\/tickets\/([^/]+)\/print$/))) return printQr(decodeURIComponent(m[1]));
   if ((m = p.match(/^\/api\/tickets\/([^/]+)$/))) return getTicket(decodeURIComponent(m[1]));
   throw new DemoError(404, 'Не найдено');
 }

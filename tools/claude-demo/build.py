@@ -72,7 +72,7 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['hallmap.js', 'seat-layout.js', 'menu-data.js']:
+for f in ['hallmap.js', 'seat-layout.js', 'ticket-pdf.js', 'menu-data.js']:
     write(f, read(f))
 
 s = read('ticket-card.js')
@@ -172,7 +172,7 @@ write('tickets.js', wrap(s))
 
 # ---------- ticket.js ----------
 s = read('ticket.js')
-s = rep(s, "import { api, esc, fmt, renderHeader, renderFooter, $ } from './common.js';", "import { api, esc, fmt, renderHeader, renderFooter, onLeave, $ } from './common.js';", 'ticket')
+s = rep(s, "import { api, esc, fmt, renderHeader, renderFooter, toast, $ } from './common.js';", "import { api, esc, fmt, renderHeader, renderFooter, toast, onLeave, $ } from './common.js';", 'ticket')
 s = rep(s, "const code = new URLSearchParams(location.search).get('t') || '';", "const code = route.code || '';", 'ticket')
 s = rep(s, "    startLiveTickets(app);", "    onLeave(startLiveTickets(app));", 'ticket')
 write('ticket.js', wrap(s))

@@ -236,3 +236,25 @@ test('понятные отказы: мест больше, чем за стол
   assert.throws(() => booking.cancelByGuest(paid.secret), (e) => e.status === 409 && /уже возвращён/.test(e.message));
   assert.equal(booking.release(vip.secret).status !== 'paid', true);
 });
+
+test('QR из PDF пускает один раз и не открывает билет', () => {
+  const { booking, event, tick } = setup();
+  tick(6 * 60);
+  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K24', seats: 2 }]).secret, guest);
+  const [a, b] = paid.tickets.map((t) => t.code);
+  const { qr } = booking.printQr(a);
+  assert.ok(!qr.includes(a), 'в QR нет кода билета');
+  tick(10); // PDF скачали заранее: подпись не устаревает
+  assert.throws(() => booking.getTicket(qr.split('.')[0]), (e) => e.status === 404);
+  const forged = `${qr.split('.')[0]}.${'A'.repeat(12)}`;
+  assert.equal(booking.checkIn(forged, { by: 'staff:1', requireSigned: true }).result, 'expired_qr');
+  assert.equal(booking.checkIn(qr, { by: 'staff:1', requireSigned: true }).result, 'ok');
+  assert.equal(booking.checkIn(qr, { by: 'staff:1', requireSigned: true }).result, 'already_used');
+  assert.throws(() => booking.printQr(a), (e) => e.status === 409, 'погашенный билет не печатается');
+  // возврат: распечатанный QR перестаёт пускать
+  const other = booking.pay(booking.hold(event.id, [{ tableId: 'K25', seats: 1 }]).secret, guest);
+  const printed = booking.printQr(other.tickets[0].code).qr;
+  booking.adminRefund(other.code);
+  assert.notEqual(booking.checkIn(printed, { by: 'staff:1', requireSigned: true }).result, 'ok');
+  assert.ok(b);
+});

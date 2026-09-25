@@ -81,10 +81,22 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return { token: `${t.gate_id}.${sign(t.gate_id, w)}`, pin: pinOf(t.code, w), validFor: validFor() };
   }
 
+  // QR для PDF-билета: подпись не зависит от времени, билет по нему проходит один раз,
+  // как обычный распечатанный билет. Живой QR на телефоне продолжает работать параллельно.
+  const PRINT = 'print';
+  function printQr(ticketCode) {
+    const t = q.ticketByCode.get(String(ticketCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20));
+    if (!t || t.status === 'held' || t.status === 'released') throw new BookingError(404, 'Билет не найден');
+    if (t.status !== 'active') throw new BookingError(409, 'Билет уже не действует');
+    const event = getEvent(t.event_id);
+    if (event.status === 'cancelled') throw new BookingError(409, 'Событие отменено');
+    return { qr: `${t.gate_id}.${sign(t.gate_id, PRINT)}` };
+  }
+
   function verifySig(ticketCode, sig) {
     const w = windowAt(now().getTime());
     const got = Buffer.from(String(sig));
-    return [w, w - 1].some((x) => {
+    return [w, w - 1, PRINT].some((x) => {
       const want = Buffer.from(sign(ticketCode, x));
       return got.length === want.length && timingSafeEqual(got, want);
     });
@@ -520,7 +532,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder,
-    cancelByGuest, renameGuest, getTicket, checkIn, liveTickets, qrToken, eventReport, adminRefund, createEvent, setEventStatus,
+    cancelByGuest, renameGuest, getTicket, printQr, checkIn, liveTickets, qrToken, eventReport, adminRefund, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };
 }

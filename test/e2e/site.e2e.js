@@ -64,7 +64,7 @@ after(async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-let ticketCode, guest;
+let ticketCode, guest, staff;
 
 test('гость выбирает стол, оплачивает и видит живой QR', async () => {
   guest = await page();
@@ -92,7 +92,7 @@ test('контролёр гасит билет по QR один раз, пост
   await admin.click('#invite-form [type=submit]');
   const invite = await admin.textContent('#invite code');
 
-  const staff = await page(devices['iPhone 13']);
+  staff = await page(devices['iPhone 13']);
   await staff.goto(invite);
   await staff.waitForURL(/\/staff/);
 
@@ -109,6 +109,28 @@ test('контролёр гасит билет по QR один раз, пост
   await staff.goto(`${B}/c/${qr}`);
   assert.equal((await staff.textContent('h1')).trim(), 'Проходите');
   await guest.waitForSelector('.ticket[data-status="used"]', { timeout: 5000 });
+  await staff.goto(`${B}/c/${qr}`);
+  assert.match(await staff.textContent('h1'), /Уже прошёл/);
+});
+
+test('PDF-билет скачивается, его QR пускает один раз', async () => {
+  const btn = guest.locator('.ticket[data-status="active"] [data-pdf]').first();
+  const code = await btn.getAttribute('data-pdf');
+  const [download, print] = await Promise.all([
+    guest.waitForEvent('download'),
+    guest.waitForResponse((r) => r.url().includes(`/api/tickets/${code}/print`)),
+    btn.click(),
+  ]);
+  assert.match(download.suggestedFilename(), /^MT-bilet-\d{4}-\d{2}-\d{2}-stol-25-mesto-\d\.pdf$/);
+  const file = await download.path();
+  const { readFileSync } = await import('node:fs');
+  const pdf = readFileSync(file);
+  assert.equal(pdf.subarray(0, 8).toString(), '%PDF-1.4');
+  assert.ok(pdf.length > 50e3, 'в файле есть картинка билета');
+  const { qr } = await print.json();
+  assert.ok(!qr.includes(code), 'в QR нет кода билета');
+  await staff.goto(`${B}/c/${qr}`);
+  assert.equal((await staff.textContent('h1')).trim(), 'Проходите');
   await staff.goto(`${B}/c/${qr}`);
   assert.match(await staff.textContent('h1'), /Уже прошёл/);
 });
