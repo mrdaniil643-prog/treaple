@@ -1,10 +1,15 @@
-import { randomBytes, randomInt } from 'node:crypto';
+import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
 import { HALLS, findTable, seatPrice } from './halls.js';
 import { tx } from './db.js';
 
 export const HOLD_MINUTES = 10;
 export const MAX_SEATS_PER_ORDER = 20;
 export const CANCEL_BEFORE_HOURS = 24;
+// Живой QR меняется каждые 30 секунд; принимаем текущий и предыдущий интервал.
+export const QR_WINDOW_SECONDS = 30;
+// Контролёр без выбора события пропускает на события, которые начинаются в этих пределах.
+const GATE_HOURS_BEFORE = 12;
+const GATE_HOURS_AFTER = 10;
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const code = (len) => Array.from({ length: len }, () => ALPHABET[randomInt(ALPHABET.length)]).join('');
@@ -22,7 +27,7 @@ export const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u00
 
 export const normalizePhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 
-export function createBooking(db, { onChange = () => {}, now = () => new Date(), demoPayments = true } = {}) {
+export function createBooking(db, { onChange = () => {}, onTickets = () => {}, now = () => new Date(), demoPayments = true } = {}) {
   const q = {
     event: db.prepare('SELECT * FROM events WHERE id = ?'),
     events: db.prepare("SELECT * FROM events WHERE status != 'cancelled' ORDER BY starts_at"),
@@ -43,6 +48,45 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date(),
   };
 
   const iso = () => now().toISOString();
+
+  // Ключ подписи QR хранится в базе, чтобы коды не менялись после перезапуска.
+  let qrKey = process.env.QR_SECRET;
+  if (!qrKey) {
+    qrKey = db.prepare("SELECT value FROM settings WHERE key = 'qr_secret'").get()?.value;
+    if (!qrKey) {
+      qrKey = randomBytes(32).toString('base64url');
+      db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('qr_secret', ?)").run(qrKey);
+      qrKey = db.prepare("SELECT value FROM settings WHERE key = 'qr_secret'").get().value;
+    }
+  }
+  const windowAt = (ms) => Math.floor(ms / (QR_WINDOW_SECONDS * 1000));
+  const sign = (ticketCode, w) => createHmac('sha256', qrKey).update(`${ticketCode}:${w}`).digest('base64url').slice(0, 12);
+
+  // Полезная нагрузка живого QR: CODE.SIG (подпись привязана к 30-секундному интервалу).
+  // Короткий код для входа (6 символов) — для ручной проверки, если QR не читается.
+  // Меняется вместе с QR, поэтому со скриншота его тоже не используешь.
+  const pinOf = (ticketCode, w) => {
+    const bytes = createHmac('sha256', qrKey).update(`pin:${ticketCode}:${w}`).digest();
+    return Array.from(bytes.subarray(0, 6), (x) => ALPHABET[x % ALPHABET.length]).join('');
+  };
+  const validFor = () => {
+    const ms = now().getTime();
+    return Math.ceil(((windowAt(ms) + 1) * QR_WINDOW_SECONDS * 1000 - ms) / 1000);
+  };
+
+  function qrToken(ticketCode) {
+    const w = windowAt(now().getTime());
+    return { token: `${ticketCode}.${sign(ticketCode, w)}`, pin: pinOf(ticketCode, w), validFor: validFor() };
+  }
+
+  function verifySig(ticketCode, sig) {
+    const w = windowAt(now().getTime());
+    const got = Buffer.from(String(sig));
+    return [w, w - 1].some((x) => {
+      const want = Buffer.from(sign(ticketCode, x));
+      return got.length === want.length && timingSafeEqual(got, want);
+    });
+  }
   const log = (ticketId, orderId, action, note = null) => q.log.run(ticketId, orderId, action, iso(), note);
 
   function parseEvent(row) {
@@ -272,6 +316,7 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date(),
       log(null, o.id, 'refunded', note);
     });
     onChange(o.event_id);
+    onTickets(q.orderTickets.all(o.id).map((t) => t.code));
     return orderView(q.orderByCode.get(o.code));
   }
 
@@ -313,23 +358,89 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date(),
     };
   }
 
-  // ---- администратор ----
-
-  function checkIn(ticketCode, eventId) {
-    // принимаем и сам код, и ссылку из QR (…/ticket.html?t=CODE)
-    const raw = String(ticketCode ?? '').slice(0, 300);
-    const fromUrl = raw.match(/[?&]t=([A-Za-z0-9-]+)/);
-    const t = q.ticketByCode.get((fromUrl ? fromUrl[1] : raw).toUpperCase().replace(/[^A-Z0-9]/g, ''));
-    if (!t) throw new BookingError(404, 'Такого билета нет');
-    if (eventId && t.event_id !== Number(eventId)) {
-      return { result: 'wrong_event', ticket: ticketView(t) };
+  // Состояние билетов для экрана гостя: статус и свежий живой QR.
+  function liveTickets(codes) {
+    const out = {};
+    for (const raw of codes) {
+      const t = q.ticketByCode.get(String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20));
+      if (!t || t.status === 'held' || t.status === 'released') continue;
+      const cancelled = parseEvent(q.event.get(t.event_id)).status === 'cancelled';
+      const status = cancelled && t.status === 'active' ? 'cancelled' : t.status;
+      const live = status === 'active' ? qrToken(t.code) : null;
+      out[t.code] = { status, checkedInAt: t.checked_in_at, ...(live ? { qr: live.token, pin: live.pin } : {}) };
     }
-    if (t.status === 'used') return { result: 'already_used', ticket: ticketView(t) };
-    if (t.status !== 'active') return { result: 'invalid', ticket: ticketView(t) };
-    db.prepare("UPDATE tickets SET status = 'used', checked_in_at = ? WHERE id = ?").run(iso(), t.id);
-    log(t.id, t.order_id, 'checked_in');
+    return { tickets: out, validFor: validFor(), window: QR_WINDOW_SECONDS };
+  }
+
+  // Что может прийти на вход:
+  //  • живой QR: CODE.SIG или ссылка …/c/CODE.SIG — подпись проверяется, скриншот старше минуты не пройдёт;
+  //  • код, набранный вручную: CODE — запасной путь, если у гостя сел телефон (решение контролёра).
+  function parseGateInput(input) {
+    const raw = String(input ?? '').trim().slice(0, 300);
+    const signed = raw.match(/(?:\/c\/)?([A-Za-z0-9]{8,20})\.([A-Za-z0-9_-]{12})(?:[?#].*)?$/);
+    if (signed) return { kind: 'qr', code: signed[1].toUpperCase(), sig: signed[2] };
+    const fromUrl = raw.match(/[?&]t=([A-Za-z0-9-]+)/);
+    const clean = (fromUrl ? fromUrl[1] : raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    if (clean.length === 6) return { kind: 'pin', pin: clean };
+    return { kind: 'code', code: clean };
+  }
+
+  // Ищем билет по короткому коду среди действующих билетов этого вечера.
+  function findByPin(pin) {
+    const w = windowAt(now().getTime());
+    const from = new Date(now().getTime() - GATE_HOURS_AFTER * 3600e3).toISOString();
+    const to = new Date(now().getTime() + GATE_HOURS_BEFORE * 3600e3).toISOString();
+    const rows = db.prepare(`SELECT t.* FROM tickets t JOIN events e ON e.id = t.event_id
+      WHERE t.status IN ('active', 'used') AND e.starts_at BETWEEN ? AND ?`).all(from, to);
+    const want = Buffer.from(pin);
+    return rows.find((t) => [w, w - 1].some((x) => timingSafeEqual(Buffer.from(pinOf(t.code, x)), want))) || null;
+  }
+
+  // Что видит контролёр: только место и имя гостя, без номера заказа и контактов.
+  function gateView(t) {
+    const full = ticketView(t);
+    const { code, table, hall, seat, whole, status, guestName, checkedInAt, event } = full;
+    return { code, table, hall, seat, whole, status, guestName, checkedInAt, event: { title: event.title, startsAt: event.startsAt } };
+  }
+
+  // Что может прийти на вход:
+  //  • живой QR (CODE.SIG или ссылка …/c/CODE.SIG) — подпись действует минуту, скриншот не пройдёт;
+  //  • короткий код для входа (6 символов) с экрана билета — тоже меняется каждые 30 секунд;
+  //  • полный код билета — только администратору (гость его не видит, он есть лишь в ссылке на билет).
+  // eventId — событие, выбранное в админке; без него (контролёр) — любое событие этого вечера.
+  // requireSigned — пропускать только по живому QR (скан на странице /c/…).
+  function checkIn(input, { eventId = null, by = 'admin', requireSigned = false } = {}) {
+    const isAdmin = by === 'admin';
+    const view = (row) => (isAdmin ? ticketView(row) : gateView(row));
+    const parsed = parseGateInput(input);
+    let t = null;
+    if (parsed.kind === 'pin') {
+      if (requireSigned) throw new BookingError(404, 'Такого билета нет');
+      t = findByPin(parsed.pin);
+      if (!t) return { result: 'expired_qr' };
+    } else {
+      t = parsed.code ? q.ticketByCode.get(parsed.code) : null;
+    }
+    if (!t || t.status === 'held' || t.status === 'released') throw new BookingError(404, 'Такого билета нет');
+    const fresh = () => view(q.ticketByCode.get(t.code));
+    if (parsed.kind === 'qr' && !verifySig(t.code, parsed.sig)) return { result: 'expired_qr', ticket: fresh() };
+    if (parsed.kind === 'code' && (!isAdmin || requireSigned)) return { result: 'expired_qr', ticket: fresh() };
+    if (eventId && t.event_id !== Number(eventId)) return { result: 'wrong_event', ticket: fresh() };
+    const event = getEvent(t.event_id);
+    if (event.status === 'cancelled') return { result: 'event_cancelled', ticket: fresh() };
+    if (t.status !== 'active' && t.status !== 'used') return { result: 'invalid', ticket: fresh() };
+    if (!eventId) {
+      const hours = (new Date(event.starts_at) - now()) / 3600e3;
+      if (hours > GATE_HOURS_BEFORE || hours < -GATE_HOURS_AFTER) return { result: 'wrong_day', ticket: fresh() };
+    }
+    if (t.status === 'used') return { result: 'already_used', ticket: fresh() };
+    // Условие в UPDATE делает гашение атомарным: при двух одновременных сканах пройдёт один.
+    const r = db.prepare("UPDATE tickets SET status = 'used', checked_in_at = ? WHERE id = ? AND status = 'active'").run(iso(), t.id);
+    if (!r.changes) return { result: 'already_used', ticket: fresh() };
+    log(t.id, t.order_id, 'checked_in', parsed.kind === 'qr' ? by : `${by}:${parsed.kind}`);
     onChange(t.event_id);
-    return { result: 'ok', ticket: ticketView(q.ticketByCode.get(t.code)) };
+    onTickets([t.code]);
+    return { result: 'ok', ticket: fresh() };
   }
 
   function eventReport(eventId) {
@@ -380,12 +491,13 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date(),
     getEvent(eventId);
     db.prepare('UPDATE events SET status = ? WHERE id = ?').run(status, Number(eventId));
     onChange(Number(eventId));
+    onTickets(db.prepare("SELECT code FROM tickets WHERE event_id = ? AND status = 'active'").all(Number(eventId)).map((t) => t.code));
     return getEvent(eventId);
   }
 
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder,
-    cancelByGuest, renameGuest, getTicket, checkIn, eventReport, adminRefund, createEvent, setEventStatus,
+    cancelByGuest, renameGuest, getTicket, checkIn, liveTickets, qrToken, eventReport, adminRefund, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };
 }

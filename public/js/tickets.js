@@ -1,5 +1,8 @@
 import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
 import { ticketCard } from './ticket-card.js';
+import { startLiveTickets } from './live-qr.js';
+
+let stopLive = () => {};
 
 renderHeader('tickets');
 const app = $('#app');
@@ -27,6 +30,8 @@ function renderOrder(o, { fresh = false } = {}) {
     ${o.status === 'paid' && !o.canCancel ? '<p class="cart-note" style="margin-top:12px">Вернуть билеты онлайн можно не позднее чем за сутки до начала. Позже — через администратора.</p>' : ''}
   </section>`;
   if (fresh) box.querySelectorAll('.ticket').forEach((el) => el.classList.add('printing'));
+  stopLive();
+  stopLive = startLiveTickets(box);
 
   box.onclick = async (ev) => {
     const share = ev.target.closest('[data-share]')?.dataset.share;

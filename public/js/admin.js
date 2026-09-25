@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, seatsWord, renderHeader, toast, prettyCode, STATUS_TEXT, $, $$ } from './common.js';
+import { api, esc, fmt, money, seatsWord, renderHeader, toast, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';
 import { mountHall } from './hallmap.js';
 
 renderHeader('');
@@ -58,6 +58,16 @@ async function start() {
         <div class="row" id="sale-controls"></div></div>
     </div>
     <div class="card" style="margin-top:20px">
+      <div class="row" style="justify-content:space-between;align-items:center"><h3>Контролёры</h3>
+        <form class="row" id="invite-form" style="align-items:end">
+          <label class="field" style="min-width:200px"><span>Имя</span><input class="input" name="name" placeholder="Например, Саша на входе" required maxlength="60"></label>
+          <button class="btn small" type="submit">Пригласить</button>
+        </form></div>
+      <p class="muted">Контролёр открывает приглашение на своём телефоне один раз. После этого QR билета гасится обычной камерой телефона. Контролёр видит только результат проверки — продажи и контакты гостей ему недоступны.</p>
+      <div id="invite"></div>
+      <div class="table-wrap" id="staff-list"></div>
+    </div>
+    <div class="card" style="margin-top:20px">
       <div class="row" style="justify-content:space-between"><h3>Схема зала</h3><div class="hall-tabs" id="admin-halls"></div></div>
       <div id="admin-map" style="width:100%"></div>
     </div>
@@ -92,7 +102,9 @@ async function start() {
   $('#cam').addEventListener('click', toggleCamera);
   $('#filter').addEventListener('input', () => drawOrders());
   $('#new-event').addEventListener('submit', createEvent);
+  $('#invite-form').addEventListener('submit', inviteStaff);
   loadReport();
+  loadStaff();
 }
 
 let report;
@@ -155,8 +167,14 @@ function drawOrders() {
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
         <td>${places}<br><span class="muted">${seatsWord(o.tickets.length)}</span></td>
         <td>${money(o.total)}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
-        <td>${o.status === 'paid' ? `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>` : ''}</td></tr>`;
+        <td>${o.status === 'paid' ? `${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
+  // Запасной путь, если у гостя сел телефон: находим заказ по имени и впускаем по одному.
+  $$('[data-admit]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Впустить одного гостя по этому заказу? Проверьте имя или документ.')) return;
+    await checkIn(b.dataset.admit);
+    loadReport();
+  }));
   $$('[data-refund]').forEach((b) => b.addEventListener('click', async () => {
     if (!confirm(`Оформить возврат по заказу ${b.dataset.refund}? Все билеты заказа перестанут действовать, места освободятся.`)) return;
     try {
@@ -172,6 +190,9 @@ const RESULT = {
   already_used: ['warn', 'Билет уже использован'],
   wrong_event: ['bad', 'Билет на другое событие'],
   invalid: ['bad', 'Билет недействителен'],
+  expired_qr: ['bad', 'QR устарел — это скриншот'],
+  wrong_day: ['bad', 'Билет не на сегодня'],
+  event_cancelled: ['bad', 'Событие отменено'],
 };
 
 let lastScan = '';
@@ -179,8 +200,12 @@ async function checkIn(code) {
   if (!code.trim()) return;
   try {
     const r = await adm('/api/admin/checkin', { method: 'POST', body: { code, eventId: currentId } });
-    const [cls, title] = RESULT[r.result];
+    const [cls, title] = RESULT[r.result] || ['bad', 'Билет недействителен'];
     const t = r.ticket;
+    if (!t) {
+      $('#scan-result').innerHTML = `<div class="scan-result ${cls}">${title}<span>Код не подошёл: устарел или набран с ошибкой.</span></div>`;
+      return;
+    }
     $('#scan-result').innerHTML = `<div class="scan-result ${cls}">${title}
       <span>${esc(t.guestName || 'Гость')}, ${esc(t.hall)}, стол ${esc(t.table)}, место ${t.seat}</span>
       <span class="muted">${esc(t.event.title)}, ${fmt.date(t.event.startsAt)}. Билет ${prettyCode(t.code)}${t.checkedInAt ? `, вход в ${fmt.time(t.checkedInAt)}` : ''}${r.result === 'invalid' ? `, статус: ${STATUS_TEXT[t.status]}` : ''}</span></div>`;
@@ -226,6 +251,37 @@ async function toggleCamera() {
     requestAnimationFrame(loop);
   };
   loop();
+}
+
+async function loadStaff() {
+  const list = await adm('/api/admin/staff').catch(() => []);
+  $('#staff-list').innerHTML = list.length ? `<table class="list"><thead><tr><th>Контролёр</th><th>Подключён</th><th>Последняя активность</th><th>Пропустил</th><th></th></tr></thead><tbody>
+    ${list.map((d) => `<tr><td><b>${esc(d.name)}</b></td><td>${fmt.date(d.createdAt)}</td><td>${d.lastUsedAt ? `${fmt.date(d.lastUsedAt)}, ${fmt.time(d.lastUsedAt)}` : '—'}</td>
+      <td>${d.checkins}</td><td><button class="link-btn" data-revoke="${d.id}">Отключить</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Пока ни одного телефона контролёра.</p>';
+  $$('[data-revoke]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Отключить этот телефон? Он сразу перестанет гасить билеты.')) return;
+    await adm(`/api/admin/staff/${b.dataset.revoke}/revoke`, { method: 'POST' });
+    toast('Телефон контролёра отключён');
+    loadStaff();
+  }));
+}
+
+async function inviteStaff(e) {
+  e.preventDefault();
+  const f = e.currentTarget;
+  try {
+    const inv = await adm('/api/admin/staff/invite', { method: 'POST', body: { name: f.name.value } });
+    const link = `${location.origin}/staff#invite=${inv.code}`;
+    f.reset();
+    $('#invite').innerHTML = `<div class="invite">
+      <div class="qr">${qrSvg(link)}</div>
+      <div><b>Приглашение для «${esc(inv.name)}»</b>
+        <p class="muted">Отсканируйте QR телефоном контролёра или отправьте ему ссылку. Работает один раз, до ${fmt.time(inv.expiresAt)}.</p>
+        <code>${esc(link)}</code><br><button class="link-btn" id="copy-invite">Скопировать ссылку</button></div></div>`;
+    $('#copy-invite').addEventListener('click', async () => { await navigator.clipboard?.writeText(link); toast('Ссылка скопирована'); });
+    setTimeout(loadStaff, 60e3);
+  } catch (err) { toast(err.message, { error: true }); }
 }
 
 async function createEvent(e) {

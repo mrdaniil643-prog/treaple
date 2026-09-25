@@ -52,6 +52,32 @@ CREATE UNIQUE INDEX IF NOT EXISTS tickets_seat_taken
   ON tickets(event_id, table_id, seat_no) WHERE status IN ('held', 'active', 'used');
 CREATE INDEX IF NOT EXISTS tickets_order ON tickets(order_id);
 
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+-- Телефоны контролёров. Храним только хэш токена из cookie.
+CREATE TABLE IF NOT EXISTS staff_devices (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  token_hash TEXT UNIQUE NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  last_used_at TEXT,
+  revoked_at TEXT
+);
+
+-- Одноразовые приглашения, по которым телефон становится контролёром.
+CREATE TABLE IF NOT EXISTS staff_invites (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  code_hash TEXT UNIQUE NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS ticket_log (
   id INTEGER PRIMARY KEY,
   ticket_id INTEGER, order_id INTEGER,

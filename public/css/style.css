@@ -482,3 +482,53 @@ video.scanner { width: 100%; border-radius: 12px; background: #000; max-height: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- живой QR ---------- */
+.qr-wrap { position: relative; display: grid; gap: 6px; }
+.qr-wait { display: grid; place-items: center; height: 100%; font-size: 12px; font-weight: 700; color: #8d7358; text-align: center; }
+.qr-live { height: 4px; border-radius: 2px; background: rgba(26, 34, 48, .15); overflow: hidden; }
+.qr-live i { display: block; height: 100%; background: var(--orange); transform-origin: left; transition: transform .25s linear; }
+.t-clock { display: block; font: 700 13px var(--f-display); font-variant-numeric: tabular-nums; color: #9a4c14; min-height: 1.2em; }
+.t-offline { display: none; margin: 6px 0 0; font-size: 12px; font-weight: 700; color: #b3261e; }
+.ticket.is-offline .t-offline { display: block; }
+.ticket.is-offline .qr svg { opacity: .15; }
+.ticket.is-used .qr-live, .ticket.is-cancelled .qr-live { visibility: hidden; }
+.stamp {
+  display: none; position: absolute; inset: 0; place-content: center; text-align: center;
+  font: 800 20px/1 var(--f-display); color: #b3261e; border: 3px solid #b3261e; border-radius: 10px;
+  transform: rotate(-12deg); background: rgba(251, 229, 181, .6);
+}
+.stamp small { display: block; font-size: 13px; margin-top: 4px; }
+.ticket.is-used .stamp { display: grid; }
+.ticket.is-used { filter: none; opacity: 1; background: #d8d0bf; }
+.ticket.is-used .ticket-top, .ticket.is-used .qr, .ticket.is-used .ticket-bottom > div:last-child { filter: grayscale(1); opacity: .55; }
+.ticket.just-used .stamp { animation: stamp-in .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes stamp-in { from { opacity: 0; transform: rotate(-12deg) scale(2.2); } }
+
+/* ---------- экран контролёра ---------- */
+.gate {
+  min-height: calc(100vh - 64px); display: grid; align-content: center; justify-items: center; gap: 14px;
+  padding: 32px 20px; text-align: center; animation: pop-in .25s var(--ease);
+}
+.gate-ok { background: #1f6b45; }
+.gate-bad { background: #8f1d1d; }
+.gate h1 { font-size: clamp(34px, 9vw, 64px); color: #fff; }
+.gate-mark { width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; font-size: 72px; font-weight: 800; background: rgba(255, 255, 255, .16); color: #fff; }
+.gate-name { font: 700 clamp(22px, 5vw, 32px) var(--f-display); color: #fff; }
+.gate-place { font-size: 20px; font-weight: 700; color: #fff; }
+.gate-hint { max-width: 32em; color: rgba(255, 255, 255, .85); font-size: 16px; }
+.gate-code { color: rgba(255, 255, 255, .6); font-size: 14px; }
+.gate-next { margin-top: 12px; min-width: 260px; }
+.gate-overlay { position: fixed; inset: 0; z-index: 60; overflow: auto; }
+.gate-overlay .gate { min-height: 100vh; }
+.invite { display: grid; grid-template-columns: 140px 1fr; gap: 16px; align-items: center; padding: 14px; border-radius: 12px; background: var(--night-2); }
+.invite .qr { width: 140px; height: 140px; }
+.invite code { word-break: break-all; font-size: 13px; color: var(--muted); }
+@media (max-width: 520px) { .invite { grid-template-columns: 1fr; } }
+
+.t-pin { display: grid; margin: 2px 0 4px; }
+.t-pin small { font-size: 11px; font-weight: 700; color: #8d7358; }
+.t-pin b { font: 800 22px/1.1 var(--f-display); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.ticket.is-offline .t-pin b { opacity: .2; }
+.gate-bad .gate-mark { animation: alarm .5s ease-in-out 3; }
+@keyframes alarm { 50% { transform: scale(1.18); background: rgba(255, 255, 255, .35); } }
