@@ -223,3 +223,16 @@ test('по фото QR нельзя получить новые QR: в QR нет
   assert.equal(r.result, 'ok');
   assert.equal(r.ticket.code, undefined, 'контролёру не отдаём код билета');
 });
+
+test('понятные отказы: мест больше, чем за столом, стол не из этого зала, повторный возврат', () => {
+  const { booking, event } = setup();
+  assert.throws(() => booking.hold(event.id, [{ tableId: 'K24', seats: 5 }]), (e) => e.status === 400 && /всего 4 места/.test(e.message));
+  const later = booking.listEvents().at(-1); // только основной зал
+  assert.throws(() => booking.hold(later.id, [{ tableId: 'K24', seats: 1 }]), (e) => e.status === 400);
+  const vip = booking.hold(event.id, [{ tableId: 'K34', seats: 2 }]);
+  assert.equal(vip.tickets.length, 6, 'VIP-комната продаётся только целиком');
+  const paid = booking.pay(booking.hold(later.id, [{ tableId: 'M1', seats: 2 }]).secret, guest);
+  assert.equal(booking.cancelByGuest(paid.secret).status, 'refunded');
+  assert.throws(() => booking.cancelByGuest(paid.secret), (e) => e.status === 409 && /уже возвращён/.test(e.message));
+  assert.equal(booking.release(vip.secret).status !== 'paid', true);
+});

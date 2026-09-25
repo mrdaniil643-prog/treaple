@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
+import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, copyText, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
 import { ticketCard } from './ticket-card.js';
 import { startLiveTickets } from './live-qr.js';
 
@@ -41,7 +41,8 @@ function renderOrder(o, { fresh = false } = {}) {
       const url = ticketUrl(share);
       const text = `Твой билет в МТ: ${o.event.title}, ${fmt.full(o.event.startsAt)}, стол ${t.table}`;
       if (navigator.share) navigator.share({ title: 'Билет в МТ', text, url }).catch(() => {});
-      else { await navigator.clipboard?.writeText(`${text}\n${url}`); toast('Ссылка на билет скопирована'); }
+      else if (await copyText(`${text}\n${url}`)) toast('Ссылка на билет скопирована');
+      else toast(`Не удалось скопировать. Ссылка: ${url}`, { ms: 12000 });
     }
     if (rename) {
       const name = prompt('Имя гостя на билете');
@@ -54,8 +55,8 @@ function renderOrder(o, { fresh = false } = {}) {
     }
     if (ev.target.id === 'share-all') {
       const lines = o.tickets.filter((t) => t.status === 'active').map((t) => `Стол ${t.table}, место ${t.seat} (${t.guestName}): ${ticketUrl(t.code)}`);
-      await navigator.clipboard?.writeText(`${o.event.title}, ${fmt.full(o.event.startsAt)}\n${lines.join('\n')}`);
-      toast('Ссылки на все билеты скопированы');
+      if (await copyText(`${o.event.title}, ${fmt.full(o.event.startsAt)}\n${lines.join('\n')}`)) toast('Ссылки на все билеты скопированы');
+      else toast('Не удалось скопировать. Отправьте билеты по одному кнопкой «Отправить гостю».', { error: true });
     }
     if (ev.target.id === 'cancel') {
       if (!confirm(`Вернуть все билеты заказа ${o.code}? Деньги придут на карту, с которой вы платили.`)) return;

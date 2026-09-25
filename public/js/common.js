@@ -65,6 +65,22 @@ export const savedOrders = {
   },
 };
 
+// Копирует текст. Возвращает false, если браузер не дал доступа к буферу обмена.
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = Object.assign(document.createElement('textarea'), { value: text, readOnly: true });
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(ta);
+    ta.select();
+    const ok = document.execCommand?.('copy') ?? false;
+    ta.remove();
+    return ok;
+  }
+}
+
 export function toast(message, { error = false, ms = 4000 } = {}) {
   $('.toast')?.remove();
   const el = document.createElement('div');

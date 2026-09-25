@@ -4,7 +4,7 @@ services:
     name: mt-bar
     runtime: docker
     plan: starter            # диск для базы есть только на платных тарифах
-    healthCheckPath: /api/settings
+    healthCheckPath: /api/health
     autoDeploy: true
     disk:
       name: mt-data

@@ -9,14 +9,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev                         # разработка: демо-оплата, случайный пароль админки в консоли, перезапуск при правках
 npm start                           # боевой режим (--prod): нужен ADMIN_TOKEN ≥ 12 символов, бронь закрыта без DEMO_PAYMENTS=1
-npm test                            # node:test, тесты в test/booking.test.js
+npm test                            # node:test, test/*.test.js (бронирование, раскладка мест, копии базы)
 npm run lint                        # проверка синтаксиса всех JS-модулей (node --check); можно передать файлы
+npx eslint .                        # ошибки в коде (eslint.config.mjs: только правила на баги, без стиля)
+npm run e2e                         # браузерные сценарии (Playwright): покупка, вход по QR, мобильная вёрстка; сервер поднимается сам
 node --no-warnings --test --test-name-pattern="живой QR" test/booking.test.js   # один тест
-ADMIN_TOKEN=... TARGET=http://localhost:3000 python3 scripts/security-check.py   # 64 атаки OWASP против dev-копии (создаёт тестовые данные)
+ADMIN_TOKEN=... TARGET=http://localhost:3000 python3 scripts/security-check.py   # 67 атак OWASP против dev-копии (создаёт тестовые данные)
 python3 tools/claude-demo/build.py  # демо без сервера для публикации на claude.ai → tools/claude-demo/build/
 ```
 
-Node ≥ 22.13, внешних npm-зависимостей нет (база — встроенный `node:sqlite`). Полноценного линтера и сборки фронтенда нет: браузер получает файлы из `public/` как есть (ES-модули). CI (`.github/workflows/test.yml`) гоняет lint, `npm test` и запуск сервера. В облачных сессиях `.claude/hooks/session-start.sh` проверяет версию Node и ставит `requests` для Python-скриптов.
+Node ≥ 22.13, внешних npm-зависимостей нет (база — встроенный `node:sqlite`). Полноценного линтера и сборки фронтенда нет: браузер получает файлы из `public/` как есть (ES-модули). CI (`.github/workflows/test.yml`) гоняет lint, ESLint, `npm test`, запуск в боевом режиме, `npm run e2e` и `security-check.py`. В облачных сессиях `.claude/hooks/session-start.sh` проверяет версию Node и ставит `requests` для Python-скриптов.
 
 ## Архитектура
 
@@ -26,7 +28,8 @@ Node ≥ 22.13, внешних npm-зависимостей нет (база —
 - `halls.js` — схемы залов: координаты столов взяты с планов (пиксели исходных картинок), вместимость, ценовые зоны. Тот же файл импортирует фронтенд демо-сборки.
 - `security.js` — заголовки/CSP, лимитер, проверка Origin, разбор X-Forwarded-For (доверяем `TRUST_PROXY` последним хопам), пароль админки.
 - `staff.js` — роль контролёра: одноразовое приглашение → HttpOnly cookie `mt_staff`, в базе только хэш токена.
-- `db.js` — схема SQLite и примерные события (сидятся только в пустую базу).
+- `db.js` — схема SQLite и событие по умолчанию (сидится только в пустую базу).
+- `backup.js` — дневные копии базы через `VACUUM INTO` в `backups/` рядом с базой (`BACKUP_DIR=off` выключает; в тестах и e2e выключено). `/api/health` проверяет, что база читается.
 
 **Модель билетов.** Билет = одно место за столом. Заказ живёт `held` (10 минут) → `paid` → `refunded`, либо `expired`/`cancelled`; билеты `held` → `active` → `used`. От двойной продажи защищают транзакция `tx()` и частичный уникальный индекс `tickets_seat_taken`. Просроченные брони снимает `sweep()` (перед операциями и по таймеру).
 

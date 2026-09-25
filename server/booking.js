@@ -186,6 +186,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       const whole = Boolean(it.whole) || Boolean(table.wholeOnly);
       const seats = whole ? table.seats : Math.floor(Number(it.seats));
       if (!whole && !(seats >= 1)) throw new BookingError(400, `Укажите число мест за столом ${table.n}`);
+      if (seats > table.seats) throw new BookingError(400, `За столом ${table.n} всего ${table.seats} мест${table.seats < 5 ? 'а' : ''}`);
       if (merged.has(table.id)) throw new BookingError(400, `Стол ${table.n} выбран дважды`);
       merged.set(table.id, { table, seats, whole });
     }
@@ -335,6 +336,9 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   function cancelByGuest(secret) {
     const view = getOrder({ secret });
     if (!view.canCancel) {
+      if (view.status === 'refunded') throw new BookingError(409, 'Заказ уже возвращён');
+      if (view.status !== 'paid') throw new BookingError(409, 'Заказ не оплачен, возвращать нечего');
+      if (view.tickets.some((t) => t.status === 'used')) throw new BookingError(409, 'По этому заказу гости уже прошли. Позвоните администратору.');
       throw new BookingError(409, `Онлайн вернуть билеты можно за ${CANCEL_BEFORE_HOURS} часа до начала. Позвоните администратору.`);
     }
     return refund(q.orderBySecret.get(secret), 'guest');

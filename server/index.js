@@ -9,6 +9,7 @@ import { resolveAdminToken, makeTokenCheck, clientIp, createLimiter, securityHea
 import { createBooking, BookingError, HOLD_MINUTES, CANCEL_BEFORE_HOURS, QR_WINDOW_SECONDS } from './booking.js';
 import { createStaff, readCookie, STAFF_COOKIE } from './staff.js';
 import { HALLS, ZONES } from './halls.js';
+import { createBackups } from './backup.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
@@ -23,8 +24,13 @@ try {
 // Демо-оплата подтверждает заказ без денег. В продакшене включается только явно.
 const DEMO_PAYMENTS = !isProd || process.env.DEMO_PAYMENTS === '1';
 
-const db = openDb(process.env.DB_FILE || join(ROOT, 'data', 'mt.db'));
+const DB_FILE = process.env.DB_FILE || join(ROOT, 'data', 'mt.db');
+const db = openDb(DB_FILE);
 seedEvents(db);
+// Копии базы рядом с ней: data/backups. BACKUP_DIR=off выключает.
+if (process.env.BACKUP_DIR !== 'off' && DB_FILE !== ':memory:') {
+  createBackups(db, { dir: process.env.BACKUP_DIR || join(dirname(DB_FILE), 'backups'), keep: Number(process.env.BACKUP_KEEP) || 14 }).start();
+}
 
 // Подписчики на изменения схемы зала: eventId -> Set<res>
 const streams = new Map();
@@ -124,6 +130,11 @@ function staffCookie(req, value, maxAge) {
 }
 
 route('GET', '/api/settings', () => ({ timeZone: process.env.TZ }));
+// Для проверки живости: отвечает, только если база читается
+route('GET', '/api/health', () => {
+  db.prepare('SELECT 1').get();
+  return { ok: true };
+});
 route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: DEMO_PAYMENTS }));
 route('GET', '/api/events', () => booking.listEvents());
 route('GET', '/api/events/:id', ({ id }) => booking.getEvent(id));

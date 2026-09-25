@@ -160,3 +160,30 @@ export function layoutHall(hall) {
   // в порядке столов зала
   return new Map(hall.tables.map((t) => [t.id, result.get(t.id)]));
 }
+
+// Зоны нажатия: стол вместе с местами, а маленький стол дорастает до HIT_MIN по каждой оси,
+// пока не упрётся в соседний стол или чужие места. Так на телефоне стол не мельче пальца.
+const HIT_MIN = 60;
+export function hitBoxes(hall, layout = layoutHall(hall)) {
+  const own = new Map(hall.tables.map((t) => [t.id, [t, ...layout.get(t.id).map(seatBox)]]));
+  const out = new Map();
+  for (const t of hall.tables) {
+    const parts = own.get(t.id);
+    const x0 = Math.min(...parts.map((b) => b.x)) - 2, y0 = Math.min(...parts.map((b) => b.y)) - 2;
+    const box = { x: x0, y: y0, w: Math.max(...parts.map((b) => b.x + b.w)) - x0 + 2, h: Math.max(...parts.map((b) => b.y + b.h)) - y0 + 2 };
+    const foreign = hall.tables.filter((o) => o !== t).flatMap((o) => own.get(o.id));
+    const free = (b) => !foreign.some((f) => overlaps(b, f));
+    // растим по одному пикселю с каждой стороны по очереди
+    for (const [pos, len] of [['x', 'w'], ['y', 'h']]) {
+      let guard = HIT_MIN;
+      while (box[len] < HIT_MIN && guard--) {
+        const before = { ...box, [pos]: box[pos] - 1, [len]: box[len] + 1 };
+        const after = { ...box, [len]: box[len] + 1 };
+        if (free(before)) Object.assign(box, before);
+        if (box[len] < HIT_MIN && free(after)) Object.assign(box, after);
+      }
+    }
+    out.set(t.id, box);
+  }
+  return out;
+}

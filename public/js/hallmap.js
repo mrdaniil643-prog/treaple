@@ -1,17 +1,8 @@
 import { esc, money, seatsWord } from './common.js';
-import { layoutHall, seatBox, CHAIR_R } from './seat-layout.js';
+import { layoutHall, hitBoxes, CHAIR_R } from './seat-layout.js';
 
 // При повороте схемы подписи поворачиваем обратно, чтобы они читались.
 let upright = () => '';
-
-// Стол на телефоне мельче пальца: зона нажатия охватывает стол вместе с его местами.
-function hitArea(t, seats) {
-  let x0 = t.x, y0 = t.y, x1 = t.x + t.w, y1 = t.y + t.h;
-  for (const b of seats.map(seatBox)) {
-    x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h);
-  }
-  return `<rect class="hit" x="${x0 - 2}" y="${y0 - 2}" width="${x1 - x0 + 4}" height="${y1 - y0 + 4}"/>`;
-}
 
 function decorEl(d) {
   if (d.t === 'rect') return `<rect class="${d.c}" x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" rx="${d.c === 'floor' ? 6 : 3}"/>`;
@@ -27,6 +18,7 @@ export function mountHall(container, hall, { onPick, readonly = false, rotate = 
   const [vx, vy, vw, vh] = hall.viewBox;
   upright = rotate ? (x, y) => ` transform="rotate(90 ${x} ${y})"` : () => '';
   const layout = layoutHall(hall);
+  const hits = hitBoxes(hall, layout);
   const box = rotate ? [vy, -(vx + vw), vh, vw] : [vx, vy, vw, vh];
   container.innerHTML = `<svg class="hall-svg${readonly ? ' readonly' : ''}${rotate ? ' rotated' : ''}" viewBox="${box.join(' ')}" role="group" aria-label="Схема: ${esc(hall.title)}">
     <defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(90)">
@@ -38,7 +30,7 @@ export function mountHall(container, hall, { onPick, readonly = false, rotate = 
         ? `<circle class="seat" cx="${s.cx}" cy="${s.cy}" r="${CHAIR_R}"/>`
         : `<rect class="seat cushion" x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="3"/>`)).join('');
       return `<g class="tbl" data-id="${t.id}" ${readonly ? '' : 'tabindex="0" role="button"'}>
-        ${hitArea(t, layout.get(t.id))}${seats}<rect class="top" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="5"/>
+        <rect class="hit" x="${hits.get(t.id).x}" y="${hits.get(t.id).y}" width="${hits.get(t.id).w}" height="${hits.get(t.id).h}"/>${seats}<rect class="top" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="5"/>
         <text x="${t.x + t.w / 2}" y="${t.y + t.h / 2}"${upright(t.x + t.w / 2, t.y + t.h / 2)}>${t.n}</text></g>`;
     }).join('')}
     </g>

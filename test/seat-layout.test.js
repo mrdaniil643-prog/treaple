@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HALLS } from '../server/halls.js';
-import { layoutHall, seatBox } from '../public/js/seat-layout.js';
+import { layoutHall, seatBox, hitBoxes } from '../public/js/seat-layout.js';
 
 const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
@@ -36,6 +36,22 @@ for (const hall of HALLS) {
         const a = all[i].box, b = all[j].box;
         const gap = { x: a.x - 1, y: a.y - 1, w: a.w + 2, h: a.h + 2 };
         assert.ok(!overlaps(gap, b), `места столов ${all[i].t.n} и ${all[j].t.n} слиплись`);
+      }
+    }
+  });
+}
+
+for (const hall of HALLS) {
+  test(`${hall.title}: зона нажатия стола не накрывает соседей`, () => {
+    const layout = layoutHall(hall);
+    const hits = hitBoxes(hall, layout);
+    for (const t of hall.tables) {
+      const hit = hits.get(t.id);
+      assert.ok(inside(t, hit), `стол ${t.n} не внутри своей зоны`);
+      for (const o of hall.tables) {
+        if (o === t) continue;
+        assert.ok(!overlaps(hit, o), `зона стола ${t.n} накрывает стол ${o.n}`);
+        for (const s of layout.get(o.id)) assert.ok(!overlaps(hit, seatBox(s)), `зона стола ${t.n} накрывает место стола ${o.n}`);
       }
     }
   });

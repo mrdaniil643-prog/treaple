@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, seatsWord, renderHeader, toast, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';
+import { api, esc, fmt, money, seatsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';
 import { mountHall } from './hallmap.js';
 import { occupancyChart, salesChart, entryMeter } from './charts.js';
 
@@ -309,7 +309,7 @@ async function inviteStaff(e) {
       <div><b>Приглашение для «${esc(inv.name)}»</b>
         <p class="muted">Отсканируйте QR телефоном контролёра или отправьте ему ссылку. Работает один раз, до ${fmt.time(inv.expiresAt)}.</p>
         <code>${esc(link)}</code><br><button class="link-btn" id="copy-invite">Скопировать ссылку</button></div></div>`;
-    $('#copy-invite').addEventListener('click', async () => { await navigator.clipboard?.writeText(link); toast('Ссылка скопирована'); });
+    $('#copy-invite').addEventListener('click', async () => toast(await copyText(link) ? 'Ссылка скопирована' : 'Не удалось скопировать: покажите контролёру QR'));
     setTimeout(loadStaff, 60e3);
   } catch (err) { toast(err.message, { error: true }); }
 }
