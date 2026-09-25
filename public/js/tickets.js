@@ -21,13 +21,13 @@ function renderOrder(o, { fresh = false } = {}) {
       </div>
       <span class="status ${o.status}">${STATUS_TEXT[o.status]}</span>
     </div>
-    ${fresh ? `<p style="margin-top:18px">Готово! Билеты ниже. Покажите QR-код на входе или отправьте каждому гостю его билет ссылкой. Номер заказа <b>${esc(o.code)}</b> и телефон помогут найти билеты с любого устройства.</p>` : ''}
+    ${fresh ? `<p style="margin-top:18px">Оплата прошла. Друзьям отправьте их билеты кнопкой «Отправить гостю». Запишите номер заказа <b>${esc(o.code)}</b>: по нему и телефону билеты найдутся на любом устройстве.</p>` : ''}
     <div class="ticket-grid">${o.tickets.map((t) => ticketCard(t, o.event)).join('')}</div>
     <div class="row" style="margin-top:24px">
       ${active ? '<button class="btn ghost small" id="share-all">Скопировать ссылки на все билеты</button>' : ''}
       ${o.canCancel ? '<button class="btn ghost small" id="cancel">Вернуть билеты</button>' : ''}
     </div>
-    ${o.status === 'paid' && !o.canCancel ? '<p class="cart-note" style="margin-top:12px">Вернуть билеты онлайн можно не позднее чем за сутки до начала. Позже — через администратора.</p>' : ''}
+    ${o.status === 'paid' && !o.canCancel ? '<p class="cart-note" style="margin-top:12px">Онлайн вернуть билеты можно за сутки до начала. Позже звоните администратору.</p>' : ''}
   </section>`;
   if (fresh) box.querySelectorAll('.ticket').forEach((el) => el.classList.add('printing'));
   stopLive();
@@ -58,11 +58,11 @@ function renderOrder(o, { fresh = false } = {}) {
       toast('Ссылки на все билеты скопированы');
     }
     if (ev.target.id === 'cancel') {
-      if (!confirm(`Вернуть все билеты заказа ${o.code}? Места освободятся, деньги вернутся на карту.`)) return;
+      if (!confirm(`Вернуть все билеты заказа ${o.code}? Деньги придут на карту, с которой вы платили.`)) return;
       try {
         const updated = await api(`/api/orders/${o.secret}/cancel`, { method: 'POST' });
         renderOrder(updated);
-        toast('Возврат оформлен, места освобождены');
+        toast('Билеты возвращены');
       } catch (err) { toast(err.message, { error: true }); }
     }
   };
@@ -79,7 +79,7 @@ function renderSaved() {
 async function main() {
   app.innerHTML = `<section class="wrap page-head">
     <h1>Мои билеты</h1>
-    <p>Билеты, купленные на этом устройстве, видны сразу. Чтобы найти другие, введите номер заказа и телефон, указанный при покупке.</p>
+    <p>Здесь билеты, купленные с этого телефона. Если покупали с другого устройства, введите номер заказа и телефон.</p>
     <form class="lookup" id="lookup" style="margin-top:24px">
       <label class="field"><span>Номер заказа</span><input class="input" name="code" placeholder="MT-XXXXXXXX" required></label>
       <label class="field"><span>Телефон</span><input class="input" name="phone" type="tel" placeholder="+7 900 000-00-00" required></label>

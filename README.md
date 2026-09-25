@@ -112,6 +112,6 @@ python3 .claude/skills/cyber-supply-chain-security/scripts/supply_chain_auditor.
 
 ## Что поменять под себя
 
-- Телефон, адрес и часы работы — `renderFooter` в `public/js/common.js`.
+- Телефон, адрес и часы работы — объект `VENUE` в `public/js/common.js`. Пока поля пустые, в подвале сайта их нет.
 - Вместимость столов, зоны и расположение — `server/halls.js` (координаты взяты с планов залов).
 - Меню — `public/js/menu-data.js` (перенесено из буклетов, кухня от 21.08.2026).

@@ -54,7 +54,7 @@ export function startLiveTickets(root) {
         if (was === 'active') {
           card.classList.add('just-used');
           navigator.vibrate?.(120);
-          toast('Билет погашен. Хорошего вечера!');
+          toast('Вы прошли, билет погашен.');
         }
       }
     }

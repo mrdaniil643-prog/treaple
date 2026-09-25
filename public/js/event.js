@@ -106,16 +106,16 @@ function openTable(id) {
         <div><h3>Стол ${t.n}</h3><p class="muted">${esc(t.hall.title)}${t.zone !== 'standard' ? `, зона «${esc(zone.title)}»` : ''}</p></div>
         <button class="close" aria-label="Закрыть">×</button>
       </header>
-      <p>${seatsWord(t.seats)} за столом, свободно ${a.free}. ${money(a.price)} за место${state.event.deposit ? `, из них ${money(state.event.deposit)} — депозит на меню` : ''}.</p>
-      ${a.sold + a.held > 0 ? `<p class="muted">За этим столом уже будут другие гости: ${a.sold + a.held} ${plural(a.sold + a.held, 'место занято', 'места заняты', 'мест занято')}.</p>` : ''}
-      ${t.wholeOnly ? '<p class="muted">VIP-комната с караоке бронируется только целиком.</p>' : `
+      <p>Стол на ${t.seats}, свободно ${a.free}. Место стоит ${money(a.price)}${state.event.deposit ? `, из них ${money(state.event.deposit)} уйдут в депозит на еду и напитки` : ''}.</p>
+      ${a.sold + a.held > 0 ? `<p class="muted">${a.sold + a.held} ${plural(a.sold + a.held, 'место уже занято', 'места уже заняты', 'мест уже занято')}, сядете с другими гостями.</p>` : ''}
+      ${t.wholeOnly ? '<p class="muted">VIP-комнату с караоке берут только целиком.</p>' : `
       <div class="pop-row">
         <div class="stepper" role="group" aria-label="Количество мест">
           <button data-d="-1" aria-label="Меньше" ${whole || seats <= 1 ? 'disabled' : ''}>−</button>
           <output aria-live="polite">${count}</output>
           <button data-d="1" aria-label="Больше" ${whole || seats >= a.free ? 'disabled' : ''}>+</button>
         </div>
-        ${a.wholeAvailable ? `<label class="check"><input type="checkbox" id="whole" ${whole ? 'checked' : ''}> Весь стол, без соседей</label>` : ''}
+        ${a.wholeAvailable ? `<label class="check"><input type="checkbox" id="whole" ${whole ? 'checked' : ''}> Весь стол</label>` : ''}
       </div>`}
       <div class="pop-row">
         <b style="font:700 22px var(--f-display);color:var(--cream)">${money(a.price * count)}</b>
@@ -178,12 +178,12 @@ function renderCart(bump = false) {
       <span>${money(s.seats * a.price)}</span><button class="remove" data-remove="${id}" aria-label="Убрать стол ${t.n}">×</button></li>`;
   }).join('');
   cart.innerHTML = `
-    <div class="pop-row"><h3>Ваш выбор</h3><span class="live-dot" id="live">Схема обновляется вживую</span></div>
-    ${items ? `<ul class="cart-list">${items}</ul>` : '<p class="cart-empty">Нажмите на стол на схеме, чтобы выбрать места. Можно выбрать несколько столов в одном заказе.</p>'}
+    <div class="pop-row"><h3>Ваш выбор</h3><span class="live-dot" id="live">Схема обновляется сама</span></div>
+    ${items ? `<ul class="cart-list">${items}</ul>` : '<p class="cart-empty">Нажмите на стол на схеме. В один заказ можно взять несколько столов.</p>'}
     <div class="cart-total"><span>${seats ? `${seatsWord(seats)}` : 'Итого'}</span><b>${money(total)}</b></div>
     ${state.blocked ? `<p class="form-error">${esc(state.blocked)}</p>` : ''}
     <button class="btn block" id="go" ${seats && !state.blocked ? '' : 'disabled'}>Забронировать на ${state.config.holdMinutes} минут</button>
-    <p class="cart-note">После брони места закрепляются за вами, пока вы оплачиваете. Каждый гость получит свой билет с QR-кодом.</p>`;
+    <p class="cart-note">Места держатся за вами, пока вы оплачиваете. Каждый гость получит свой билет.</p>`;
   cart.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
     state.selection.delete(b.dataset.remove);
     renderCart();
@@ -198,7 +198,7 @@ let liveOn = false;
 function setLive(on) {
   liveOn = on;
   $('#live')?.classList.toggle('off', !on);
-  if ($('#live')) $('#live').textContent = on ? 'Схема обновляется вживую' : 'Переподключаемся…';
+  if ($('#live')) $('#live').textContent = on ? 'Схема обновляется сама' : 'Нет связи, переподключаемся…';
 }
 
 function applyAvailability(av) {
@@ -211,7 +211,7 @@ function applyAvailability(av) {
       if (!a || (s.whole ? !a.wholeAvailable : a.free < s.seats)) {
         state.selection.delete(id);
         changed = true;
-        toast(`Места за столом ${tableById(id).n} только что заняли — мы убрали его из выбора.`, { error: true });
+        toast(`Стол ${tableById(id).n} только что забрали другие гости. Выберите другой.`, { error: true });
       }
     }
   }
@@ -265,7 +265,7 @@ function openCheckout() {
         <div><b>К оплате</b><b>${money(o.total)}</b></div>
       </div>
       <label class="field"><span>Имя</span><input class="input" name="name" autocomplete="name" required></label>
-      <label class="field"><span>Телефон — по нему найдём заказ</span><input class="input" name="phone" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" required></label>
+      <label class="field"><span>Телефон (по нему найдём заказ)</span><input class="input" name="phone" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" required></label>
       <label class="field"><span>Почта для билетов (необязательно)</span><input class="input" name="email" type="email" autocomplete="email"></label>
       ${o.tickets.length > 1 ? `<details class="guest-names"><summary>Подписать билеты именами гостей</summary>
         <div class="grid">${o.tickets.map((t, i) => `<label class="field"><span>Стол ${t.table}, место ${t.seat}</span><input class="input" data-guest="${t.code}" placeholder="${i === 0 ? 'Вы' : `Гость ${i + 1}`}"></label>`).join('')}</div>
@@ -273,7 +273,7 @@ function openCheckout() {
       <p class="form-error" id="pay-error"></p>
       <button class="btn block" type="submit">Оплатить ${money(o.total)}</button>
       <button class="btn ghost block" type="button" id="release">Отменить бронь</button>
-      <p class="demo-note">Демо-режим: оплата подтверждается сразу, деньги не списываются. Для приёма платежей подключается эквайринг (ЮKassa, CloudPayments и т. п.).</p>
+      <p class="demo-note">Тестовый режим: деньги не списываются.</p>
     </form>`;
   dlg.showModal();
   dlg.querySelector('[name=name]').focus();
@@ -287,12 +287,12 @@ function openCheckout() {
     const m = Math.floor(left / 60e3), s = Math.floor((left % 60e3) / 1e3);
     const el = $('#timer');
     if (!el) return;
-    el.textContent = `Места ваши ещё ${m}:${String(s).padStart(2, '0')}`;
+    el.textContent = `Места за вами ещё ${m}:${String(s).padStart(2, '0')}`;
     el.classList.toggle('low', left < 60e3);
     if (left === 0) {
       clearInterval(timerId);
       closeCheckout();
-      toast('Время брони вышло, места снова доступны другим гостям. Выберите столы заново.', { error: true, ms: 7000 });
+      toast('10 минут прошло, бронь снята. Выберите столы заново.', { error: true, ms: 7000 });
     }
   };
   tick();
@@ -301,7 +301,7 @@ function openCheckout() {
   $('#release').addEventListener('click', async () => {
     await api(`/api/orders/${o.secret}/release`, { method: 'POST' }).catch(() => {});
     closeCheckout();
-    toast('Бронь снята, места снова свободны.');
+    toast('Бронь снята.');
   });
 
   $('#pay-form').addEventListener('submit', async (ev) => {
@@ -347,7 +347,7 @@ async function main() {
     document.title = `${event.title} — выбор стола — МТ`;
     render();
     if (event.status !== 'on_sale' || !config.paymentsEnabled) {
-      state.blocked = !config.paymentsEnabled ? 'Онлайн-продажа пока не работает. Позвоните нам, чтобы забронировать стол.'
+      state.blocked = !config.paymentsEnabled ? 'Онлайн-продажа пока закрыта. Стол можно забронировать по телефону.'
         : event.status === 'cancelled' ? 'Событие отменено.' : 'Продажа билетов закрыта.';
       renderCart();
     }

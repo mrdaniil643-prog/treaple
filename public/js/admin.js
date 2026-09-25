@@ -63,7 +63,7 @@ async function start() {
           <label class="field" style="min-width:200px"><span>Имя</span><input class="input" name="name" placeholder="Например, Саша на входе" required maxlength="60"></label>
           <button class="btn small" type="submit">Пригласить</button>
         </form></div>
-      <p class="muted">Контролёр открывает приглашение на своём телефоне один раз. После этого QR билета гасится обычной камерой телефона. Контролёр видит только результат проверки — продажи и контакты гостей ему недоступны.</p>
+      <p class="muted">Контролёр один раз открывает приглашение на своём телефоне и дальше гасит билеты обычной камерой. Продаж и контактов гостей он не видит.</p>
       <div id="invite"></div>
       <div class="table-wrap" id="staff-list"></div>
     </div>

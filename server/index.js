@@ -308,7 +308,7 @@ const server = createServer(async (req, res) => {
   } catch (e) {
     if (e instanceof BookingError) return send(res, e.status, { error: e.message, conflicts: e.conflicts });
     console.error(e);
-    send(res, 500, { error: 'Что-то сломалось на сервере. Попробуйте ещё раз через минуту.' });
+    send(res, 500, { error: 'Ошибка на сервере. Попробуйте через минуту.' });
   }
 });
 

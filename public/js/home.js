@@ -26,7 +26,7 @@ function heroStub(e) {
   return `<div class="stub" style="--cut:104px">
     <div class="stub-date"><b>${fmt.day(e.starts_at)}</b><span>${fmt.month(e.starts_at)}</span></div>
     <div class="stub-body">
-      <span class="stub-kicker">Ближайшее событие, ${fmt.weekday(e.starts_at)} в ${fmt.time(e.starts_at)}</span>
+      <span class="stub-kicker">${fmt.weekday(e.starts_at)}, ${fmt.time(e.starts_at)}</span>
       <h3>${esc(e.title)}</h3>
       <p>${esc(e.lineup)}</p>
       <a class="btn" href="/event?id=${e.id}">Выбрать стол</a>
@@ -42,38 +42,38 @@ async function main() {
       <div>
         <div class="hero-mark"><i class="corner tr"></i>${LOGO}<i class="corner bl"></i></div>
         <h1 class="hero-sub">Музыкальный бар и караоке</h1>
-        <p class="hero-lead">Живая музыка, караоке до утра и кухня с морепродуктами. Билет покупается на конкретный стол — выберите место на схеме зала, как в кинотеатре.</p>
+        <p class="hero-lead">Караоке до утра и живые концерты по выходным. Билет берёте сразу на стол: его видно на схеме зала.</p>
       </div>
       <div id="hero-stub"></div>
     </div>
   </section>
 
   <section class="section wrap" id="afisha">
-    <div class="section-head"><h2>Афиша</h2><p>Нажмите на событие, чтобы открыть схему зала и выбрать стол.</p></div>
+    <div class="section-head"><h2>Афиша</h2><p>Выберите вечер, и откроется схема зала.</p></div>
     <div class="events" id="events"><p class="muted">Загружаем афишу…</p></div>
   </section>
 
   <section class="section wrap">
-    <div class="section-head"><h2>Меню</h2><p>Кухня с морепродуктами и азиатскими нотами, авторские коктейли, большая винная карта.</p></div>
+    <div class="section-head"><h2>Меню</h2><p>Устрицы, гребешки, роллы и мясо на гриле. В баре авторские коктейли, вино и разливное пиво.</p></div>
     <div class="menu-duo">
-      <a class="menu-card" href="/menu#kitchen" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Устрицы и живые гребешки, тартары, роллы, мясо на гриле и баскский чизкейк.</p></a>
-      <a class="menu-card" href="/menu#bar" style="--img:url('/img/bottles.jpg')"><span class="brush">Бар</span><p>Авторские коктейли, шоты на компанию, спритцы, вино, виски и разливное пиво.</p></a>
+      <a class="menu-card" href="/menu#kitchen" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Живые гребешки, тартары, роллы и баскский чизкейк.</p></a>
+      <a class="menu-card" href="/menu#bar" style="--img:url('/img/bottles.jpg')"><span class="brush">Бар</span><p>Авторские коктейли, шоты сетами по 10 штук и разливное пиво.</p></a>
     </div>
   </section>
 
   <section class="section wrap">
     <div class="section-head"><h2>Как купить билет</h2></div>
     <ol class="steps">
-      <li><h3>Выберите стол</h3><p>На схеме видно, какие столы свободны, где уже сидят гости и сколько мест осталось.</p></li>
-      <li><h3>Укажите число мест</h3><p>Можно взять одно место, несколько или весь стол целиком. Места держатся за вами 10 минут.</p></li>
-      <li><h3>Оплатите</h3><p>Часть стоимости билета — депозит: его можно потратить на еду и напитки в тот же вечер.</p></li>
-      <li><h3>Покажите билет на входе</h3><p>У каждого гостя свой билет с живым QR: он меняется каждые 30 секунд, поэтому скриншот не пройдёт. После скана билет гасится.</p></li>
+      <li><h3>Выберите стол</h3><p>Светлые столы свободны, медные заняты частично, серые заняты целиком.</p></li>
+      <li><h3>Укажите число мест</h3><p>Берите одно место или весь стол. Пока вы оплачиваете, места держатся за вами 10 минут.</p></li>
+      <li><h3>Оплатите</h3><p>Часть цены билета идёт в депозит. Его вы тратите на еду и напитки в тот же вечер.</p></li>
+      <li><h3>Покажите билет на входе</h3><p>У каждого гостя свой билет, друзьям отправьте их ссылкой. Скриншот на входе не примут: QR на билете меняется каждые 30 секунд.</p></li>
     </ol>
   </section>`;
 
   try {
     const events = await api('/api/events');
-    $('#events').innerHTML = events.length ? events.map(eventRow).join('') : '<p class="muted">Новые события скоро появятся. Загляните позже или позвоните нам, чтобы забронировать стол на обычный вечер.</p>';
+    $('#events').innerHTML = events.length ? events.map(eventRow).join('') : '<p class="muted">Афиша на ближайшие дни пока пустая. Стол на обычный вечер можно забронировать по телефону.</p>';
     $('#hero-stub').innerHTML = heroStub(events.find((e) => e.status === 'on_sale' && e.seatsFree > 0));
   } catch (err) {
     $('#events').innerHTML = `<p class="form-error">${esc(err.message)}</p>`;

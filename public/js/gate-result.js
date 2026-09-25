@@ -17,7 +17,7 @@ function detail(r) {
   const place = `${esc(t.hall)}, стол ${esc(t.table)}, место ${t.seat}${t.whole ? ' (стол целиком)' : ''}`;
   const hints = {
     already_used: `Вход был в ${t.checkedInAt ? fmt.time(t.checkedInAt) : '—'}. Возможно, билет переслали или показывают скриншот.`,
-    expired_qr: 'Это скриншот или старая картинка. Попросите гостя открыть билет на телефоне — QR и код для входа на живом экране меняются каждые 30 секунд.',
+    expired_qr: 'Похоже на скриншот. Попросите открыть билет на телефоне: живой QR меняется каждые 30 секунд.',
     wrong_event: `Билет на «${esc(t.event.title)}», ${fmt.date(t.event.startsAt)}.`,
     wrong_day: `Билет на «${esc(t.event.title)}», ${fmt.full(t.event.startsAt)}.`,
     invalid: `Статус: ${esc(STATUS_TEXT[t.status] || t.status)}.`,

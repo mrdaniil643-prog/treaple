@@ -189,7 +189,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     }
     const totalSeats = [...merged.values()].reduce((s, x) => s + x.seats, 0);
     if (totalSeats > MAX_SEATS_PER_ORDER) {
-      throw new BookingError(400, `В одном заказе не больше ${MAX_SEATS_PER_ORDER} мест. Для больших компаний позвоните нам.`);
+      throw new BookingError(400, `В одном заказе не больше ${MAX_SEATS_PER_ORDER} мест. Большую компанию бронируйте по телефону.`);
     }
 
     const result = tx(db, () => {
@@ -201,7 +201,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       }
       if (conflicts.length) {
         const names = conflicts.map((c) => findTable(c.tableId).n).join(', ');
-        throw new BookingError(409, `Пока вы выбирали, места за столом ${names} заняли. Схема обновлена — выберите заново.`, { conflicts });
+        throw new BookingError(409, `Места за столом ${names} уже заняли. Выберите другой стол.`, { conflicts });
       }
       const taken = new Map();
       for (const s of q.takenSeats.all(event.id)) {
@@ -285,11 +285,11 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     }
     const guestNames = guests && typeof guests === 'object' && !Array.isArray(guests) ? guests : {};
     if (o.status === 'paid') return orderView(o);
-    if (o.status !== 'held') throw new BookingError(410, 'Время брони истекло, места освобождены. Выберите столы заново.');
+    if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
     const cleanName = cleanText(name, 80);
     const cleanPhone = normalizePhone(phone);
     const cleanEmail = cleanText(email, 120);
-    if (cleanName.length < 2) throw new BookingError(400, 'Укажите имя — по нему вас встретят на входе');
+    if (cleanName.length < 2) throw new BookingError(400, 'Укажите имя');
     if (cleanPhone.length !== 10) throw new BookingError(400, 'Укажите телефон в формате +7 900 000-00-00');
     if (cleanEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) throw new BookingError(400, 'Проверьте адрес почты');
 
@@ -333,7 +333,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   function cancelByGuest(secret) {
     const view = getOrder({ secret });
     if (!view.canCancel) {
-      throw new BookingError(409, `Вернуть билеты можно не позднее чем за ${CANCEL_BEFORE_HOURS} часа до начала. Позвоните администратору.`);
+      throw new BookingError(409, `Онлайн вернуть билеты можно за ${CANCEL_BEFORE_HOURS} часа до начала. Позвоните администратору.`);
     }
     return refund(q.orderBySecret.get(secret), 'guest');
   }
@@ -477,7 +477,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     if (!o) throw new BookingError(404, 'Заказ не найден');
     if (o.status !== 'paid') throw new BookingError(409, 'Вернуть можно только оплаченный заказ');
     if (q.orderTickets.all(o.id).some((t) => t.status === 'used')) {
-      throw new BookingError(409, 'Часть гостей по этому заказу уже прошла — вернуть весь заказ нельзя. Оформите частичный возврат через кассу.');
+      throw new BookingError(409, 'Часть гостей уже прошла, весь заказ вернуть нельзя. Частичный возврат сделайте на кассе.');
     }
     return refund(o, 'admin');
   }

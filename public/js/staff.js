@@ -27,7 +27,7 @@ function notStaff() {
 function renderHome(me) {
   app.innerHTML = `<section class="wrap page-head" style="max-width:640px">
     <h1 style="font-size:34px">Вход гостей</h1>
-    <p>Контролёр: <b>${esc(me.name)}</b>. Наведите камеру телефона на QR билета — билет погасится сам. Или сканируйте здесь, без переходов.</p>
+    <p>Контролёр: <b>${esc(me.name)}</b>. Наведите камеру телефона на QR билета, и он погасится. Можно сканировать и здесь, кнопкой ниже.</p>
     <div class="dlg-body" style="padding:24px 0 0">
       <button class="btn block" id="scan">Сканировать</button>
       <video class="scanner" id="video" hidden playsinline muted></video>
@@ -35,7 +35,7 @@ function renderHome(me) {
         <label class="field"><span>Код для входа с билета, если QR не читается</span><input class="input" name="code" placeholder="6 символов" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
         <button class="btn ghost" type="submit">Погасить</button>
       </form>
-      <p class="cart-note">Код для входа меняется каждые 30 секунд, как и QR. Со встроенным сканером слышен звук результата — удобнее в шумном зале.</p>
+      <p class="cart-note">Здесь после скана звучит сигнал, в шумном зале так удобнее.</p>
       <div id="history"></div>
       <button class="link-btn" id="logout" style="justify-self:start">Отключить этот телефон</button>
     </div>
@@ -96,7 +96,7 @@ async function toggleCamera() {
     return;
   }
   if (!('BarcodeDetector' in window)) {
-    toast('Этот браузер не читает QR сам. Сканируйте обычной камерой телефона — ссылка откроется и билет погасится.', { error: true, ms: 7000 });
+    toast('Этот браузер не читает QR. Сканируйте обычной камерой телефона.', { error: true, ms: 7000 });
     return;
   }
   try {

@@ -91,13 +91,21 @@ export function renderHeader(current) {
   document.body.prepend(header);
 }
 
+// Данные заведения для подвала. Пустые поля на сайте не показываются.
+export const VENUE = {
+  address: '',   // например: 'Москва, ул. Пушкина, 1'
+  hours: '',     // например: 'Ежедневно с 18:00'
+  phone: '',     // например: '+7 999 123-45-67'
+};
+
 export function renderFooter() {
   const footer = document.createElement('footer');
   footer.className = 'site-footer';
+  const tel = VENUE.phone.replace(/[^\d+]/g, '');
   footer.innerHTML = `<div class="wrap">
     <div><b>МТ</b><br>Музыкальный бар и караоке</div>
-    <div>Каждый день с 18:00 до последнего гостя<br>Пятница и суббота — до 06:00</div>
-    <div>Бронь больших компаний и банкеты<br><a href="tel:+70000000000">+7 (000) 000-00-00</a></div>
+    ${VENUE.address || VENUE.hours ? `<div>${esc(VENUE.address)}${VENUE.address && VENUE.hours ? '<br>' : ''}${esc(VENUE.hours)}</div>` : ''}
+    ${VENUE.phone ? `<div>Бронь по телефону<br><a href="tel:${esc(tel)}">${esc(VENUE.phone)}</a></div>` : ''}
   </div>`;
   document.body.append(footer);
 }
