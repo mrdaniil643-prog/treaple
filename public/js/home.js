@@ -28,7 +28,7 @@ function heroStub(e) {
     <div class="stub-body">
       <span class="stub-kicker">${fmt.weekday(e.starts_at)}, ${fmt.time(e.starts_at)}</span>
       <h3>${esc(e.title)}</h3>
-      <p>${esc(e.lineup)}</p>
+      ${e.lineup ? `<p>${esc(e.lineup)}</p>` : ''}
       <a class="btn" href="/event?id=${e.id}">Выбрать стол</a>
     </div>
   </div>`;

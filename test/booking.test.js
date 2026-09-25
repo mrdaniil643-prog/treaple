@@ -1,8 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openDb, seedEvents } from '../server/db.js';
+import { openDb } from '../server/db.js';
 import { createBooking, BookingError, HOLD_MINUTES, QR_WINDOW_SECONDS } from '../server/booking.js';
 import { createStaff } from '../server/staff.js';
+
+// Два вечера в разные дни: сегодня и через 12 дней (для проверок «не тот вечер»)
+function seedEvents(db, now) {
+  const at = (off, hh, mm) => { const d = new Date(now); d.setDate(d.getDate() + off); d.setHours(hh, mm, 0, 0); return d.toISOString(); };
+  const ins = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
+    VALUES (?, ?, '', '', ?, ?, ?, ?, ?, '')`);
+  ins.run('today', 'Сегодня', at(0, 21, 0), at(0, 19, 30), JSON.stringify(['karaoke', 'main']), 1000, 500);
+  ins.run('later', 'Позже', at(12, 20, 0), at(12, 19, 0), JSON.stringify(['main']), 1300, 800);
+}
 
 function setup() {
   let clock = new Date('2026-09-25T12:00:00Z');

@@ -128,52 +128,14 @@ function at(date, hh, mm) {
   return d.toISOString();
 }
 
-export function seedEvents(db, now = new Date()) {
+// Афиша по умолчанию: один вечер 25 октября 2026. Сидится только в пустую базу,
+// остальные события заводятся в админке.
+export function seedEvents(db) {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM events').get();
   if (n > 0) return;
-  const day = (offset) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() + offset);
-    return d;
-  };
-  // Ближайшие пятница и суббота
-  const toFri = (5 - now.getDay() + 7) % 7;
-  const plan = [
-    {
-      slug: 'karaoke-friday', off: toFri, title: 'Караоке-пятница',
-      lineup: 'Ведущий Артём Лис, диджей Mira',
-      description: 'Поём до утра. Песню заказываете через QR на столе, в полночь батл столов. Победителям сет шотов.',
-      genre: 'Караоке', start: [21, 0], doors: [19, 30], halls: ['karaoke', 'main'], price: 1000, deposit: 500,
-    },
-    {
-      slug: 'rock-cover-saturday', off: toFri + 1, title: 'Рок-каверы вживую',
-      lineup: 'Группа «Громкая связь»',
-      description: 'Три сета рок-хитов от девяностых до сегодня. В перерывах можно спеть с группой.',
-      genre: 'Живой звук', start: [21, 30], doors: [20, 0], halls: ['karaoke', 'main'], price: 1500, deposit: 700,
-    },
-    {
-      slug: 'duets-night', off: toFri + 6, title: 'Ночь дуэтов',
-      lineup: 'Ведущие Катя Рэй и Дима Соль',
-      description: 'Поём только парами. Пришли без пары? Ведущие найдут. Лучший дуэт выбирает зал.',
-      genre: 'Караоке', start: [21, 0], doors: [19, 30], halls: ['karaoke'], price: 900, deposit: 500,
-    },
-    {
-      slug: 'nineties-party', off: toFri + 7, title: 'Дискотека 90-х',
-      lineup: 'DJ Вова Кассета',
-      description: 'Хиты с кассет, от «Руки вверх» до Spice Girls. За лучший образ бутылка игристого.',
-      genre: 'Вечеринка', start: [22, 0], doors: [20, 30], halls: ['karaoke', 'main'], price: 1200, deposit: 600,
-    },
-    {
-      slug: 'jazz-standards', off: toFri + 12, title: 'Джазовые стандарты',
-      lineup: 'Трио Анны Верес',
-      description: 'Контрабас, рояль и голос в основном зале.',
-      genre: 'Живой звук', start: [20, 0], doors: [19, 0], halls: ['main'], price: 1300, deposit: 800,
-    },
-  ];
-  const ins = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-  for (const e of plan) {
-    const d = day(e.off);
-    ins.run(e.slug, e.title, e.lineup, e.description, at(d, ...e.start), at(d, ...e.doors), JSON.stringify(e.halls), e.price, e.deposit, e.genre);
-  }
+  const d = new Date(2026, 9, 25);
+  db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run('karaoke-25-october', 'Караоке-вечер', '', 'Караоке до утра в обоих залах.',
+      at(d, 21, 0), at(d, 19, 30), JSON.stringify(['karaoke', 'main']), 1000, 500, 'Караоке');
 }

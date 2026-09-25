@@ -42,29 +42,14 @@ const listeners = new Set();
 window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); for (const fn of listeners) fn(); } });
 load();
 
-// ---- события: те же, что на сайте, с датами от сегодняшнего дня ----
-// Время событий задаём по Москве, где бы ни находился посетитель.
+// ---- событие: то же, что на сайте, 25 октября 2026 ----
+// Время задаём по Москве, где бы ни находился посетитель.
 const MSK = 3 * 3600e3;
-const mskDate = (ms) => new Date(ms + MSK); // поля UTC этой даты = московские
-function at(day, hh, mm) {
-  return new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hh, mm) - MSK).toISOString();
-}
-const EVENTS = (() => {
-  const today = mskDate(Date.now());
-  const toFri = (5 - today.getUTCDay() + 7) % 7;
-  const day = (off) => new Date(today.getTime() + off * 86400e3);
-  const plan = [
-    [1, toFri, 'Караоке-пятница', 'Ведущий Артём Лис, диджей Mira', 'Поём до утра. Песню заказываете через QR на столе, в полночь батл столов. Победителям сет шотов.', 'Караоке', [21, 0], [19, 30], ['karaoke', 'main'], 1000, 500],
-    [2, toFri + 1, 'Рок-каверы вживую', 'Группа «Громкая связь»', 'Три сета рок-хитов от девяностых до сегодня. В перерывах можно спеть с группой.', 'Живой звук', [21, 30], [20, 0], ['karaoke', 'main'], 1500, 700],
-    [3, toFri + 6, 'Ночь дуэтов', 'Ведущие Катя Рэй и Дима Соль', 'Поём только парами. Пришли без пары? Ведущие найдут. Лучший дуэт выбирает зал.', 'Караоке', [21, 0], [19, 30], ['karaoke'], 900, 500],
-    [4, toFri + 7, 'Дискотека 90-х', 'DJ Вова Кассета', 'Хиты с кассет, от «Руки вверх» до Spice Girls. За лучший образ бутылка игристого.', 'Вечеринка', [22, 0], [20, 30], ['karaoke', 'main'], 1200, 600],
-    [5, toFri + 12, 'Джазовые стандарты', 'Трио Анны Верес', 'Контрабас, рояль и голос в основном зале.', 'Живой звук', [20, 0], [19, 0], ['main'], 1300, 800],
-  ];
-  return plan.map(([id, off, title, lineup, description, genre, start, doors, halls, price, deposit]) => ({
-    id, slug: `e${id}`, title, lineup, description, genre, halls, price, deposit, status: 'on_sale',
-    starts_at: at(day(off), ...start), doors_at: at(day(off), ...doors),
-  }));
-})();
+const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - MSK).toISOString();
+const EVENTS = [{
+  id: 1, slug: 'e1', title: 'Караоке-вечер', lineup: '', description: 'Караоке до утра в обоих залах.', genre: 'Караоке',
+  halls: ['karaoke', 'main'], price: 1000, deposit: 500, status: 'on_sale', starts_at: at(21, 0), doors_at: at(19, 30),
+}];
 
 // Чтобы схема не была пустой, часть мест «уже продана» другим гостям.
 // Одинаково для всех посетителей: зависит только от события и стола.
