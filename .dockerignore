@@ -1,0 +1,10 @@
+.git
+.github
+.claude
+.devcontainer
+node_modules
+data
+test
+scripts
+*.md
+Dockerfile

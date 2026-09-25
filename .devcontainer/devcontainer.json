@@ -1,0 +1,24 @@
+{
+  "name": "МТ — сайт с билетами",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "containerEnv": {
+    "TRUST_PROXY": "1"
+  },
+  "forwardPorts": [
+    3000
+  ],
+  "portsAttributes": {
+    "3000": {
+      "label": "Сайт МТ",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postStartCommand": "nohup bash -c 'npm run demo > /tmp/mt.log 2>&1 &' > /dev/null 2>&1",
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md"
+      ]
+    }
+  }
+}

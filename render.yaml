@@ -1,0 +1,23 @@
+# Render Blueprint: сайт выкладывается из GitHub при каждом обновлении ветки.
+services:
+  - type: web
+    name: mt-bar
+    runtime: docker
+    plan: starter            # диск для базы есть только на платных тарифах
+    healthCheckPath: /api/settings
+    autoDeploy: true
+    disk:
+      name: mt-data
+      mountPath: /app/data   # здесь лежит база с заказами — она переживает перезапуски
+      sizeGB: 1
+    envVars:
+      - key: ADMIN_TOKEN
+        generateValue: true  # пароль админки: посмотрите его в настройках сервиса на Render
+      - key: TRUST_PROXY
+        value: "1"
+      - key: VENUE_TZ
+        value: Europe/Moscow
+      - key: PUBLIC_ORIGIN
+        sync: false          # адрес сайта, например https://mt-bar.onrender.com
+      - key: DEMO_PAYMENTS
+        sync: false          # 1 — тестовая оплата без денег; пусто — онлайн-бронь закрыта до подключения эквайринга

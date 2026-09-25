@@ -25,6 +25,35 @@ ADMIN_TOKEN=длинный-случайный-пароль npm start   # бое�
 | `DEMO_PAYMENTS=1` | Включить демо-оплату в боевом режиме (только для показа) |
 | `QR_SECRET` | Ключ подписи живых QR. Если не задан, создаётся случайный и хранится в базе |
 
+## Запуск через GitHub
+
+### Быстро посмотреть: GitHub Codespaces
+
+[![Открыть в Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/mrdaniil643-prog/treaple?ref=claude/table-booking-ticket-system-7ax845)
+
+1. Нажмите кнопку выше и «Create codespace». Через пару минут сайт откроется сам на вкладке «Сайт МТ».
+2. Пароль админки на этот запуск: в терминале Codespace выполните `grep ADMIN_TOKEN /tmp/mt.log`.
+3. Чтобы показать сайт другим, откройте вкладку **Ports**, нажмите правой кнопкой на порт 3000 и выберите **Port visibility → Public**.
+
+Codespace работает, пока открыт, и засыпает через 30 минут без действий. Это режим разработки: оплата тестовая, деньги не списываются. Бесплатных часов Codespaces в месяц хватает для показа, но не для работы бара.
+
+### Постоянно: Render из GitHub
+
+В репозитории лежат `Dockerfile` и `render.yaml`, поэтому Render сам соберёт и выложит сайт и будет обновлять его при каждом push.
+
+1. Зарегистрируйтесь на [render.com](https://render.com) через GitHub и дайте доступ к репозиторию.
+2. **New → Blueprint**, выберите репозиторий и ветку `claude/table-booking-ticket-system-7ax845`.
+3. Render спросит `PUBLIC_ORIGIN` (адрес сайта, его видно после создания; можно заполнить позже) и `DEMO_PAYMENTS` (`1`, пока нет эквайринга, иначе онлайн-бронь закрыта).
+4. Пароль админки Render создаст сам: **Environment → ADMIN_TOKEN**.
+
+Тариф Starter платный (около 7 $ в месяц): на бесплатном нет диска, и база с заказами стиралась бы при каждом перезапуске. Свой домен подключается в **Settings → Custom Domains**, HTTPS Render выдаёт сам.
+
+Тот же `Dockerfile` подойдёт для любого VPS: `docker build -t mt-bar . && docker run -d -p 80:3000 -v mt-data:/app/data -e ADMIN_TOKEN=... mt-bar`.
+
+### Проверка на GitHub
+
+При каждом push GitHub Actions прогоняет тесты и проверяет, что сервер запускается (вкладка **Actions**).
+
 ## Страницы
 
 | Адрес | Что там |

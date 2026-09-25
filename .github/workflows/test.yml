@@ -1,0 +1,24 @@
+name: Тесты
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Сервер запускается и отвечает
+        run: |
+          ADMIN_TOKEN=ci-token-123456789 DB_FILE=/tmp/ci.db PORT=3000 node --no-warnings server/index.js --prod &
+          for i in $(seq 20); do curl -sf http://127.0.0.1:3000/api/settings && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:3000/ > /dev/null
+          curl -sf http://127.0.0.1:3000/api/events > /dev/null
