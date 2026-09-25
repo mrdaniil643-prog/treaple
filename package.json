@@ -1,0 +1,13 @@
+{
+  "name": "mt-bar-tickets",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Сайт музыкального бара «МТ»: афиша, билеты по столам, меню бара и кухни",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings server/index.js",
+    "dev": "node --no-warnings --watch server/index.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  }
+}
