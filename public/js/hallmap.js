@@ -26,6 +26,12 @@ function seatPositions(t) {
 // При повороте схемы подписи поворачиваем обратно, чтобы они читались.
 let upright = () => '';
 
+// Стол на телефоне мельче пальца: расширяем зону нажатия на сторону, где стоят места.
+function hitArea(t) {
+  const [dx, dy] = t.w >= t.h ? [4, 14] : [18, 4];
+  return `<rect class="hit" x="${t.x - dx}" y="${t.y - dy}" width="${t.w + dx * 2}" height="${t.h + dy * 2}"/>`;
+}
+
 function decorEl(d) {
   if (d.t === 'rect') return `<rect class="${d.c}" x="${d.x}" y="${d.y}" width="${d.w}" height="${d.h}" rx="${d.c === 'floor' ? 6 : 3}"/>`;
   if (d.t === 'path') return `<path class="${d.c}" d="${d.d}"/>`;
@@ -48,7 +54,7 @@ export function mountHall(container, hall, { onPick, readonly = false, rotate = 
     ${hall.tables.map((t) => {
       const seats = seatPositions(t).map(([x, y]) => `<circle class="seat" cx="${x}" cy="${y}" r="5"/>`).join('');
       return `<g class="tbl" data-id="${t.id}" ${readonly ? '' : 'tabindex="0" role="button"'}>
-        ${seats}<rect class="top" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="5"/>
+        ${hitArea(t)}${seats}<rect class="top" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="5"/>
         <text x="${t.x + t.w / 2}" y="${t.y + t.h / 2}"${upright(t.x + t.w / 2, t.y + t.h / 2)}>${t.n}</text></g>`;
     }).join('')}
     </g>

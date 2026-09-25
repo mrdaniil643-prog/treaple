@@ -16,6 +16,8 @@ const state = {
   holding: false,
   blocked: '', // почему продажа недоступна — показываем при каждой перерисовке корзины
   map: null,
+  // на телефоне схема открывается чуть приближенной: так столы крупнее пальца
+  zoom: matchMedia('(max-width: 1000px)').matches ? 1.25 : 1,
 };
 
 const tableById = (id) => {
@@ -43,6 +45,10 @@ function render() {
         <div class="hall-tabs" role="tablist" aria-label="Залы">
           ${halls.map((h) => `<button role="tab" data-hall="${h.id}" aria-selected="${h.id === state.hallId}">${esc(h.title)}</button>`).join('')}
         </div>
+        <div class="zoom-ctl" role="group" aria-label="Масштаб схемы">
+          <button type="button" data-zoom="-1" aria-label="Отдалить схему">−</button>
+          <button type="button" data-zoom="1" aria-label="Приблизить схему">+</button>
+        </div>
         <div class="legend" aria-hidden="true">
           <span><i class="l-free"></i>Свободен</span><span><i class="l-partial"></i>Есть места</span>
           <span><i class="l-full"></i>Занят</span><span><i class="l-sel"></i>Ваш выбор</span>
@@ -58,17 +64,42 @@ function render() {
   <dialog id="checkout"></dialog>`;
 
   $$('.hall-tabs button').forEach((b) => b.addEventListener('click', () => switchHall(b.dataset.hall)));
+  $$('.zoom-ctl button').forEach((b) => b.addEventListener('click', () => setZoom(state.zoom + Number(b.dataset.zoom) * 0.5)));
   mountCurrentHall();
   renderCart();
 }
 
 const wide = matchMedia('(min-width: 1000px)');
+
+// На телефоне схему можно приблизить кнопками: столы становятся крупнее пальца.
+function setZoom(z) {
+  state.zoom = Math.min(2.5, Math.max(1, z));
+  const hall = $('#hall');
+  if (!hall) return;
+  hall.style.width = `${state.zoom * 100}%`;
+  $$('.zoom-ctl button').forEach((b) => { b.disabled = b.dataset.zoom === '1' ? state.zoom >= 2.5 : state.zoom <= 1; });
+}
+
+// Выбранный стол не должен прятаться под нижней шторкой.
+function revealTable(id) {
+  if (wide.matches) return;
+  const g = state.map?.svg.querySelector(`[data-id="${id}"]`);
+  const stage = $('.map-stage');
+  if (!g || !stage) return;
+  const r = g.getBoundingClientRect();
+  const sr = stage.getBoundingClientRect();
+  if (stage.scrollWidth > stage.clientWidth) stage.scrollBy({ left: r.left - sr.left - sr.width / 2 + r.width / 2, behavior: 'smooth' });
+  const headerH = $('.site-header')?.offsetHeight || 64;
+  const want = headerH + 24;
+  if (r.top < want || r.bottom > innerHeight * 0.45) window.scrollBy({ top: r.top - want, behavior: 'smooth' });
+}
 wide.addEventListener('change', () => state.map && mountCurrentHall());
 
 function mountCurrentHall() {
   const hall = state.config.halls.find((h) => h.id === state.hallId);
   const [, , w, h] = hall.viewBox;
   state.map = mountHall($('#hall'), hall, { onPick: openTable, rotate: wide.matches && h > w * 1.3 });
+  setZoom(wide.matches ? 1 : state.zoom);
   state.map.update(state.availability, state.selection, state.activeTable);
 }
 
@@ -76,6 +107,7 @@ function switchHall(id) {
   state.hallId = id;
   state.activeTable = null;
   $('#pop').hidden = true;
+  document.body.classList.remove('sheet-open');
   $$('.hall-tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.hall === id)));
   mountCurrentHall();
 }
@@ -131,6 +163,8 @@ function openTable(id) {
   };
   draw();
   pop.hidden = false;
+  document.body.classList.add('sheet-open');
+  revealTable(id);
   pop.onclick = (ev) => {
     const d = ev.target.closest('[data-d]')?.dataset.d;
     if (d) { seats = Math.max(1, Math.min(a.free, seats + Number(d))); draw(); return; }
@@ -155,6 +189,7 @@ function closePop() {
   const last = state.activeTable;
   state.activeTable = null;
   $('#pop').hidden = true;
+  document.body.classList.remove('sheet-open');
   refreshMap();
   if (last) state.map.svg.querySelector(`[data-id="${last}"]`)?.focus({ preventScroll: true });
 }
@@ -171,6 +206,7 @@ function cartTotals() {
 function renderCart(bump = false) {
   const cart = $('#cart-body');
   const { seats, total } = cartTotals();
+  $('#cart').classList.toggle('is-empty', !seats);
   const items = [...state.selection].map(([id, s]) => {
     const t = tableById(id);
     const a = state.availability[id];
@@ -258,25 +294,28 @@ function openCheckout() {
     grouped.set(key, (grouped.get(key) || 0) + 1);
   }
   dlg.innerHTML = `
-    <div class="dlg-head"><h2>Оформление</h2><span class="timer" id="timer"></span></div>
+    <div class="dlg-head"><h2>Оформление</h2><span class="timer" id="timer-box" title="Столько времени места держатся за вами"><small>Места за вами</small> <b id="timer"></b></span></div>
     <form class="dlg-body" id="pay-form" novalidate>
       <div class="summary-lines">
         ${[...grouped].map(([k, n]) => `<div><span>${esc(k)}</span><span>${seatsWord(n)}</span></div>`).join('')}
         <div><b>К оплате</b><b>${money(o.total)}</b></div>
       </div>
-      <label class="field"><span>Имя</span><input class="input" name="name" autocomplete="name" required></label>
-      <label class="field"><span>Телефон (по нему найдём заказ)</span><input class="input" name="phone" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" required></label>
-      <label class="field"><span>Почта для билетов (необязательно)</span><input class="input" name="email" type="email" autocomplete="email"></label>
+      <label class="field"><span>Имя</span><input class="input" name="name" autocomplete="name" autocapitalize="words" enterkeyhint="next" required></label>
+      <label class="field"><span>Телефон (по нему найдём заказ)</span><input class="input" name="phone" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" placeholder="+7 900 000-00-00" required></label>
+      <label class="field"><span>Почта для билетов (необязательно)</span><input class="input" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" enterkeyhint="done"></label>
       ${o.tickets.length > 1 ? `<details class="guest-names"><summary>Подписать билеты именами гостей</summary>
-        <div class="grid">${o.tickets.map((t, i) => `<label class="field"><span>Стол ${t.table}, место ${t.seat}</span><input class="input" data-guest="${t.code}" placeholder="${i === 0 ? 'Вы' : `Гость ${i + 1}`}"></label>`).join('')}</div>
+        <div class="grid">${o.tickets.map((t, i) => `<label class="field"><span>Стол ${t.table}, место ${t.seat}</span><input class="input" data-guest="${t.code}" autocomplete="off" autocapitalize="words" placeholder="${i === 0 ? 'Вы' : `Гость ${i + 1}`}"></label>`).join('')}</div>
       </details>` : ''}
       <p class="form-error" id="pay-error"></p>
-      <button class="btn block" type="submit">Оплатить ${money(o.total)}</button>
-      <button class="btn ghost block" type="button" id="release">Отменить бронь</button>
+      <div class="dlg-actions">
+        <button class="btn block" type="submit">Оплатить ${money(o.total)}</button>
+        <button class="btn ghost block" type="button" id="release">Отменить бронь</button>
+      </div>
       <p class="demo-note">Тестовый режим: деньги не списываются.</p>
     </form>`;
   dlg.showModal();
-  dlg.querySelector('[name=name]').focus();
+  // на телефоне не открываем клавиатуру сразу: сначала человек видит сумму и таймер
+  if (wide.matches) dlg.querySelector('[name=name]').focus();
   // Esc не закрывает окно молча: иначе бронь осталась бы висеть. Закрывает только «Отменить бронь».
   dlg.oncancel = (ev) => ev.preventDefault();
 
@@ -287,8 +326,8 @@ function openCheckout() {
     const m = Math.floor(left / 60e3), s = Math.floor((left % 60e3) / 1e3);
     const el = $('#timer');
     if (!el) return;
-    el.textContent = `Места за вами ещё ${m}:${String(s).padStart(2, '0')}`;
-    el.classList.toggle('low', left < 60e3);
+    el.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    $('#timer-box')?.classList.toggle('low', left < 60e3);
     if (left === 0) {
       clearInterval(timerId);
       closeCheckout();

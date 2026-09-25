@@ -78,7 +78,7 @@ app.innerHTML = `<section class="wrap page-head">
     <nav class="menu-nav" id="menu-nav" aria-label="Разделы меню"></nav>
     <div>
       <label class="field menu-search"><span class="visually-hidden">Поиск по меню</span>
-        <input class="input" id="q" type="search" placeholder="Найти блюдо или напиток: краб, негрони, чизкейк"></label>
+        <input class="input" id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Найти блюдо или напиток: краб, негрони, чизкейк"></label>
       <div id="menu-body"></div>
       <p class="menu-legal">Меню с полной информацией о составе, выходе и энергетической ценности каждого блюда находится в уголке потребителя. Если у вас аллергия на какой-либо ингредиент, сообщите об этом официанту. Цены в рублях.</p>
     </div>

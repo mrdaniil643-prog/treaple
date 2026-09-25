@@ -116,6 +116,7 @@ textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
 .hero {
   position: relative; isolation: isolate; overflow: hidden;
   min-height: min(88vh, 820px);
+  min-height: min(88svh, 820px);
   display: grid; align-items: end;
   padding: 120px 0 56px;
 }
@@ -556,3 +557,84 @@ h1, h2, h3, .t-event, .gate-name { overflow-wrap: break-word; }
   .btn { padding: 0 16px; }
 }
 .menu-layout > *, .booking > *, .admin-grid > * { min-width: 0; }
+
+
+/* ---------- телефон: касания, шторки, безопасные зоны ---------- */
+* { -webkit-tap-highlight-color: transparent; }
+a, button, summary, label.check, .tbl, .event-row { touch-action: manipulation; }
+.site-header { padding-top: env(safe-area-inset-top, 0px); }
+.logo { min-height: 44px; }
+.nav a { min-height: 44px; display: inline-flex; align-items: center; }
+.nav a:active, .event-row:active, .saved-orders a:active { background: rgba(255, 255, 255, .08); }
+.hall-svg .hit { fill: rgba(0, 0, 0, 0); }
+.table-pop .close { width: 44px; height: 44px; display: grid; place-items: center; margin: -10px -10px 0 0; border-radius: 50%; }
+.table-pop .close:active { background: rgba(255, 255, 255, .08); }
+.link-btn { min-height: 44px; display: inline-flex; align-items: center; }
+.ticket-actions { gap: 0 18px; }
+.ticket-actions button { min-height: 44px; display: inline-flex; align-items: center; }
+.guest-names summary { min-height: 44px; display: flex; align-items: center; }
+.timer { white-space: nowrap; gap: 6px; }
+.timer small { font: 600 12px var(--f-body); opacity: .85; }
+.zoom-ctl { display: none; gap: 8px; }
+.zoom-ctl button {
+  width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--panel);
+  font: 700 22px/1 var(--f-body); cursor: pointer;
+}
+.zoom-ctl button[disabled] { opacity: .35; }
+.cart, dialog, .menu-nav { overscroll-behavior: contain; }
+
+@media (max-width: 1000px) {
+  .hall-tabs button { min-height: 44px; }
+  .zoom-ctl { display: flex; }
+  .map-toolbar { gap: 10px; }
+  .legend { order: 3; width: 100%; }
+  /* схема прокручивается внутри себя, когда её приблизили */
+  .map-stage { display: block; overflow: auto; padding: 12px; min-height: 0; max-height: 72svh; -webkit-overflow-scrolling: touch; }
+  #hall { margin: 0 auto; transition: width .25s var(--ease); }
+  .hall-svg { max-height: none; }
+
+  /* корзина — закреплённая снизу шторка; карточка стола открывается в ней же */
+  .booking { padding-bottom: 170px; }
+  .cart {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 30;
+    max-height: 78svh; overflow: auto;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    border-radius: 20px 20px 0 0; border-bottom: 0;
+  }
+  .cart::before { content: ''; display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 10px; }
+  body.sheet-open .cart-body { display: none; }
+  .cart-list { max-height: 24svh; overflow: auto; }
+  .table-pop { border: 0; padding: 4px 0 0; background: none; }
+
+  /* оформление — на весь экран снизу, кнопка оплаты всегда видна */
+  dialog {
+    width: 100%; max-width: 100%; margin: auto 0 0; max-height: 94svh;
+    border-radius: 20px 20px 0 0; border-bottom: 0;
+  }
+  .dlg-head { padding: 16px; position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  .dlg-body { padding: 16px; }
+  .dlg-actions {
+    position: sticky; bottom: 0; display: grid; gap: 8px;
+    margin: 0 -16px -16px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border-top: 1px solid var(--line);
+  }
+  .menu-nav a { min-height: 44px; display: inline-flex; align-items: center; }
+  .site-footer { margin-top: 48px; }
+}
+.dlg-actions { display: grid; gap: 8px; }
+
+@media (max-width: 1000px) {
+  .btn.small { min-height: 44px; }
+  .cart-list .remove { width: 44px; height: 44px; display: grid; place-items: center; margin: -8px -8px -8px 0; }
+}
+.check { min-height: 44px; }
+
+@media (max-width: 1000px) {
+  /* пока ничего не выбрано, шторка — одна строка-подсказка и не закрывает схему */
+  .cart.is-empty .cart-body > :not(.cart-empty):not(.form-error) { display: none; }
+  .cart.is-empty .cart-body .cart-empty { display: block; margin: 0; text-align: center; font-size: 15px; }
+  .cart.is-empty { padding-top: 10px; }
+}
+@media (max-width: 1000px) {
+  .cart-body > .pop-row:first-child { display: none; }
+}
