@@ -1,9 +1,10 @@
-import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, savedOrders, ticketUrl, STATUS_TEXT, $ } from './common.js';
+import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
 import { ticketCard } from './ticket-card.js';
 
 renderHeader('tickets');
 const app = $('#app');
-const params = new URLSearchParams(location.search);
+// Старые ссылки вида ?order= переносим во фрагмент и убираем из адресной строки.
+const params = new URLSearchParams(location.hash.slice(1) || location.search);
 
 function renderOrder(o, { fresh = false } = {}) {
   const box = $('#order');
@@ -65,7 +66,7 @@ function renderOrder(o, { fresh = false } = {}) {
 function renderSaved() {
   const list = savedOrders.list();
   $('#saved').innerHTML = list.length ? `<h3 style="margin-top:36px;color:var(--cream)">Заказы с этого устройства</h3>
-    <div class="saved-orders">${list.map((o) => `<a href="/tickets?order=${encodeURIComponent(o.secret)}">
+    <div class="saved-orders">${list.map((o) => `<a href="${orderLink(o.secret)}">
       <span><b>${esc(o.title)}</b><br><span class="muted">${fmt.full(o.startsAt)}</span></span>
       <span class="muted">${esc(o.code)}, ${seatsWord(o.count)}</span></a>`).join('')}</div>` : '';
 }
@@ -75,7 +76,7 @@ async function main() {
     <h1>Мои билеты</h1>
     <p>Билеты, купленные на этом устройстве, видны сразу. Чтобы найти другие, введите номер заказа и телефон, указанный при покупке.</p>
     <form class="lookup" id="lookup" style="margin-top:24px">
-      <label class="field"><span>Номер заказа</span><input class="input" name="code" placeholder="MT-XXXXXX" required></label>
+      <label class="field"><span>Номер заказа</span><input class="input" name="code" placeholder="MT-XXXXXXXX" required></label>
       <label class="field"><span>Телефон</span><input class="input" name="phone" type="tel" placeholder="+7 900 000-00-00" required></label>
       <button class="btn" type="submit">Найти билеты</button>
     </form>
@@ -91,7 +92,7 @@ async function main() {
     try {
       const o = await api(`/api/orders/lookup?code=${encodeURIComponent(f.code.value)}&phone=${encodeURIComponent(f.phone.value)}`);
       savedOrders.add(o);
-      history.replaceState(null, '', `/tickets?order=${encodeURIComponent(o.secret)}`);
+      history.replaceState(null, '', orderLink(o.secret));
       renderOrder(o);
       renderSaved();
     } catch (err) { $('#lookup-error').textContent = err.message; }
@@ -103,11 +104,12 @@ async function main() {
       const o = await api(`/api/orders/${encodeURIComponent(secret)}`);
       if (o.status === 'paid') savedOrders.add(o);
       renderOrder(o, { fresh: params.has('new') });
-      if (params.has('new')) history.replaceState(null, '', `/tickets?order=${encodeURIComponent(secret)}`);
+      history.replaceState(null, '', orderLink(secret));
     } catch (err) { $('#lookup-error').textContent = err.message; }
   }
   renderSaved();
   renderFooter();
 }
 
+window.addEventListener('hashchange', () => location.reload());
 main();

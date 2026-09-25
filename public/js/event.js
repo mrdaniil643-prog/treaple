@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, seatsWord, plural, renderHeader, renderFooter, toast, savedOrders, $, $$ } from './common.js';
+import { api, esc, fmt, money, seatsWord, plural, renderHeader, renderFooter, toast, savedOrders, orderLink, $, $$ } from './common.js';
 import { mountHall } from './hallmap.js';
 
 renderHeader('afisha');
@@ -314,7 +314,7 @@ function openCheckout() {
       });
       savedOrders.add(paid);
       clearInterval(timerId);
-      location.href = `/tickets?order=${encodeURIComponent(paid.secret)}&new=1`;
+      location.href = orderLink(paid.secret, '&new=1');
     } catch (err) {
       $('#pay-error').textContent = err.message;
       btn.disabled = false;
@@ -342,10 +342,13 @@ async function main() {
     Object.assign(state, { config, event, availability: av.tables, hallId: event.halls[0] });
     document.title = `${event.title} — выбор стола — МТ`;
     render();
-    if (event.status !== 'on_sale') {
+    if (event.status !== 'on_sale' || !config.paymentsEnabled) {
       $('#go').disabled = true;
-      $('#cart-body').insertAdjacentHTML('afterbegin', `<p class="form-error">${event.status === 'cancelled' ? 'Событие отменено.' : 'Продажа билетов закрыта.'}</p>`);
-    } else connectStream();
+      const why = !config.paymentsEnabled ? 'Онлайн-продажа пока не работает. Позвоните нам, чтобы забронировать стол.'
+        : event.status === 'cancelled' ? 'Событие отменено.' : 'Продажа билетов закрыта.';
+      $('#cart-body').insertAdjacentHTML('afterbegin', `<p class="form-error">${esc(why)}</p>`);
+    }
+    if (event.status === 'on_sale') connectStream();
   } catch (err) {
     app.innerHTML = `<section class="wrap page-head"><h1>Не удалось открыть событие</h1><p>${esc(err.message)}</p><p><a href="/#afisha">Вернуться к афише</a></p></section>`;
   }

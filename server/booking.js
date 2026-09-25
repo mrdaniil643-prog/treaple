@@ -17,9 +17,12 @@ export class BookingError extends Error {
   }
 }
 
+// Убираем управляющие символы и ограничиваем длину текста от пользователя.
+export const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+
 export const normalizePhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 
-export function createBooking(db, { onChange = () => {}, now = () => new Date() } = {}) {
+export function createBooking(db, { onChange = () => {}, now = () => new Date(), demoPayments = true } = {}) {
   const q = {
     event: db.prepare('SELECT * FROM events WHERE id = ?'),
     events: db.prepare("SELECT * FROM events WHERE status != 'cancelled' ORDER BY starts_at"),
@@ -122,16 +125,18 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
 
   // items: [{ tableId, seats, whole }]
   function hold(eventId, items) {
+    if (!demoPayments) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     sweep();
     const event = getEvent(eventId);
     if (event.status !== 'on_sale') throw new BookingError(409, 'Продажа билетов на это событие закрыта');
     if (new Date(event.starts_at) < now()) throw new BookingError(409, 'Событие уже началось');
     if (!Array.isArray(items) || !items.length) throw new BookingError(400, 'Выберите хотя бы один стол');
+    if (items.length > 40) throw new BookingError(400, 'Слишком много столов в одном заказе');
 
     const merged = new Map();
     for (const it of items) {
-      const table = findTable(it?.tableId);
-      if (!table || !event.halls.includes(table.hallId)) throw new BookingError(400, `Стол ${it?.tableId} недоступен на этом событии`);
+      const table = typeof it?.tableId === 'string' ? findTable(it.tableId) : null;
+      if (!table || !event.halls.includes(table.hallId)) throw new BookingError(400, 'Один из выбранных столов недоступен на этом событии');
       const whole = Boolean(it.whole) || Boolean(table.wholeOnly);
       const seats = whole ? table.seats : Math.floor(Number(it.seats));
       if (!whole && !(seats >= 1)) throw new BookingError(400, `Укажите число мест за столом ${table.n}`);
@@ -164,14 +169,14 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
 
       const createdAt = iso();
       const expiresAt = new Date(now().getTime() + HOLD_MINUTES * 60e3).toISOString();
-      const order = { code: `MT-${code(6)}`, secret: randomBytes(18).toString('base64url') };
+      const order = { code: `MT-${code(8)}`, secret: randomBytes(18).toString('base64url') };
       const { lastInsertRowid: orderId } = q.insOrder.run(order.code, order.secret, event.id, total, createdAt, expiresAt);
       for (const { table, seats, whole } of merged.values()) {
         const busy = taken.get(table.id) || new Set();
         let seatNo = 1;
         for (let i = 0; i < seats; i++) {
           while (busy.has(seatNo)) seatNo++;
-          const { lastInsertRowid } = q.insTicket.run(code(10), orderId, event.id, table.id, seatNo, seatPrice(event, table), whole ? 1 : 0);
+          const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, table.id, seatNo, seatPrice(event, table), whole ? 1 : 0);
           log(Number(lastInsertRowid), Number(orderId), 'held');
           seatNo++;
         }
@@ -206,10 +211,11 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
   function findOrder({ secret, code: orderCode, phone }) {
     sweep();
     let o = null;
-    if (secret) o = q.orderBySecret.get(String(secret));
+    if (typeof secret === 'string' && secret.length >= 20) o = q.orderBySecret.get(secret);
     else if (orderCode) {
-      o = q.orderByCode.get(String(orderCode).trim().toUpperCase());
-      if (o && (!o.phone || normalizePhone(phone) !== o.phone)) o = null;
+      o = q.orderByCode.get(String(orderCode).trim().toUpperCase().slice(0, 20));
+      const p = normalizePhone(phone);
+      if (o && (!o.phone || p.length !== 10 || p !== o.phone)) o = null;
     }
     if (!o) throw new BookingError(404, 'Заказ не найден. Проверьте номер заказа и телефон, указанный при покупке.');
     return o;
@@ -220,13 +226,15 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
   }
 
   // Оплата. Платёжный шлюз подключается здесь: сейчас оплата подтверждается сразу (демо-режим).
-  function pay(secret, { name, phone, email, guests = {} }) {
+  function pay(secret, { name, phone, email, guests } = {}) {
+    if (!demoPayments) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     const o = findOrder({ secret });
+    const guestNames = guests && typeof guests === 'object' && !Array.isArray(guests) ? guests : {};
     if (o.status === 'paid') return orderView(o);
     if (o.status !== 'held') throw new BookingError(410, 'Время брони истекло, места освобождены. Выберите столы заново.');
-    const cleanName = String(name || '').trim().slice(0, 80);
+    const cleanName = cleanText(name, 80);
     const cleanPhone = normalizePhone(phone);
-    const cleanEmail = String(email || '').trim().slice(0, 120);
+    const cleanEmail = cleanText(email, 120);
     if (cleanName.length < 2) throw new BookingError(400, 'Укажите имя — по нему вас встретят на входе');
     if (cleanPhone.length !== 10) throw new BookingError(400, 'Укажите телефон в формате +7 900 000-00-00');
     if (cleanEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) throw new BookingError(400, 'Проверьте адрес почты');
@@ -236,7 +244,7 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
         .run(cleanName, cleanPhone, cleanEmail || null, iso(), o.id);
       const setGuest = db.prepare("UPDATE tickets SET status = 'active', guest_name = ? WHERE id = ?");
       for (const t of q.orderTickets.all(o.id)) {
-        const guest = String(guests[t.code] || '').trim().slice(0, 80) || cleanName;
+        const guest = (Object.hasOwn(guestNames, t.code) && cleanText(guestNames[t.code], 80)) || cleanName;
         setGuest.run(guest, t.id);
         log(t.id, o.id, 'paid');
       }
@@ -277,31 +285,39 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
 
   function renameGuest(secret, ticketCode, guestName) {
     const o = findOrder({ secret });
-    const t = q.ticketByCode.get(String(ticketCode));
+    const t = q.ticketByCode.get(String(ticketCode ?? '').slice(0, 20));
     if (!t || t.order_id !== o.id) throw new BookingError(404, 'Билет не найден в этом заказе');
     if (t.status !== 'active') throw new BookingError(409, 'Имя можно поменять только у действующего билета');
-    db.prepare('UPDATE tickets SET guest_name = ? WHERE id = ?').run(String(guestName || '').trim().slice(0, 80) || o.name, t.id);
+    db.prepare('UPDATE tickets SET guest_name = ? WHERE id = ?').run(cleanText(guestName, 80) || o.name, t.id);
     log(t.id, o.id, 'renamed');
     return orderView(o);
   }
 
+  // Полная карточка билета — только для администратора.
   function ticketView(t) {
     const o = db.prepare('SELECT * FROM orders WHERE id = ?').get(t.order_id);
     const view = orderView(o);
     return { ...view.tickets.find((x) => x.code === t.code), order: o.code, event: view.event, orderStatus: o.status };
   }
 
+  // По ссылке на билет гость видит только своё место: без номера заказа,
+  // контактов покупателя и чужих билетов — иначе один билет открывал бы весь заказ.
   function getTicket(ticketCode) {
-    const t = q.ticketByCode.get(String(ticketCode).toUpperCase().replace(/[^A-Z0-9]/g, ''));
+    const t = q.ticketByCode.get(String(ticketCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20));
     if (!t || t.status === 'held' || t.status === 'released') throw new BookingError(404, 'Билет не найден');
-    return ticketView(t);
+    const full = ticketView(t);
+    const { code, table, hall, seat, whole, price, status, guestName, checkedInAt, event } = full;
+    return {
+      code, table, hall, seat, whole, price, status, guestName, checkedInAt,
+      event: { title: event.title, startsAt: event.startsAt, doorsAt: event.doorsAt, deposit: event.deposit },
+    };
   }
 
   // ---- администратор ----
 
   function checkIn(ticketCode, eventId) {
     // принимаем и сам код, и ссылку из QR (…/ticket.html?t=CODE)
-    const raw = String(ticketCode || '');
+    const raw = String(ticketCode ?? '').slice(0, 300);
     const fromUrl = raw.match(/[?&]t=([A-Za-z0-9-]+)/);
     const t = q.ticketByCode.get((fromUrl ? fromUrl[1] : raw).toUpperCase().replace(/[^A-Z0-9]/g, ''));
     if (!t) throw new BookingError(404, 'Такого билета нет');
@@ -343,7 +359,7 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
   }
 
   function createEvent(data) {
-    const title = String(data.title || '').trim();
+    const title = cleanText(data.title, 120);
     const startsAt = new Date(data.startsAt);
     const doorsAt = data.doorsAt ? new Date(data.doorsAt) : new Date(startsAt.getTime() - 3600e3);
     const halls = (Array.isArray(data.halls) ? data.halls : []).filter((h) => HALLS.some((x) => x.id === h));
@@ -351,11 +367,11 @@ export function createBooking(db, { onChange = () => {}, now = () => new Date() 
     if (!title) throw new BookingError(400, 'Укажите название');
     if (Number.isNaN(startsAt.getTime())) throw new BookingError(400, 'Укажите дату и время начала');
     if (!halls.length) throw new BookingError(400, 'Выберите хотя бы один зал');
-    if (!(price > 0)) throw new BookingError(400, 'Укажите цену билета');
+    if (!(price > 0 && price <= 1e6)) throw new BookingError(400, 'Укажите цену билета');
     const slug = `${title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').slice(0, 40)}-${code(4).toLowerCase()}`;
     const { lastInsertRowid } = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(slug, title, String(data.lineup || ''), String(data.description || ''),
-      startsAt.toISOString(), doorsAt.toISOString(), JSON.stringify(halls), price, Math.max(0, Math.round(Number(data.deposit) || 0)), String(data.genre || ''));
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(slug, title, cleanText(data.lineup, 200), String(data.description ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim().slice(0, 3000),
+      startsAt.toISOString(), doorsAt.toISOString(), JSON.stringify(halls), price, Math.min(price, Math.max(0, Math.round(Number(data.deposit) || 0))), cleanText(data.genre, 40));
     return getEvent(lastInsertRowid);
   }
 

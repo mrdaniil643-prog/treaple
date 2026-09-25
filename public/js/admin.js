@@ -48,7 +48,7 @@ async function start() {
         <p class="muted">Отсканируйте QR с билета камерой или введите код вручную.</p>
         <video class="scanner" id="video" hidden playsinline muted></video>
         <form class="row" id="checkin">
-          <label class="field"><span>Код билета</span><input class="input" name="code" placeholder="XXXXX-XXXXX" autocomplete="off"></label>
+          <label class="field"><span>Код билета</span><input class="input" name="code" placeholder="XXXX-XXXX-XXXX" autocomplete="off"></label>
           <button class="btn" type="submit">Отметить вход</button>
           <button class="btn ghost" type="button" id="cam">Камера</button>
         </form>

@@ -75,3 +75,34 @@ test('возврат освобождает места', () => {
   assert.equal(booking.getTicket(held.tickets[0].code).status, 'cancelled');
   assert.equal(booking.checkIn(held.tickets[0].code).result, 'invalid');
 });
+
+test('ссылка на билет не раскрывает заказ, контакты и чужие билеты', () => {
+  const { booking, event } = setup();
+  const held = booking.hold(event.id, [{ tableId: 'K22', seats: 3 }]);
+  const paid = booking.pay(held.secret, { ...guest, email: 'anna@example.com' });
+  const pub = booking.getTicket(paid.tickets[1].code);
+  const json = JSON.stringify(pub);
+  for (const leak of [paid.code, paid.secret, paid.tickets[0].code, paid.tickets[2].code, '9123456789', 'anna@example.com']) {
+    assert.ok(!json.includes(leak), `в публичном билете не должно быть ${leak}`);
+  }
+  assert.equal(pub.seat, 2);
+});
+
+test('без подключённой оплаты нельзя ни забронировать, ни оплатить', () => {
+  const db = openDb(':memory:');
+  seedEvents(db, new Date('2026-09-25T12:00:00Z'));
+  const booking = createBooking(db, { now: () => new Date('2026-09-25T12:00:00Z'), demoPayments: false });
+  assert.throws(() => booking.hold(booking.listEvents()[0].id, [{ tableId: 'K21', seats: 1 }]), (e) => e.status === 503);
+  assert.throws(() => booking.pay('x'.repeat(24), guest), (e) => e.status === 503);
+});
+
+test('мусор во входных данных не ломает сервер', () => {
+  const { booking, event } = setup();
+  assert.throws(() => booking.hold(event.id, [{ tableId: { toString: 1 }, seats: 1 }]), (e) => e.status === 400);
+  assert.throws(() => booking.hold(event.id, [{ tableId: '__proto__', seats: 1 }]), (e) => e.status === 400);
+  assert.throws(() => booking.hold(event.id, Array(50).fill({ tableId: 'K21', seats: 1 })), (e) => e.status === 400);
+  const held = booking.hold(event.id, [{ tableId: 'K25', seats: 2 }]);
+  const paid = booking.pay(held.secret, { name: 'Анна\u0000‮', phone: '9123456789', guests: null });
+  assert.equal(paid.tickets[0].guestName, 'Анна');
+  assert.throws(() => booking.getOrder({ code: paid.code, phone: '' }), (e) => e.status === 404);
+});

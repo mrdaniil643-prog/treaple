@@ -13,7 +13,7 @@ async function main() {
       <h1 style="font-size:32px">Ваш билет</h1>
       <p>Покажите QR-код на входе. Двери открываются в ${fmt.time(t.event.doorsAt)}.</p>
       <div class="ticket-grid" style="grid-template-columns:1fr">${ticketCard(t, t.event, { actions: false })}</div>
-      <p class="cart-note" style="margin-top:16px">Заказ ${esc(t.order)}. Билет действует для одного гостя.</p>
+      <p class="cart-note" style="margin-top:16px">Билет действует для одного гостя. Не публикуйте QR-код: по нему можно пройти один раз.</p>
     </section>`;
     app.querySelector('.ticket')?.classList.add('printing');
   } catch (err) {

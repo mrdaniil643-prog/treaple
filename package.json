@@ -4,10 +4,13 @@
   "private": true,
   "description": "Сайт музыкального бара «МТ»: афиша, билеты по столам, меню бара и кухни",
   "type": "module",
-  "engines": { "node": ">=22.13" },
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
-    "start": "node --no-warnings server/index.js",
+    "start": "node --no-warnings server/index.js --prod",
     "dev": "node --no-warnings --watch server/index.js",
+    "demo": "node --no-warnings server/index.js",
     "test": "node --no-warnings --test test/*.test.js"
   }
 }

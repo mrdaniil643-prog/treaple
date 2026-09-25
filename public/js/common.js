@@ -109,7 +109,10 @@ export function qrSvg(text) {
 }
 
 export const ticketUrl = (code) => `${location.origin}/ticket?t=${code}`;
-export const prettyCode = (code) => code.replace(/(.{5})(?=.)/g, '$1-');
+export const prettyCode = (code) => code.replace(/(.{4})(?=.)/g, '$1-');
+
+// Секрет заказа держим во фрагменте (#order=…): он не уходит на сервер в логах и заголовках.
+export const orderLink = (secret, extra = '') => `/tickets#order=${encodeURIComponent(secret)}${extra}`;
 
 export const STATUS_TEXT = {
   held: 'Ждёт оплаты', paid: 'Оплачен', expired: 'Бронь истекла', cancelled: 'Бронь снята', refunded: 'Возврат оформлен',
