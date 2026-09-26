@@ -18,7 +18,7 @@ ADMIN_TOKEN=... TARGET=http://localhost:3000 python3 scripts/security-check.py  
 python3 tools/claude-demo/build.py  # демо без сервера для публикации на claude.ai → tools/claude-demo/build/
 ```
 
-Node ≥ 22.13, внешних npm-зависимостей нет (база — встроенный `node:sqlite`). Полноценного линтера и сборки фронтенда нет: браузер получает файлы из `public/` как есть (ES-модули). CI (`.github/workflows/test.yml`) гоняет lint, ESLint, `npm test`, запуск в боевом режиме, `npm run e2e` и `security-check.py`. В облачных сессиях `.claude/hooks/session-start.sh` проверяет версию Node и ставит `requests` для Python-скриптов.
+Бар в Хабаровске: время заведения — `Asia/Vladivostok` (UTC+10), задаётся `VENUE_TZ`, сервер ставит его в `process.env.TZ`, фронт получает с `/api/settings`. Node ≥ 22.13, внешних npm-зависимостей нет (база — встроенный `node:sqlite`). Полноценного линтера и сборки фронтенда нет: браузер получает файлы из `public/` как есть (ES-модули). CI (`.github/workflows/test.yml`) гоняет lint, ESLint, `npm test`, запуск в боевом режиме, `npm run e2e` и `security-check.py`. В облачных сессиях `.claude/hooks/session-start.sh` проверяет версию Node и ставит `requests` для Python-скриптов.
 
 ## Архитектура
 

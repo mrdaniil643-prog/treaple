@@ -1,6 +1,6 @@
 import { SELLER, LEGAL_LINKS } from './seller.js';
 // Часовой пояс заведения задаётся на сервере (VENUE_TZ); все даты показываем в нём.
-export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Europe/Moscow');
+export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Asia/Vladivostok');
 
 export const LOGO = `<svg class="mt" viewBox="0 0 200 80" aria-hidden="true">
   <polygon points="6,0 64,0 24,80 0,80 34,16 6,16"/>

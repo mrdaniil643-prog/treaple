@@ -48,8 +48,8 @@ def wrap(s):
 
 # ---------- common.js ----------
 s = read('common.js')
-s = rep(s, "export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Europe/Moscow');",
-        "export const TZ = 'Europe/Moscow';", 'common')
+s = rep(s, "export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Asia/Vladivostok');",
+        "export const TZ = 'Asia/Vladivostok';", 'common')
 s = rep(s, """export async function api(path, { method = 'GET', body, admin } = {}) {""",
         """import { handle } from './backend.js';
 

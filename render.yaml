@@ -16,7 +16,7 @@ services:
       - key: TRUST_PROXY
         value: "1"
       - key: VENUE_TZ
-        value: Europe/Moscow
+        value: Asia/Vladivostok  # Хабаровск
       - key: PUBLIC_ORIGIN
         sync: false          # адрес сайта, например https://mt-bar.onrender.com
       - key: DEMO_PAYMENTS

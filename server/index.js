@@ -1,4 +1,5 @@
-process.env.TZ ||= process.env.VENUE_TZ || 'Europe/Moscow';
+// Бар в Хабаровске: его зона в базе часовых поясов — Asia/Vladivostok (UTC+10)
+process.env.TZ ||= process.env.VENUE_TZ || 'Asia/Vladivostok';
 
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';

@@ -42,9 +42,9 @@ function save() {
 const listeners = new Set();
 
 // ---- событие по умолчанию: то же, что на сайте, 25 октября 2026 ----
-// Время задаём по Москве, где бы ни находился посетитель.
-const MSK = 3 * 3600e3;
-const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - MSK).toISOString();
+// Время задаём по Хабаровску (UTC+10), где бы ни находился посетитель.
+const VENUE_OFFSET = 10 * 3600e3;
+const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - VENUE_OFFSET).toISOString();
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', title: 'Караоке-вечер', lineup: '', description: 'Караоке до утра в обоих залах.', genre: 'Караоке',
@@ -356,12 +356,12 @@ function eventReport(eventId) {
 }
 
 // время из формы (без пояса) — это время заведения, как на сайте
-const mskTime = (v) => new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(v)) ? `${v}:00+03:00` : v);
+const venueTime = (v) => new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(v)) ? `${v}:00+10:00` : v);
 
 function createEvent(data) {
   const title = clean(data.title, 120);
-  const startsAt = mskTime(data.startsAt);
-  const doorsAt = data.doorsAt ? mskTime(data.doorsAt) : new Date(startsAt.getTime() - 3600e3);
+  const startsAt = venueTime(data.startsAt);
+  const doorsAt = data.doorsAt ? venueTime(data.doorsAt) : new Date(startsAt.getTime() - 3600e3);
   const halls = (Array.isArray(data.halls) ? data.halls : []).filter((h) => HALLS.some((x) => x.id === h));
   const price = Math.round(Number(data.price));
   if (title.length < 2) throw new DemoError(400, 'Укажите название');
