@@ -140,7 +140,7 @@ s = rep(s, """function connectStream() {
 }""", """function connectStream() {
   onLeave(watchAvailability(eventId, (av) => { setLive(true); applyAvailability(structuredClone(av)); }));
 }""", 'event')
-s = rep(s, "      location.href = orderLink(paid.secret, '&new=1');", "      navigate(`order-${paid.secret}-new`);", 'event')
+s = rep(s, "      location.href = orderLink(order.secret, '&new=1');", "      navigate(`order-${order.secret}-new`);", 'event')
 s = rep(s, "let timerId;", "let timerId;\nonLeave(() => clearInterval(timerId));", 'event')
 s = rep(s, "  <dialog id=\"checkout\"></dialog>`;", "  `;\n  document.body.insertAdjacentHTML('beforeend', '<dialog id=\"checkout\"></dialog>');", 'event')
 s = s.replace("Схема обновляется сама", "Ваши брони на этом устройстве")

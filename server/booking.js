@@ -27,7 +27,10 @@ export const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u00
 
 export const normalizePhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 
-export function createBooking(db, { onChange = () => {}, onTickets = () => {}, now = () => new Date(), demoPayments = true } = {}) {
+// payments: 'demo' — оплата подтверждается сразу; 'yookassa' — через ЮKassa (сервер ждёт подтверждения платежа);
+// null — онлайн-продажа закрыта.
+export function createBooking(db, { onChange = () => {}, onTickets = () => {}, now = () => new Date(), demoPayments = true, payments } = {}) {
+  const mode = payments !== undefined ? payments : demoPayments ? 'demo' : null;
   const q = {
     event: db.prepare('SELECT * FROM events WHERE id = ?'),
     events: db.prepare("SELECT * FROM events WHERE status != 'cancelled' ORDER BY starts_at"),
@@ -183,7 +186,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   // items: [{ tableId, seats, whole }]
   function hold(eventId, items) {
-    if (!demoPayments) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
+    if (!mode) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     sweep();
     const event = getEvent(eventId);
     if (event.status !== 'on_sale') throw new BookingError(409, 'Продажа билетов на это событие закрыта');
@@ -264,6 +267,10 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       // сколько секунд осталось держать места — таймер на клиенте не зависит от его часов
       expiresIn: o.status === 'held' && o.expires_at ? Math.max(0, Math.floor((new Date(o.expires_at) - now()) / 1000)) : null,
       canCancel: o.status === 'paid' && hoursLeft >= CANCEL_BEFORE_HOURS && !tickets.some((t) => t.status === 'used'),
+      // онлайн-оплата: гость ушёл на страницу ЮKassa, ждём подтверждения
+      paymentPending: o.status === 'held' && o.payment_status === 'pending',
+      paidOnline: o.payment_status === 'succeeded' || o.payment_status === 'refunded',
+      refundedAmount: o.refunded_amount || 0,
       event: { id: event.id, title: event.title, startsAt: event.starts_at, doorsAt: event.doors_at, lineup: event.lineup, deposit: event.deposit },
       tickets,
     };
@@ -286,9 +293,46 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return orderView(findOrder(auth));
   }
 
-  // Оплата. Платёжный шлюз подключается здесь: сейчас оплата подтверждается сразу (демо-режим).
+  function contactsOf({ name, phone, email } = {}) {
+    const cleanName = cleanText(name, 80);
+    const cleanPhone = normalizePhone(phone);
+    const cleanEmail = cleanText(email, 120);
+    if (cleanName.length < 2) throw new BookingError(400, 'Укажите имя');
+    if (cleanPhone.length !== 10) throw new BookingError(400, 'Укажите телефон в формате +7 900 000-00-00');
+    if (cleanEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) throw new BookingError(400, 'Проверьте адрес почты');
+    return { name: cleanName, phone: cleanPhone, email: cleanEmail || null };
+  }
+
+  // Отметить заказ оплаченным: билеты становятся действующими, цена оплаты запоминается.
+  function markPaid(o) {
+    db.prepare("UPDATE orders SET status = 'paid', paid_at = ?, expires_at = NULL WHERE id = ?").run(iso(), o.id);
+    for (const t of q.orderTickets.all(o.id)) {
+      db.prepare("UPDATE tickets SET status = 'active', guest_name = COALESCE(guest_name, ?), paid_price = price WHERE id = ?").run(o.name, t.id);
+      log(t.id, o.id, 'paid');
+    }
+  }
+
+  function saveGuests(o, contacts, guests) {
+    const guestNames = guests && typeof guests === 'object' && !Array.isArray(guests) ? guests : {};
+    db.prepare('UPDATE orders SET name = ?, phone = ?, email = ? WHERE id = ?').run(contacts.name, contacts.phone, contacts.email, o.id);
+    for (const t of q.orderTickets.all(o.id)) {
+      const guest = (Object.hasOwn(guestNames, t.code) && cleanText(guestNames[t.code], 80)) || contacts.name;
+      db.prepare('UPDATE tickets SET guest_name = ? WHERE id = ?').run(guest, t.id);
+    }
+  }
+
+  // Пока гость оформлял, событие могли закрыть, отменить или оно уже началось
+  function checkStillOnSale(o, secret) {
+    const ev = getEvent(o.event_id);
+    if (ev.status !== 'on_sale' || new Date(ev.starts_at) < now()) {
+      release(secret);
+      throw new BookingError(409, ev.status === 'cancelled' ? 'Событие отменено, бронь снята.' : 'Продажа на это событие уже закрыта, бронь снята.');
+    }
+  }
+
+  // Демо-оплата: заказ подтверждается сразу.
   function pay(secret, { name, phone, email, guests } = {}) {
-    if (!demoPayments) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
+    if (mode !== 'demo') throw new BookingError(503, mode ? 'Оплата проходит через платёжную страницу' : 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     const o = findOrder({ secret });
     // Пока гость оформлял, событие могли закрыть, отменить или оно уже началось
     if (o.status === 'held') {
@@ -298,28 +342,134 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
         throw new BookingError(409, ev.status === 'cancelled' ? 'Событие отменено, бронь снята.' : 'Продажа на это событие уже закрыта, бронь снята.');
       }
     }
-    const guestNames = guests && typeof guests === 'object' && !Array.isArray(guests) ? guests : {};
     if (o.status === 'paid') return orderView(o);
     if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
-    const cleanName = cleanText(name, 80);
-    const cleanPhone = normalizePhone(phone);
-    const cleanEmail = cleanText(email, 120);
-    if (cleanName.length < 2) throw new BookingError(400, 'Укажите имя');
-    if (cleanPhone.length !== 10) throw new BookingError(400, 'Укажите телефон в формате +7 900 000-00-00');
-    if (cleanEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) throw new BookingError(400, 'Проверьте адрес почты');
-
+    const contacts = contactsOf({ name, phone, email });
     tx(db, () => {
-      db.prepare("UPDATE orders SET status = 'paid', name = ?, phone = ?, email = ?, paid_at = ?, expires_at = NULL WHERE id = ?")
-        .run(cleanName, cleanPhone, cleanEmail || null, iso(), o.id);
-      const setGuest = db.prepare("UPDATE tickets SET status = 'active', guest_name = ? WHERE id = ?");
-      for (const t of q.orderTickets.all(o.id)) {
-        const guest = (Object.hasOwn(guestNames, t.code) && cleanText(guestNames[t.code], 80)) || cleanName;
-        setGuest.run(guest, t.id);
-        log(t.id, o.id, 'paid');
-      }
+      saveGuests(o, contacts, guests);
+      markPaid(q.orderBySecret.get(secret));
     });
     onChange(o.event_id);
     return orderView(q.orderBySecret.get(secret));
+  }
+
+  // ---- Онлайн-оплата (ЮKassa) ----
+  // Шаг 1: гость ввёл контакты. Сохраняем их и отдаём всё, что нужно для платежа и чека.
+  // Бронь продлеваем, чтобы места держались, пока гость на платёжной странице.
+  const PAYMENT_HOLD_MINUTES = 20;
+  function startPayment(secret, { name, phone, email, guests } = {}) {
+    if (mode !== 'yookassa') throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
+    const o = findOrder({ secret });
+    if (o.status === 'paid') return { order: orderView(o), paid: true };
+    if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
+    checkStillOnSale(o, secret);
+    if (o.payment_id && o.payment_status === 'pending' && o.payment_url) return { order: orderView(o), url: o.payment_url };
+    const contacts = contactsOf({ name, phone, email });
+    const until = new Date(Math.max(new Date(o.expires_at).getTime(), now().getTime() + PAYMENT_HOLD_MINUTES * 60e3)).toISOString();
+    tx(db, () => {
+      saveGuests(o, contacts, guests);
+      db.prepare('UPDATE orders SET expires_at = ? WHERE id = ?').run(until, o.id);
+    });
+    return { order: orderView(q.orderBySecret.get(secret)), lines: receiptLines(q.orderBySecret.get(secret)), contacts };
+  }
+
+  // Строки чека: по билету, с ценой оплаты. deposit — часть цены, которая идёт в депозит на еду и напитки.
+  function receiptLines(o, tickets = q.orderTickets.all(o.id).filter((t) => t.status !== 'released')) {
+    const event = getEvent(o.event_id);
+    return tickets.map((t) => ({
+      code: t.code, table: findTable(t.table_id).n, seat: t.seat_no, whole: Boolean(t.whole_table),
+      price: t.paid_price ?? t.price, deposit: Math.min(event.deposit || 0, t.paid_price ?? t.price),
+      event: { title: event.title, startsAt: event.starts_at },
+    }));
+  }
+
+  // Шаг 2: платёж создан в ЮKassa
+  function attachPayment(secret, paymentId, url) {
+    const o = findOrder({ secret });
+    db.prepare("UPDATE orders SET payment_id = ?, payment_url = ?, payment_status = 'pending' WHERE id = ?").run(paymentId, url, o.id);
+  }
+
+  // Шаг 3: сервер сам запросил платёж у ЮKassa и получил его состояние.
+  // Возвращает { refund } если деньги пришли, а места за время оплаты уже заняли: тогда их нужно вернуть.
+  function applyPayment(payment) {
+    const o = db.prepare('SELECT * FROM orders WHERE payment_id = ?').get(String(payment?.id ?? ''));
+    if (!o) return { ignored: 'unknown' };
+    if (payment.status === 'canceled') {
+      db.prepare("UPDATE orders SET payment_status = 'canceled' WHERE id = ?").run(o.id);
+      if (o.status === 'held') release(o.secret);
+      return { canceled: true };
+    }
+    if (payment.status !== 'succeeded') return { ignored: payment.status };
+    const lateRefund = () => ({ refund: { order: o, amount: o.total, lines: receiptLines(o, q.orderTickets.all(o.id)) } });
+    // возврат за занятые места ещё не прошёл: пробуем снова, пока ЮKassa его не примет
+    if (o.payment_status === 'refund_due') return lateRefund();
+    if (o.payment_status === 'succeeded' || o.payment_status === 'refunded') return { already: true };
+    const paid = Math.round(Number(payment.amount?.value) * 100);
+    if (payment.amount?.currency !== 'RUB' || paid !== o.total * 100) {
+      console.error(`Платёж ${payment.id}: сумма ${payment.amount?.value} ${payment.amount?.currency} не совпадает с заказом ${o.code} (${o.total} RUB)`);
+      return { ignored: 'amount' };
+    }
+    let refund = false;
+    tx(db, () => {
+      if (o.status === 'held') {
+        db.prepare("UPDATE orders SET payment_status = 'succeeded' WHERE id = ?").run(o.id);
+        return markPaid(o);
+      }
+      if (o.status === 'paid') return;
+      // бронь успела истечь: пробуем вернуть те же места, если их никто не занял
+      const tickets = q.orderTickets.all(o.id);
+      const busy = tickets.some((t) => db.prepare("SELECT 1 FROM tickets WHERE event_id = ? AND table_id = ? AND seat_no = ? AND status IN ('held', 'active', 'used') AND id != ?")
+        .get(t.event_id, t.table_id, t.seat_no, t.id));
+      if (busy || getEvent(o.event_id).status === 'cancelled') {
+        refund = true;
+        db.prepare("UPDATE orders SET payment_status = 'refund_due' WHERE id = ?").run(o.id);
+        return;
+      }
+      db.prepare("UPDATE orders SET payment_status = 'succeeded' WHERE id = ?").run(o.id);
+      markPaid(o);
+      log(null, o.id, 'paid_late');
+    });
+    onChange(o.event_id);
+    onTickets(q.orderTickets.all(o.id).map((t) => t.code));
+    return refund ? lateRefund() : { paid: true };
+  }
+
+  // Деньги за занятые места вернули автоматически
+  function markLateRefunded(o) {
+    db.prepare("UPDATE orders SET status = 'refunded', payment_status = 'refunded', refunded_amount = total, cancelled_at = ? WHERE id = ?").run(iso(), o.id);
+    log(null, o.id, 'refunded', 'места заняли, пока шла оплата');
+  }
+
+  // Заказы, по которым ЮKassa ещё не ответила: их проверяем сами, если уведомление потерялось
+  function pendingPayments() {
+    const since = new Date(now().getTime() - 24 * 3600e3).toISOString();
+    return db.prepare("SELECT payment_id FROM orders WHERE payment_status IN ('pending', 'refund_due') AND created_at >= ?").all(since).map((r) => r.payment_id);
+  }
+
+  // ---- Возвраты: сначала проверка, потом деньги через ЮKassa, потом отметка в базе ----
+  function refundPlan(o, tickets = q.orderTickets.all(o.id).filter((t) => t.status === 'active')) {
+    if (!o.payment_id || o.payment_status !== 'succeeded') return null; // демо-оплата или оплата на кассе
+    const lines = receiptLines(o, tickets);
+    return { paymentId: o.payment_id, amount: lines.reduce((s, l) => s + l.price, 0), lines, order: o };
+  }
+  function guestRefundPlan(secret) {
+    const view = getOrder({ secret });
+    checkGuestCancel(view);
+    return refundPlan(q.orderBySecret.get(secret));
+  }
+  function adminRefundPlan(orderCode) {
+    return refundPlan(checkAdminRefund(orderCode));
+  }
+  // Аннулирование одного билета из админки: вернуть его цену
+  function ticketRefundPlan(ticketCode, patch = {}) {
+    const t = q.ticketByCode.get(String(ticketCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20));
+    if (!t || patch.status !== 'cancelled' || t.status === 'cancelled' || t.status === 'used') return null;
+    const o = db.prepare('SELECT * FROM orders WHERE id = ?').get(t.order_id);
+    return o.status === 'paid' ? refundPlan(o, [t]) : null;
+  }
+  function recordRefund(o, amount) {
+    db.prepare('UPDATE orders SET refunded_amount = refunded_amount + ? WHERE id = ?').run(amount, o.id);
+    if (amount >= o.total) db.prepare("UPDATE orders SET payment_status = 'refunded' WHERE id = ?").run(o.id);
   }
 
   function release(secret) {
@@ -346,14 +496,17 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   }
 
   function cancelByGuest(secret) {
-    const view = getOrder({ secret });
+    checkGuestCancel(getOrder({ secret }));
+    return refund(q.orderBySecret.get(secret), 'guest');
+  }
+
+  function checkGuestCancel(view) {
     if (!view.canCancel) {
       if (view.status === 'refunded') throw new BookingError(409, 'Заказ уже возвращён');
       if (view.status !== 'paid') throw new BookingError(409, 'Заказ не оплачен, возвращать нечего');
       if (view.tickets.some((t) => t.status === 'used')) throw new BookingError(409, 'По этому заказу гости уже прошли. Позвоните администратору.');
       throw new BookingError(409, `Онлайн вернуть билеты можно за ${CANCEL_BEFORE_HOURS} часа до начала. Позвоните администратору.`);
     }
-    return refund(q.orderBySecret.get(secret), 'guest');
   }
 
   function renameGuest(secret, ticketCode, guestName) {
@@ -495,14 +648,18 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return { event, stats, orders: list, availability: availability(event.id) };
   }
 
-  function adminRefund(orderCode) {
+  function checkAdminRefund(orderCode) {
     const o = q.orderByCode.get(String(orderCode).trim().toUpperCase());
     if (!o) throw new BookingError(404, 'Заказ не найден');
     if (o.status !== 'paid') throw new BookingError(409, 'Вернуть можно только оплаченный заказ');
     if (q.orderTickets.all(o.id).some((t) => t.status === 'used')) {
-      throw new BookingError(409, 'Часть гостей уже прошла, весь заказ вернуть нельзя. Частичный возврат сделайте на кассе.');
+      throw new BookingError(409, 'Часть гостей уже прошла, весь заказ вернуть нельзя. Аннулируйте лишние билеты по одному в «Изменить».');
     }
-    return refund(o, 'admin');
+    return o;
+  }
+
+  function adminRefund(orderCode) {
+    return refund(checkAdminRefund(orderCode), 'admin');
   }
 
   // ---- Правка билета и заказа из админки ----
@@ -609,7 +766,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder,
-    cancelByGuest, renameGuest, getTicket, printQr, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
+    cancelByGuest, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
+    guestRefundPlan, adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };
 }

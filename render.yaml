@@ -20,4 +20,12 @@ services:
       - key: PUBLIC_ORIGIN
         sync: false          # адрес сайта, например https://mt-bar.onrender.com
       - key: DEMO_PAYMENTS
-        sync: false          # 1 — тестовая оплата без денег; пусто — онлайн-бронь закрыта до подключения эквайринга
+        sync: false          # 1 — тестовая оплата без денег; при подключённой ЮKassa не нужна
+      - key: YOOKASSA_SHOP_ID
+        sync: false          # ЮKassa → Интеграция → Ключи API: shopId
+      - key: YOOKASSA_SECRET_KEY
+        sync: false          # там же: секретный ключ (тестовый магазин — test_…)
+      - key: YOOKASSA_VAT_CODE
+        sync: false          # ставка НДС в чеке: 1 без НДС (по умолчанию), 7 — 5%, 8 — 7%, 4 — 20%
+      - key: YOOKASSA_TAX_SYSTEM
+        sync: false          # система налогообложения: 1 ОСН, 2 УСН доходы, 3 УСН доходы минус расходы

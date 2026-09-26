@@ -311,7 +311,7 @@ function openCheckout() {
         <button class="btn block" type="submit">Оплатить ${money(o.total)}</button>
         <button class="btn ghost block" type="button" id="release">Отменить бронь</button>
       </div>
-      <p class="demo-note">Тестовый режим: деньги не списываются.</p>
+      <p class="demo-note">${state.config.paymentMode === 'yookassa' ? 'Оплата картой или через СБП на странице ЮKassa. Чек придёт на почту или по СМС.' : 'Тестовый режим: деньги не списываются.'}</p>
     </form>`;
   dlg.setAttribute('aria-labelledby', 'checkout-title');
   dlg.showModal();
@@ -350,15 +350,18 @@ function openCheckout() {
     const btn = form.querySelector('[type=submit]');
     const guests = Object.fromEntries($$('[data-guest]', form).map((i) => [i.dataset.guest, i.value]));
     btn.disabled = true;
-    btn.textContent = 'Проводим оплату…';
+    btn.textContent = state.config.paymentMode === 'yookassa' ? 'Переходим к оплате…' : 'Проводим оплату…';
     $('#pay-error').textContent = '';
     try {
-      const paid = await api(`/api/orders/${o.secret}/pay`, {
+      const r = await api(`/api/orders/${o.secret}/pay`, {
         method: 'POST', body: { name: form.name.value, phone: form.phone.value, email: form.email.value, guests },
       });
-      savedOrders.add(paid);
+      // ЮKassa: заказ запоминаем на телефоне и уходим на платёжную страницу, обратно она вернёт в «Мои билеты»
+      const order = r.order || r;
+      savedOrders.add(order);
       clearInterval(timerId);
-      location.href = orderLink(paid.secret, '&new=1');
+      if (r.redirect) { location.href = r.redirect; return; }
+      location.href = orderLink(order.secret, '&new=1');
     } catch (err) {
       $('#pay-error').textContent = err.message;
       btn.disabled = false;

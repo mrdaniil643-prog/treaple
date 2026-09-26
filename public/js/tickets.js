@@ -81,6 +81,35 @@ function renderOrder(o, { fresh = false } = {}) {
   };
 }
 
+// ЮKassa присылает подтверждение на сервер за секунды; ждём его до 5 минут
+async function waitForPayment(secret) {
+  const box = $('#order');
+  box.innerHTML = `<section class="order"><h2>Проверяем оплату…</h2>
+    <p class="muted" style="margin-top:8px">Обычно это несколько секунд. Не закрывайте страницу: билеты появятся здесь.</p></section>`;
+  const until = Date.now() + 5 * 60e3;
+  while (Date.now() < until) {
+    let o;
+    try { o = await api(`/api/orders/${encodeURIComponent(secret)}`); } catch { o = null; }
+    if (o?.status === 'paid') {
+      savedOrders.add(o);
+      renderOrder(o, { fresh: true });
+      renderSaved();
+      return;
+    }
+    if (o && !o.paymentPending) {
+      const text = o.status === 'refunded'
+        ? 'Пока шла оплата, эти места успели занять. Деньги уже возвращены на карту, чек возврата придёт на почту или по СМС.'
+        : 'Оплата не прошла, деньги не списаны. Выберите столы и попробуйте ещё раз.';
+      box.innerHTML = `<section class="order"><h2>${o.status === 'refunded' ? 'Места заняли' : 'Оплата не прошла'}</h2><p style="margin-top:8px">${text}</p>
+        <a class="btn" style="margin-top:16px" href="/event?id=${o.event.id}">К схеме зала</a></section>`;
+      return;
+    }
+    await new Promise((r) => { setTimeout(r, 2000); });
+  }
+  box.innerHTML = `<section class="order"><h2>Оплата ещё не подтверждена</h2>
+    <p style="margin-top:8px">Если деньги списались, билеты появятся здесь сами в течение нескольких минут. Можно обновить страницу позже.</p></section>`;
+}
+
 function renderSaved() {
   const list = savedOrders.list();
   $('#saved').innerHTML = list.length ? `<h3 style="margin-top:36px;color:var(--cream)">Заказы с этого устройства</h3>
@@ -116,13 +145,20 @@ async function main() {
     } catch (err) { $('#lookup-error').textContent = err.message; }
   });
 
-  const secret = params.get('order');
-  if (secret) {
+  // С платёжной страницы ЮKassa возвращаемся с номером заказа (#return=MT-…), секрет заказа знает только этот телефон
+  const back = params.get('return');
+  const secret = params.get('order') || (back && savedOrders.list().find((x) => x.code === back)?.secret);
+  if (back && !secret) {
+    $('#lookup-error').textContent = `Оплату заказа ${back} проверим по номеру и телефону: введите их выше.`;
+  } else if (secret) {
     try {
       const o = await api(`/api/orders/${encodeURIComponent(secret)}`);
-      if (o.status === 'paid') savedOrders.add(o);
-      renderOrder(o, { fresh: params.has('new') });
       history.replaceState(null, '', orderLink(secret));
+      if (o.paymentPending || (back && o.status !== 'paid')) waitForPayment(secret);
+      else {
+        if (o.status === 'paid') savedOrders.add(o);
+        renderOrder(o, { fresh: params.has('new') || Boolean(back) });
+      }
     } catch (err) { $('#lookup-error').textContent = err.message; }
   }
   renderSaved();

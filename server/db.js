@@ -97,6 +97,16 @@ function migrate(db) {
   const set = db.prepare('UPDATE tickets SET gate_id = ? WHERE id = ?');
   for (const { id } of missing) set.run(randomBytes(9).toString('base64url'), id);
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS tickets_gate_id ON tickets(gate_id)');
+  // онлайн-оплата: платёж ЮKassa у заказа и сколько по нему уже вернули
+  const orderCols = db.prepare('PRAGMA table_info(orders)').all().map((c) => c.name);
+  if (!orderCols.includes('payment_id')) db.exec('ALTER TABLE orders ADD COLUMN payment_id TEXT');
+  if (!orderCols.includes('payment_url')) db.exec('ALTER TABLE orders ADD COLUMN payment_url TEXT');
+  if (!orderCols.includes('payment_status')) db.exec('ALTER TABLE orders ADD COLUMN payment_status TEXT');
+  if (!orderCols.includes('refunded_amount')) db.exec('ALTER TABLE orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS orders_payment ON orders(payment_id) WHERE payment_id IS NOT NULL');
+  // цена, за которую билет оплатили: по ней считаются возвраты, даже если админ потом поменял цену
+  const ticketCols = db.prepare('PRAGMA table_info(tickets)').all().map((c) => c.name);
+  if (!ticketCols.includes('paid_price')) db.exec('ALTER TABLE tickets ADD COLUMN paid_price INTEGER');
 }
 
 export function openDb(file) {

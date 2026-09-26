@@ -194,7 +194,7 @@ function drawOrders() {
       return `<tr><td><b>${esc(o.code)}</b><br><span class="muted">${fmt.date(o.createdAt)}, ${fmt.time(o.createdAt)}</span></td>
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
         <td>${places}<br><span class="muted">${seatsWord(o.tickets.length)}</span></td>
-        <td>${money(o.total)}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
+        <td>${money(o.total)}${o.paidOnline ? '<br><span class="muted">ЮKassa</span>' : ''}${o.refundedAmount ? `<br><span class="muted">возвращено ${money(o.refundedAmount)}</span>` : ''}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
         <td>${o.status === 'paid' ? `<button class="link-btn" data-edit="${esc(o.code)}">Изменить</button><br>${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
   // Запасной путь, если у гостя сел телефон: находим заказ по имени и впускаем по одному.
@@ -285,7 +285,7 @@ function renderEditor() {
       guestName: f.guestName.value, tableId: f.tableId.value, seat: Number(f.seat.value),
       price: Number(f.price.value), status: f.status.value, newQr: f.newQr.checked,
     };
-    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm('Аннулировать билет? Место освободится, QR перестанет пускать. Деньги верните на кассе.')) return;
+    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm(`Аннулировать билет? Место освободится, QR перестанет пускать. ${o.paidOnline ? `${money(t.price)} вернутся на карту гостя через ЮKassa, чек возврата уйдёт сам.` : 'Деньги верните на кассе.'}`)) return;
     if (body.newQr && !confirm('Выдать новый QR? Гостю нужно открыть билет заново или скачать новый PDF.')) return;
     await saveEdit(`/api/admin/tickets/${encodeURIComponent(t.code)}`, body, 'Билет сохранён');
   }));

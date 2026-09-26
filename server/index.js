@@ -1,6 +1,7 @@
 process.env.TZ ||= process.env.VENUE_TZ || 'Europe/Moscow';
 
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,7 @@ import { createBooking, BookingError, HOLD_MINUTES, CANCEL_BEFORE_HOURS, QR_WIND
 import { createStaff, readCookie, STAFF_COOKIE } from './staff.js';
 import { HALLS, ZONES } from './halls.js';
 import { createBackups } from './backup.js';
+import { createYooKassa, buildReceipt, receiptSettings } from './yookassa.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
@@ -23,6 +25,22 @@ try {
 }
 // Демо-оплата подтверждает заказ без денег. В продакшене включается только явно.
 const DEMO_PAYMENTS = !isProd || process.env.DEMO_PAYMENTS === '1';
+// ЮKassa включается, если заданы магазин и секретный ключ. Тогда демо-оплата не используется.
+let yookassa = null;
+if (process.env.YOOKASSA_SHOP_ID || process.env.YOOKASSA_SECRET_KEY) {
+  try {
+    yookassa = createYooKassa({ shopId: process.env.YOOKASSA_SHOP_ID, secretKey: process.env.YOOKASSA_SECRET_KEY, apiUrl: process.env.YOOKASSA_API_URL || undefined });
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+  // адрес, на который ЮKassa вернёт гостя после оплаты
+  if (isProd && !process.env.PUBLIC_ORIGIN) {
+    console.error('Для ЮKassa задайте PUBLIC_ORIGIN — адрес сайта, например https://mt-bar.ru');
+    process.exit(1);
+  }
+}
+const PAYMENTS = yookassa ? 'yookassa' : DEMO_PAYMENTS ? 'demo' : null;
 
 const DB_FILE = process.env.DB_FILE || join(ROOT, 'data', 'mt.db');
 const db = openDb(DB_FILE);
@@ -39,7 +57,7 @@ const ticketSubs = new Set();
 const subsByCode = new Map();
 const pushTickets = (sub) => sub.res.write(`data: ${JSON.stringify(booking.liveTickets(sub.codes))}\n\n`);
 const booking = createBooking(db, {
-  demoPayments: DEMO_PAYMENTS,
+  payments: PAYMENTS,
   onChange(eventId) {
     const subs = streams.get(eventId);
     if (subs?.size) {
@@ -135,16 +153,19 @@ route('GET', '/api/health', () => {
   db.prepare('SELECT 1').get();
   return { ok: true };
 });
-route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: DEMO_PAYMENTS }));
+route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: Boolean(PAYMENTS), paymentMode: PAYMENTS }));
 route('GET', '/api/events', () => booking.listEvents());
 route('GET', '/api/events/:id', ({ id }) => booking.getEvent(id));
 route('GET', '/api/events/:id/availability', ({ id }) => booking.availability(id));
 route('POST', '/api/events/:id/hold', ({ id }, body) => booking.hold(id, body.items), { limit: 'hold' });
 route('GET', '/api/orders/lookup', (_, __, url) => booking.getOrder({ code: url.searchParams.get('code'), phone: url.searchParams.get('phone') }), { limit: 'lookup' });
 route('GET', '/api/orders/:secret', ({ secret }) => booking.getOrder({ secret }), { limit: 'order' });
-route('POST', '/api/orders/:secret/pay', ({ secret }, body) => booking.pay(secret, body), { limit: 'order' });
+route('POST', '/api/orders/:secret/pay', ({ secret }, body, __, ctx) => (yookassa ? startPayment(secret, body, ctx.req) : booking.pay(secret, body)), { limit: 'order' });
 route('POST', '/api/orders/:secret/release', ({ secret }) => booking.release(secret), { limit: 'order' });
-route('POST', '/api/orders/:secret/cancel', ({ secret }) => booking.cancelByGuest(secret), { limit: 'order' });
+route('POST', '/api/orders/:secret/cancel', async ({ secret }) => {
+  await refundMoney(booking.guestRefundPlan(secret), 'Возврат билетов по просьбе гостя');
+  return booking.cancelByGuest(secret);
+}, { limit: 'order' });
 route('POST', '/api/orders/:secret/guest', ({ secret }, body) => booking.renameGuest(secret, body.ticket, body.name), { limit: 'order' });
 route('GET', '/api/tickets/:code', ({ code }) => booking.getTicket(code), { limit: 'ticket' });
 route('GET', '/api/tickets/:code/print', ({ code }) => booking.printQr(code), { limit: 'ticket' });
@@ -175,9 +196,95 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
   ctx.headers['Set-Cookie'] = staffCookie(ctx.req, '', 0);
   return { ok: true };
 }, { staff: true });
-route('POST', '/api/admin/orders/:code/refund', ({ code }) => booking.adminRefund(code), { admin: true });
+route('POST', '/api/admin/orders/:code/refund', async ({ code }) => {
+  await refundMoney(booking.adminRefundPlan(code), 'Возврат билетов');
+  return booking.adminRefund(code);
+}, { admin: true });
 route('POST', '/api/admin/orders/:code', ({ code }, body) => booking.adminEditOrder(code, body), { admin: true });
-route('POST', '/api/admin/tickets/:code', ({ code }, body) => booking.adminEditTicket(code, body), { admin: true });
+route('POST', '/api/admin/tickets/:code', async ({ code }, body) => {
+  // аннулирование оплаченного онлайн билета: сначала возвращаем его цену через ЮKassa
+  await refundMoney(booking.ticketRefundPlan(code, body), 'Возврат билета', code);
+  return booking.adminEditTicket(code, body);
+}, { admin: true });
+
+// ---- ЮKassa ----
+const origin = (req) => process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`;
+const paying = new Set(); // заказы, по которым прямо сейчас создаётся платёж (двойное нажатие)
+
+async function startPayment(secret, body, req) {
+  const start = booking.startPayment(secret, body);
+  if (start.paid) return start.order;
+  if (start.url) return { order: start.order, redirect: start.url };
+  const { order, lines, contacts } = start;
+  if (paying.has(order.code)) throw new BookingError(409, 'Платёж уже создаётся, подождите пару секунд');
+  paying.add(order.code);
+  try {
+    const payment = await yookassa.createPayment({
+      amount: order.total,
+      description: `Заказ ${order.code}: ${order.event.title}`,
+      returnUrl: `${origin(req)}/tickets#return=${encodeURIComponent(order.code)}`,
+      orderCode: order.code,
+      receipt: buildReceipt(lines, contacts, receiptSettings()),
+      idempotenceKey: `pay-${order.code}-${randomUUID()}`,
+    });
+    const url = payment.confirmation?.confirmation_url;
+    if (!payment.id || !url) throw new BookingError(502, 'Платёжный сервис не вернул страницу оплаты');
+    booking.attachPayment(secret, payment.id, url);
+    return { order, redirect: url };
+  } finally {
+    paying.delete(order.code);
+  }
+}
+
+// Возврат денег: без онлайн-платежа (демо, оплата на кассе) plan пустой и ничего не делаем
+async function refundMoney(plan, what, key = 'all') {
+  if (!plan || !yookassa) return;
+  const o = plan.order;
+  await yookassa.createRefund({
+    paymentId: plan.paymentId,
+    amount: plan.amount,
+    description: `${what}, заказ ${o.code}`,
+    receipt: buildReceipt(plan.lines, { name: o.name, phone: o.phone, email: o.email }, receiptSettings()),
+    idempotenceKey: `refund-${o.code}-${key}`,
+  });
+  booking.recordRefund(o, plan.amount);
+}
+
+// Состояние платежа всегда берём у самой ЮKassa: уведомление без подписи, ему одному не верим
+async function syncPayment(id) {
+  const payment = await yookassa.getPayment(id);
+  const r = booking.applyPayment(payment);
+  if (r.refund) {
+    const o = r.refund.order;
+    await yookassa.createRefund({
+      paymentId: payment.id, amount: r.refund.amount, description: `Места заняли, пока шла оплата, заказ ${o.code}`,
+      receipt: buildReceipt(r.refund.lines, { name: o.name, phone: o.phone, email: o.email }, receiptSettings()),
+      idempotenceKey: `late-${o.code}`,
+    });
+    booking.markLateRefunded(o);
+  }
+  return r;
+}
+
+async function yookassaWebhook(req, res) {
+  const body = await readJson(req);
+  const id = String(body?.object?.id ?? '');
+  if (!/^[\w-]{10,64}$/.test(id) || !String(body.event || '').startsWith('payment.')) return send(res, 200, { ok: true });
+  try {
+    await syncPayment(id);
+  } catch (e) {
+    if (e instanceof BookingError && e.status === 404) return send(res, 200, { ok: true }); // чужой или выдуманный платёж
+    throw e; // ЮKassa повторит уведомление
+  }
+  send(res, 200, { ok: true });
+}
+
+// Уведомление может потеряться: раз в минуту сами проверяем незавершённые платежи
+if (yookassa) {
+  setInterval(async () => {
+    for (const id of booking.pendingPayments()) await syncPayment(id).catch((e) => console.error(`Проверка платежа ${id}: ${e.message}`));
+  }, 60e3).unref();
+}
 
 function openStream(req, res, eventId, ip) {
   const id = Number(eventId);
@@ -292,6 +399,8 @@ const server = createServer(async (req, res) => {
       return await serveStatic(res, url.pathname);
     }
     if (!LIMITS.api.take(ip)) return tooMany(res, LIMITS.api, ip);
+    // уведомления ЮKassa приходят с её серверов, поэтому без проверки Origin
+    if (yookassa && url.pathname === '/api/payments/yookassa' && req.method === 'POST') return await yookassaWebhook(req, res);
     if (req.method === 'POST' && !sameOrigin(req)) return send(res, 403, { error: 'Запрос с чужого сайта отклонён' });
     const stream = url.pathname.match(/^\/api\/events\/(\d{1,9})\/stream$/);
     if (stream && req.method === 'GET') return openStream(req, res, stream[1], ip);
