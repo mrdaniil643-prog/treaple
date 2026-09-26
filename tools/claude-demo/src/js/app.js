@@ -7,6 +7,7 @@ const PAGES = {
   event: () => import('./event.js'),
   tickets: () => import('./tickets.js'),
   ticket: () => import('./ticket.js'),
+  admin: () => import('./admin.js'),
 };
 
 // Адреса сайта (/event?id=1, /tickets#order=…) → внутренние метки (event-1, order-…)
@@ -14,6 +15,7 @@ export function toToken(href) {
   const u = new URL(href, 'https://demo.local');
   const hash = u.hash.slice(1);
   if (u.pathname === '/event') return `event-${u.searchParams.get('id')}`;
+  if (u.pathname === '/admin') return 'admin';
   if (u.pathname === '/menu') return hash === 'bar' ? 'menu-bar' : 'menu';
   if (u.pathname === '/ticket') return `ticket-${u.searchParams.get('t')}`;
   if (u.pathname === '/tickets') {
@@ -30,6 +32,7 @@ function parse(token) {
   if ((m = token.match(/^ticket-([A-Z0-9]+)$/))) return { page: 'ticket', code: m[1] };
   if ((m = token.match(/^order-([A-Z0-9]+)(-new)?$/))) return { page: 'tickets', order: m[1], fresh: Boolean(m[2]) };
   if (token === 'tickets') return { page: 'tickets' };
+  if (token === 'admin') return { page: 'admin' };
   return { page: 'home', anchor: token === 'afisha' ? 'afisha' : '' };
 }
 

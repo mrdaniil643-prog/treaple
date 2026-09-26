@@ -55,9 +55,25 @@ let nav = () => {};
 export const setNavigate = (fn) => { nav = fn; };
 export const navigate = (token) => nav(token);
 
-export async function api(path, { method = 'GET', body } = {}) {
+// confirm() в просмотрщике claude.ai не работает: спрашиваем своим окном
+export function ask(message) {
+  return new Promise((resolve) => {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'ask';
+    dlg.innerHTML = `<div class="dlg-body"><p></p><div class="row"><button class="btn small" data-yes>Да</button><button class="btn ghost small" data-no>Отмена</button></div></div>`;
+    dlg.querySelector('p').textContent = message;
+    const done = (v) => { dlg.close(); dlg.remove(); resolve(v); };
+    dlg.querySelector('[data-yes]').addEventListener('click', () => done(true));
+    dlg.querySelector('[data-no]').addEventListener('click', () => done(false));
+    dlg.addEventListener('cancel', (e) => { e.preventDefault(); done(false); });
+    document.body.append(dlg);
+    dlg.showModal();
+  });
+}
+
+export async function api(path, { method = 'GET', body, admin } = {}) {
   try {
-    return structuredClone(await handle(path, { method, body: body || {} }));
+    return structuredClone(await handle(path, { method, body: body || {}, admin }));
   } catch (e) {
     const err = new Error(e.message || 'Что-то пошло не так. Обновите страницу.');
     err.status = e.status || 500;
@@ -72,7 +88,7 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['hallmap.js', 'seat-layout.js', 'ticket-pdf.js', 'menu-data.js']:
+for f in ['hallmap.js', 'seat-layout.js', 'ticket-pdf.js', 'charts.js', 'menu-data.js']:
     write(f, read(f))
 
 s = read('ticket-card.js')
@@ -177,8 +193,31 @@ s = rep(s, "const code = new URLSearchParams(location.search).get('t') || '';", 
 s = rep(s, "    startLiveTickets(app);", "    onLeave(startLiveTickets(app));", 'ticket')
 write('ticket.js', wrap(s))
 
+# ---------- admin.js ----------
+s = read('admin.js')
+s = rep(s, "import { api, esc, fmt, money, seatsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';",
+        "import { api, esc, fmt, money, seatsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, onLeave, ask, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'admin')
+# sessionStorage в просмотрщике может быть недоступен
+s = rep(s, "let token = sessionStorage.getItem('mt.admin') || '';",
+        "const store = { getItem: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* нет доступа */ } }, removeItem: (k) => { try { sessionStorage.removeItem(k); } catch { /* нет доступа */ } } };\nlet token = store.getItem('mt.admin') || '';", 'admin')
+s = s.replace("sessionStorage.setItem('mt.admin'", "store.setItem('mt.admin'").replace("sessionStorage.removeItem('mt.admin')", "store.removeItem('mt.admin')")
+assert s.count('sessionStorage') == 3, s.count('sessionStorage')
+# confirm() в просмотрщике не работает: все вызовы внутри async-обработчиков
+assert s.count('!confirm(') == 6, s.count('!confirm(')
+s = s.replace('!confirm(', '!await ask(')
+s = rep(s, '      <button class="btn" type="submit">Войти</button>',
+        '      <p class="muted">В демо-версии пароль: <b>demo</b></p>\n      <button class="btn" type="submit">Войти</button>', 'admin')
+s = rep(s, 'href="/event?id=${e.id}" target="_blank">Страница события</a>', 'href="/event?id=${e.id}">Страница события</a>', 'admin')
+s = rep(s, "  es?.close();\n  es = new EventSource(`/api/events/${currentId}/stream`);\n  let t;\n  es.onmessage = (m) => {\n    map?.update(JSON.parse(m.data).tables);",
+        "  es?.();\n  let t;\n  es = watchAvailability(currentId, (data) => {\n    map?.update(data.tables);", 'admin')
+s = rep(s, "    }, 400);\n  };\n}", "    }, 400);\n  });\n  onLeave(() => es?.());\n}", 'admin')
+s = rep(s, "let stream = null;", "let stream = null;\nonLeave(() => { stream?.getTracks().forEach((x) => x.stop()); stream = null; });", 'admin')
+write('admin.js', wrap(s))
+
 # ---------- страница ----------
-open(f'{OUT}/index.html', 'w').write("""<title>Бар МТ</title>
+open(f'{OUT}/index.html', 'w').write("""<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Бар МТ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -188,8 +227,12 @@ open(f'{OUT}/index.html', 'w').write("""<title>Бар МТ</title>
   html { background: #212b3a; }
   .site-header { top: env(safe-area-inset-top, 0px); }
   .demo-banner { background: #f07a2b; color: #1d1409; font: 700 14px/1.4 'Manrope', system-ui, sans-serif; text-align: center; padding: 8px 16px; }
+  .demo-banner a { color: inherit; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; display: inline-block; padding: 10px 4px; margin: -10px 0; }
+  dialog.ask { width: min(420px, 100% - 24px); margin: auto; border-radius: 18px; }
+  dialog.ask p { font-size: 16px; line-height: 1.5; }
+  dialog.ask .row { gap: 10px; }
 </style>
-<div class="demo-banner">Демо-версия сайта. Деньги не списываются, брони и билеты сохраняются только в вашем браузере.</div>
+<div class="demo-banner">Демо-версия сайта. Деньги не списываются, брони и билеты сохраняются только в вашем браузере. <a href="/admin">Админка</a></div>
 <main id="app"></main>
 <script src="vendor/qrcode.js"></script>
 <script type="module" src="js/app.js"></script>
