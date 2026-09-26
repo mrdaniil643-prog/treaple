@@ -135,7 +135,7 @@ write('menu.js', wrap(s))
 
 # ---------- event.js ----------
 s = read('event.js')
-s = rep(s, "orderLink, $, $$ } from './common.js';", "orderLink, onLeave, navigate, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'event')
+s = rep(s, "orderLink, VENUE, $, $$ } from './common.js';", "orderLink, VENUE, onLeave, navigate, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'event')
 s = rep(s, "const eventId = Number(new URLSearchParams(location.search).get('id'));", "const eventId = Number(route.id);", 'event')
 s = rep(s, "wide.addEventListener('change', () => state.map && mountCurrentHall());",
         "const onWide = () => state.map && document.contains(state.map.svg) && mountCurrentHall();\nwide.addEventListener('change', onWide);\nonLeave(() => wide.removeEventListener('change', onWide));", 'event')

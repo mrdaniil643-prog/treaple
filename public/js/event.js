@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, seatsWord, plural, renderHeader, renderFooter, toast, savedOrders, orderLink, $, $$ } from './common.js';
+import { api, esc, fmt, money, seatsWord, plural, renderHeader, renderFooter, toast, savedOrders, orderLink, VENUE, $, $$ } from './common.js';
 import { mountHall } from './hallmap.js';
 
 renderHeader('afisha');
@@ -38,6 +38,7 @@ function render() {
     <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}<span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
     <p class="desc">${esc(e.description)}</p>
     ${e.lineup ? `<p class="desc"><b>${esc(e.lineup)}</b></p>` : ''}
+    <p class="desc muted">${esc(VENUE.address)}. ${esc(VENUE.entry)}, возьмите с собой паспорт.</p>
   </section>
   <section class="wrap booking">
     <div class="map-card">

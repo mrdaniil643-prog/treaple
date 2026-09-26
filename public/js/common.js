@@ -126,9 +126,11 @@ export function renderHeader(current) {
 
 // Данные заведения для подвала. Пустые поля на сайте не показываются.
 export const VENUE = {
-  address: '',   // например: 'Москва, ул. Пушкина, 1'
-  hours: '',     // например: 'Ежедневно с 18:00'
-  phone: '',     // например: '+7 999 123-45-67'
+  address: 'г. Хабаровск, ул. Муравьёва-Амурского, 3б',
+  hours: 'Вс–чт 19:00–04:00, пт–сб 19:00–06:00',
+  phone: '+7 (4212) 94-44-22',
+  email: 'mtbarkhv@yandex.ru',
+  entry: 'Вход с 21 года, фейс-, дресс- и возрастной контроль',
 };
 
 export function renderFooter() {
@@ -138,7 +140,8 @@ export function renderFooter() {
   footer.innerHTML = `<div class="wrap">
     <div><b>МТ</b><br>Музыкальный бар и караоке</div>
     ${VENUE.address || VENUE.hours ? `<div>${esc(VENUE.address)}${VENUE.address && VENUE.hours ? '<br>' : ''}${esc(VENUE.hours)}</div>` : ''}
-    ${VENUE.phone ? `<div>Бронь по телефону<br><a href="tel:${esc(tel)}">${esc(VENUE.phone)}</a></div>` : ''}
+    ${VENUE.phone ? `<div>Инфо и резерв<br><a href="tel:${esc(tel)}">${esc(VENUE.phone)}</a>${VENUE.email ? `<br><a href="mailto:${esc(VENUE.email)}">${esc(VENUE.email)}</a>` : ''}</div>` : ''}
+    ${VENUE.entry ? `<div>${esc(VENUE.entry)}</div>` : ''}
   </div>
   <div class="wrap footer-legal">
     <nav aria-label="Документы">${LEGAL_LINKS.map(([href, text]) => `<a href="${href}">${text}</a>`).join('')}</nav>
