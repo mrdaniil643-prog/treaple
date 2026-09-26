@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Установка и обновление сайта на VPS (Ubuntu/Debian, например Beget Cloud).
+#   git clone -b claude/table-booking-ticket-system-7ax845 https://github.com/mrdaniil643-prog/treaple.git mt && cd mt && sudo bash scripts/install.sh
+# Повторный запуск обновляет сайт: берёт свежий код и перезапускает, настройки из .env сохраняются.
+# Без вопросов: DOMAIN=bilety.mtbarkhv.ru YOOKASSA_SHOP_ID=… YOOKASSA_SECRET_KEY=… sudo -E bash scripts/install.sh
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+say() { printf '\n\033[1;33m%s\033[0m\n' "$*"; }
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Запустите через sudo: sudo bash scripts/install.sh"
+  exit 1
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  say "Ставлю Docker…"
+  curl -fsSL https://get.docker.com | sh
+fi
+
+if [ -d .git ]; then
+  say "Беру свежую версию сайта…"
+  git pull --ff-only || echo "Не удалось обновить код, запускаю ту версию, что есть."
+fi
+
+if [ ! -f .env ]; then
+  say "Первый запуск: настройки сайта"
+  DOMAIN="${DOMAIN:-}"
+  while [ -z "$DOMAIN" ]; do read -rp "Адрес сайта без https:// (например bilety.mtbarkhv.ru): " DOMAIN; done
+  if [ -z "${YOOKASSA_SHOP_ID+x}" ]; then
+    read -rp "ЮKassa shopId (Enter — пропустить, оплата будет закрыта): " YOOKASSA_SHOP_ID
+    if [ -n "$YOOKASSA_SHOP_ID" ]; then read -rsp "ЮKassa секретный ключ: " YOOKASSA_SECRET_KEY; echo; fi
+  fi
+  ADMIN_TOKEN="${ADMIN_TOKEN:-$(head -c 24 /dev/urandom | base64 | tr -d '/+=\n')}"
+  umask 077
+  sed -e "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" \
+      -e "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${ADMIN_TOKEN}|" \
+      -e "s|^YOOKASSA_SHOP_ID=.*|YOOKASSA_SHOP_ID=${YOOKASSA_SHOP_ID:-}|" \
+      -e "s|^YOOKASSA_SECRET_KEY=.*|YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY:-}|" \
+      .env.example > .env
+  echo "Настройки записаны в .env (его видит только root)."
+fi
+
+DOMAIN="$(grep -E '^DOMAIN=' .env | cut -d= -f2-)"
+
+say "Собираю и запускаю сайт…"
+docker compose up -d --build
+
+say "Жду, пока сайт ответит…"
+for _ in $(seq 60); do
+  if docker compose exec -T app wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1; then OK=1; break; fi
+  sleep 2
+done
+if [ "${OK:-}" != 1 ]; then
+  echo "Сайт не ответил. Посмотрите журнал: docker compose logs app"
+  exit 1
+fi
+
+# домен может быть ещё не настроен: эти проверки не должны останавливать скрипт
+MY_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
+DNS_IP="$( (getent hosts "$DOMAIN" || true) | awk '{print $1}' | head -1)"
+say "Готово"
+echo "Сайт:     https://${DOMAIN}"
+echo "Админка:  https://${DOMAIN}/admin"
+echo "Пароль:   $(grep -E '^ADMIN_TOKEN=' .env | cut -d= -f2-)"
+if [ -z "$DNS_IP" ]; then
+  echo "Домен ${DOMAIN} пока никуда не ведёт. Добавьте A-запись на IP этого сервера${MY_IP:+ (${MY_IP})}, сертификат HTTPS выпустится сам."
+elif [ -n "$MY_IP" ] && [ "$DNS_IP" != "$MY_IP" ]; then
+  echo "Внимание: ${DOMAIN} ведёт на ${DNS_IP}, а у этого сервера ${MY_IP}. Если сервер не за NAT, поправьте A-запись."
+fi
+if ! grep -qE '^YOOKASSA_SHOP_ID=.+' .env; then
+  echo "Оплата пока закрыта: впишите YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY в .env и запустите скрипт ещё раз."
+fi
