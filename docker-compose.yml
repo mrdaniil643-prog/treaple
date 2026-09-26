@@ -1,0 +1,32 @@
+# Сайт на своём сервере (VPS в России) с автоматическим HTTPS.
+# 1) скопируйте .env.example в .env и заполните; 2) направьте домен на IP сервера; 3) docker compose up -d
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TRUST_PROXY: "1"            # перед сайтом стоит Caddy
+      PUBLIC_ORIGIN: https://${DOMAIN}
+    volumes:
+      - mt-data:/app/data         # база заказов и её дневные копии
+    expose:
+      - "3000"
+
+  # Caddy сам получает и продлевает сертификат Let's Encrypt для домена
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+
+volumes:
+  mt-data:
+  caddy-data:

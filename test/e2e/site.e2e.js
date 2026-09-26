@@ -74,6 +74,7 @@ test('гость выбирает стол, оплачивает и видит �
   await guest.click('#go');
   await guest.fill('[name=name]', 'Борис');
   await guest.fill('[name=phone]', '+7 912 000-11-22');
+  await guest.check('[name=consent]');
   await guest.click('#pay-form [type=submit]');
   await guest.waitForURL(/tickets/);
   await guest.waitForSelector('.ticket .qr svg');
@@ -174,7 +175,7 @@ for (const [label, device] of [['iPhone SE', devices['iPhone SE']], ['iPhone 13'
   test(`мобильная вёрстка: ${label}`, async () => {
     const p = await page(device);
     const problems = [];
-    for (const path of ['/', `/event?id=${eventId}`, '/menu', '/tickets', '/staff', '/admin', '/nope']) {
+    for (const path of ['/', `/event?id=${eventId}`, '/menu', '/tickets', '/staff', '/admin', '/nope', '/offer', '/refund', '/privacy', '/consent', '/contacts']) {
       await p.goto(B + path);
       await p.waitForLoadState('networkidle').catch(() => {});
       for (const x of await mobileProblems(p)) problems.push(`${path}: ${x}`);

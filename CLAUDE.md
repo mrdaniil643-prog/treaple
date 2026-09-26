@@ -45,6 +45,8 @@ Node ≥ 22.13, внешних npm-зависимостей нет (база —
 
 **Демо-сборка** (`tools/claude-demo/`): `build.py` копирует модули из `public/` и заменяет обращения к серверу на `src/js/backend.js` (localStorage), оборачивает код страниц в `mount(route)` для одностраничного роутера `src/js/app.js`. Правки строятся на точном совпадении строк (`rep()` падает с assert) — после изменения текстов или кода в `public/js` пересоберите и поправьте шаблоны в `build.py`.
 
+**Документы.** `public/{offer,refund,privacy,consent,contacts}.html` — статичные страницы (модуль `legal.js` только рисует шапку и подвал). Реквизиты — `public/js/seller.js`, в HTML они продублированы; `test/legal.test.js` сверяет. Согласие на обработку ПД обязательно (`consent: true` в `pay`/`startPayment`, иначе 400), время — `orders.consent_at`. Шрифты свои (`public/fonts`, `css/fonts.css`), CSP без внешних доменов. Боевой хостинг — VPS в РФ через `docker-compose.yml` + `Caddyfile` (152-ФЗ, локализация ПД).
+
 ## Соглашения
 
 - CSP запрещает встроенные скрипты: весь JS только в файлах, стили-атрибуты разрешены.

@@ -8,3 +8,7 @@ test
 scripts
 *.md
 Dockerfile
+.env
+.env.*
+docker-compose.yml
+Caddyfile

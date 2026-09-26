@@ -26,7 +26,7 @@ def post(path, body=None, headers=None, **kw):
 
 def buy(event_id, table, seats=1, name='Тест', phone='9000000001'):
     h = post(f'/api/events/{event_id}/hold', {'items': [{'tableId': table, 'seats': seats}]}).json()
-    return post(f"/api/orders/{h['secret']}/pay", {'name': name, 'phone': phone}).json()
+    return post(f"/api/orders/{h['secret']}/pay", {'name': name, 'phone': phone, 'consent': True}).json()
 
 
 # --- подготовка: событие через час, чтобы работал вход
@@ -55,7 +55,7 @@ check('A01 админ-токен не даёт роль контролёра ч�
 # ===== API3 Mass assignment
 h = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K23', 'seats': 1, 'price': 1}], 'total': 1, 'status': 'paid'}).json()
 check('API3 цена и статус из запроса игнорируются', h['total'] == 1300 and h['status'] == 'held', f"total={h.get('total')} status={h.get('status')}")
-pd = post(f"/api/orders/{h['secret']}/pay", {'name': 'Вера', 'phone': '9333333333', 'status': 'refunded', 'total': 0, 'tickets': []}).json()
+pd = post(f"/api/orders/{h['secret']}/pay", {'name': 'Вера', 'phone': '9333333333', 'consent': True, 'status': 'refunded', 'total': 0, 'tickets': []}).json()
 check('API3 оплата не принимает посторонние поля', pd['status'] == 'paid' and pd['total'] == 1300)
 r = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K24', 'seats': -5}]})
 check('API3 отрицательное число мест отклонено', r.status_code == 400)
@@ -109,6 +109,11 @@ r = requests.post(B + f'/api/events/{EID}/hold', data=json.dumps({'items': [{'ta
 check('CSRF Sec-Fetch-Site: cross-site отклонён', r.status_code == 403)
 r = requests.post(B + f'/api/events/{EID}/hold', data='items=1', headers={'Content-Type': 'application/x-www-form-urlencoded'})
 check('CSRF форма (не JSON) отклонена', r.status_code == 415)
+
+# ===== 152-ФЗ: без согласия на обработку данных заказ не оформляется
+hn = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'M16', 'seats': 1}]}).json()
+nc = post(f"/api/orders/{hn['secret']}/pay", {'name': 'Без согласия', 'phone': '9444444444'})
+check('152-ФЗ: оплата без согласия на обработку данных отклоняется', nc.status_code == 400, nc.text)
 
 # ===== A07 Auth: контролёр
 inv = post('/api/admin/staff/invite', {'name': 'Пентест'}, ADMIN).json()

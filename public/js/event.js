@@ -306,6 +306,8 @@ function openCheckout() {
       ${o.tickets.length > 1 ? `<details class="guest-names"><summary>Подписать билеты именами гостей</summary>
         <div class="grid">${o.tickets.map((t, i) => `<label class="field"><span>Стол ${t.table}, место ${t.seat}</span><input class="input" data-guest="${t.code}" autocomplete="off" autocapitalize="words" placeholder="${i === 0 ? 'Вы' : `Гость ${i + 1}`}"></label>`).join('')}</div>
       </details>` : ''}
+      <label class="check consent"><input type="checkbox" name="consent" required> <span>Я даю <a href="/consent" target="_blank">согласие на обработку персональных данных</a></span></label>
+      <p class="offer-note">Оплачивая заказ, вы принимаете условия <a href="/offer" target="_blank">оферты</a> и <a href="/refund" target="_blank">правила возврата</a>.</p>
       <p class="form-error" id="pay-error"></p>
       <div class="dlg-actions">
         <button class="btn block" type="submit">Оплатить ${money(o.total)}</button>
@@ -349,12 +351,17 @@ function openCheckout() {
     const form = ev.currentTarget;
     const btn = form.querySelector('[type=submit]');
     const guests = Object.fromEntries($$('[data-guest]', form).map((i) => [i.dataset.guest, i.value]));
+    if (!form.consent.checked) {
+      $('#pay-error').textContent = 'Отметьте согласие на обработку персональных данных';
+      form.consent.focus();
+      return;
+    }
     btn.disabled = true;
     btn.textContent = state.config.paymentMode === 'yookassa' ? 'Переходим к оплате…' : 'Проводим оплату…';
     $('#pay-error').textContent = '';
     try {
       const r = await api(`/api/orders/${o.secret}/pay`, {
-        method: 'POST', body: { name: form.name.value, phone: form.phone.value, email: form.email.value, guests },
+        method: 'POST', body: { name: form.name.value, phone: form.phone.value, email: form.email.value, guests, consent: form.consent.checked },
       });
       // ЮKassa: заказ запоминаем на телефоне и уходим на платёжную страницу, обратно она вернёт в «Мои билеты»
       const order = r.order || r;

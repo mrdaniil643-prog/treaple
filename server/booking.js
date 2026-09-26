@@ -293,7 +293,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return orderView(findOrder(auth));
   }
 
-  function contactsOf({ name, phone, email } = {}) {
+  function contactsOf({ name, phone, email, consent } = {}) {
+    if (consent !== true) throw new BookingError(400, 'Отметьте согласие на обработку персональных данных');
     const cleanName = cleanText(name, 80);
     const cleanPhone = normalizePhone(phone);
     const cleanEmail = cleanText(email, 120);
@@ -314,7 +315,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   function saveGuests(o, contacts, guests) {
     const guestNames = guests && typeof guests === 'object' && !Array.isArray(guests) ? guests : {};
-    db.prepare('UPDATE orders SET name = ?, phone = ?, email = ? WHERE id = ?').run(contacts.name, contacts.phone, contacts.email, o.id);
+    db.prepare('UPDATE orders SET name = ?, phone = ?, email = ?, consent_at = ? WHERE id = ?').run(contacts.name, contacts.phone, contacts.email, iso(), o.id);
     for (const t of q.orderTickets.all(o.id)) {
       const guest = (Object.hasOwn(guestNames, t.code) && cleanText(guestNames[t.code], 80)) || contacts.name;
       db.prepare('UPDATE tickets SET guest_name = ? WHERE id = ?').run(guest, t.id);
@@ -331,7 +332,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   }
 
   // Демо-оплата: заказ подтверждается сразу.
-  function pay(secret, { name, phone, email, guests } = {}) {
+  function pay(secret, { name, phone, email, guests, consent } = {}) {
     if (mode !== 'demo') throw new BookingError(503, mode ? 'Оплата проходит через платёжную страницу' : 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     const o = findOrder({ secret });
     // Пока гость оформлял, событие могли закрыть, отменить или оно уже началось
@@ -344,7 +345,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     }
     if (o.status === 'paid') return orderView(o);
     if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
-    const contacts = contactsOf({ name, phone, email });
+    const contacts = contactsOf({ name, phone, email, consent });
     tx(db, () => {
       saveGuests(o, contacts, guests);
       markPaid(q.orderBySecret.get(secret));
@@ -357,14 +358,14 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   // Шаг 1: гость ввёл контакты. Сохраняем их и отдаём всё, что нужно для платежа и чека.
   // Бронь продлеваем, чтобы места держались, пока гость на платёжной странице.
   const PAYMENT_HOLD_MINUTES = 20;
-  function startPayment(secret, { name, phone, email, guests } = {}) {
+  function startPayment(secret, { name, phone, email, guests, consent } = {}) {
     if (mode !== 'yookassa') throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
     const o = findOrder({ secret });
     if (o.status === 'paid') return { order: orderView(o), paid: true };
     if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
     checkStillOnSale(o, secret);
     if (o.payment_id && o.payment_status === 'pending' && o.payment_url) return { order: orderView(o), url: o.payment_url };
-    const contacts = contactsOf({ name, phone, email });
+    const contacts = contactsOf({ name, phone, email, consent });
     const until = new Date(Math.max(new Date(o.expires_at).getTime(), now().getTime() + PAYMENT_HOLD_MINUTES * 60e3)).toISOString();
     tx(db, () => {
       saveGuests(o, contacts, guests);

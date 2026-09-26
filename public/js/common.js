@@ -1,3 +1,4 @@
+import { SELLER, LEGAL_LINKS } from './seller.js';
 // Часовой пояс заведения задаётся на сервере (VENUE_TZ); все даты показываем в нём.
 export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Europe/Moscow');
 
@@ -138,6 +139,10 @@ export function renderFooter() {
     <div><b>МТ</b><br>Музыкальный бар и караоке</div>
     ${VENUE.address || VENUE.hours ? `<div>${esc(VENUE.address)}${VENUE.address && VENUE.hours ? '<br>' : ''}${esc(VENUE.hours)}</div>` : ''}
     ${VENUE.phone ? `<div>Бронь по телефону<br><a href="tel:${esc(tel)}">${esc(VENUE.phone)}</a></div>` : ''}
+  </div>
+  <div class="wrap footer-legal">
+    <nav aria-label="Документы">${LEGAL_LINKS.map(([href, text]) => `<a href="${href}">${text}</a>`).join('')}</nav>
+    <p>${esc(SELLER.short)}, ИНН ${SELLER.inn}, ОГРНИП ${SELLER.ogrnip}. Оплата картой и через СБП, платежи принимает ЮKassa.</p>
   </div>`;
   document.body.append(footer);
 }

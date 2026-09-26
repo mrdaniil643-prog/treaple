@@ -39,6 +39,7 @@ async function buy(p, tableId) {
   await p.click('#go');
   await p.fill('[name=name]', 'Борис');
   await p.fill('[name=phone]', '+7 912 000-11-22');
+  await p.check('[name=consent]');
   await p.fill('[name=email]', 'boris@example.ru');
   await p.click('#pay-form [type=submit]');
   await p.waitForURL(/\/checkout\//);

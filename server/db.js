@@ -102,6 +102,8 @@ function migrate(db) {
   if (!orderCols.includes('payment_id')) db.exec('ALTER TABLE orders ADD COLUMN payment_id TEXT');
   if (!orderCols.includes('payment_url')) db.exec('ALTER TABLE orders ADD COLUMN payment_url TEXT');
   if (!orderCols.includes('payment_status')) db.exec('ALTER TABLE orders ADD COLUMN payment_status TEXT');
+  // когда покупатель дал согласие на обработку персональных данных (152-ФЗ)
+  if (!orderCols.includes('consent_at')) db.exec('ALTER TABLE orders ADD COLUMN consent_at TEXT');
   if (!orderCols.includes('refunded_amount')) db.exec('ALTER TABLE orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS orders_payment ON orders(payment_id) WHERE payment_id IS NOT NULL');
   // цена, за которую билет оплатили: по ней считаются возвраты, даже если админ потом поменял цену

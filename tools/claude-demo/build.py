@@ -13,8 +13,14 @@ for f in ['bar.jpg', 'bottles.jpg', 'kitchen.jpg']:
     shutil.copy(f'{SITE}/public/img/{f}', f'{OUT}/img/{f}')
 shutil.copy(f'{SITE}/public/vendor/qrcode.js', f'{OUT}/vendor/qrcode.js')
 shutil.copy(f'{SITE}/server/halls.js', f'{OUT}/js/halls.js')
-for f in ['backend.js', 'app.js']:
+for f in ['backend.js', 'app.js', 'doc.js']:
     shutil.copy(f'{SRC}/js/{f}', f'{OUT}/js/{f}')
+# шрифты с сайта (без Google) и документы
+shutil.copytree(f'{SITE}/public/fonts', f'{OUT}/fonts')
+open(f'{OUT}/css/fonts.css', 'w').write(open(f'{SITE}/public/css/fonts.css').read().replace('url(/fonts/', 'url(../fonts/'))
+os.makedirs(f'{OUT}/docs')
+for f in ['offer', 'refund', 'privacy', 'consent', 'contacts']:
+    shutil.copy(f'{SITE}/public/{f}.html', f'{OUT}/docs/{f}.html')
 
 
 def rep(s, a, b, name, count=1):
@@ -88,7 +94,7 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['hallmap.js', 'seat-layout.js', 'ticket-pdf.js', 'charts.js', 'menu-data.js']:
+for f in ['hallmap.js', 'seat-layout.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'menu-data.js']:
     write(f, read(f))
 
 s = read('ticket-card.js')
@@ -218,9 +224,7 @@ write('admin.js', wrap(s))
 open(f'{OUT}/index.html', 'w').write("""<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Бар МТ</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 <style>
   :root { color-scheme: dark; }
@@ -229,6 +233,8 @@ open(f'{OUT}/index.html', 'w').write("""<meta charset="utf-8">
   .demo-banner { background: #f07a2b; color: #1d1409; font: 700 14px/1.4 'Manrope', system-ui, sans-serif; text-align: center; padding: 8px 16px; }
   .demo-banner a { color: inherit; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; display: inline-block; padding: 10px 4px; margin: -10px 0; }
   dialog.ask { width: min(420px, 100% - 24px); margin: auto; border-radius: 18px; }
+  dialog.doc-dlg { width: min(760px, 100% - 16px); max-height: 90svh; margin: auto; border-radius: 18px; }
+  dialog.doc-dlg .dlg-head { position: sticky; top: 0; background: var(--panel); z-index: 1; }
   dialog.ask p { font-size: 16px; line-height: 1.5; }
   dialog.ask .row { gap: 10px; }
 </style>

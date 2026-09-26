@@ -77,8 +77,8 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   // style-атрибуты используются для CSS-переменных в разметке
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
   "img-src 'self' data:",
   "connect-src 'self'",
   "media-src 'self' blob:",

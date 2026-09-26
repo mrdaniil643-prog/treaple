@@ -12,7 +12,7 @@ function setup() {
   const booking = createBooking(db, { now: () => clock, payments: 'yookassa' });
   return { db, booking, tick: (min) => (clock = new Date(clock.getTime() + min * 60e3)) };
 }
-const guest = { name: 'Анна', phone: '+7 (912) 345-67-89', email: 'anna@example.ru' };
+const guest = { name: 'Анна', phone: '+7 (912) 345-67-89', email: 'anna@example.ru', consent: true };
 const paymentOf = (id, value, status = 'succeeded') => ({ id, status, amount: { value: value.toFixed(2), currency: 'RUB' } });
 
 test('ЮKassa: демо-оплата закрыта, платёж подтверждается только проверенной суммой', () => {

@@ -21,7 +21,7 @@ function setup() {
   const event = booking.listEvents()[0];
   return { db, booking, event, tick: (min) => (clock = new Date(clock.getTime() + min * 60e3)), now: () => clock };
 }
-const guest = { name: 'Анна', phone: '+7 (912) 345-67-89' };
+const guest = { name: 'Анна', phone: '+7 (912) 345-67-89', consent: true };
 
 test('гость берёт несколько мест за одним столом', () => {
   const { booking, event } = setup();
@@ -112,7 +112,7 @@ test('мусор во входных данных не ломает сервер
   assert.throws(() => booking.hold(event.id, [{ tableId: '__proto__', seats: 1 }]), (e) => e.status === 400);
   assert.throws(() => booking.hold(event.id, Array(50).fill({ tableId: 'K21', seats: 1 })), (e) => e.status === 400);
   const held = booking.hold(event.id, [{ tableId: 'K25', seats: 2 }]);
-  const paid = booking.pay(held.secret, { name: 'Анна\u0000‮', phone: '9123456789', guests: null });
+  const paid = booking.pay(held.secret, { name: 'Анна\u0000‮', phone: '9123456789', guests: null, consent: true });
   assert.equal(paid.tickets[0].guestName, 'Анна');
   assert.throws(() => booking.getOrder({ code: paid.code, phone: '' }), (e) => e.status === 404);
 });
@@ -289,4 +289,13 @@ test('админ правит билет: место, цена, статус, и
   const o = booking.adminEditOrder(paid.code, { name: 'Анна Петрова', phone: '8 (900) 111-22-33', email: 'a@b.ru' });
   assert.equal(o.name, 'Анна Петрова'); assert.equal(o.phone, '9001112233');
   assert.throws(() => booking.adminEditOrder(paid.code, { phone: '123' }), (e) => e.status === 400);
+});
+
+test('без согласия на обработку данных заказ не оплачивается, время согласия сохраняется', () => {
+  const { db, booking, event } = setup();
+  const held = booking.hold(event.id, [{ tableId: 'K24', seats: 1 }]);
+  assert.throws(() => booking.pay(held.secret, { ...guest, consent: undefined }), (e) => e.status === 400 && /согласие/.test(e.message));
+  assert.throws(() => booking.pay(held.secret, { ...guest, consent: 'true' }), (e) => e.status === 400, 'только настоящая галочка');
+  booking.pay(held.secret, guest);
+  assert.ok(db.prepare('SELECT consent_at FROM orders WHERE secret = ?').get(held.secret).consent_at);
 });

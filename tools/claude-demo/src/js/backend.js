@@ -205,6 +205,7 @@ function pay(secret, body) {
   const phone = normPhone(body.phone);
   if (name.length < 2) throw new DemoError(400, 'Укажите имя');
   if (phone.length !== 10) throw new DemoError(400, 'Укажите телефон в формате +7 900 000-00-00');
+  if (body.consent !== true) throw new DemoError(400, 'Отметьте согласие на обработку персональных данных');
   o.status = 'paid'; o.name = name; o.phone = phone; o.email = clean(body.email, 120) || null; o.expires_at = null; o.paid_at = new Date().toISOString();
   const guests = body.guests && typeof body.guests === 'object' ? body.guests : {};
   for (const c of o.tickets) {

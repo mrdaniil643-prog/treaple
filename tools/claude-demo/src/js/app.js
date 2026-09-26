@@ -8,7 +8,9 @@ const PAGES = {
   tickets: () => import('./tickets.js'),
   ticket: () => import('./ticket.js'),
   admin: () => import('./admin.js'),
+  doc: () => import('./doc.js'),
 };
+const DOCS = ['offer', 'refund', 'privacy', 'consent', 'contacts'];
 
 // Адреса сайта (/event?id=1, /tickets#order=…) → внутренние метки (event-1, order-…)
 export function toToken(href) {
@@ -16,6 +18,7 @@ export function toToken(href) {
   const hash = u.hash.slice(1);
   if (u.pathname === '/event') return `event-${u.searchParams.get('id')}`;
   if (u.pathname === '/admin') return 'admin';
+  if (DOCS.includes(u.pathname.slice(1))) return `doc-${u.pathname.slice(1)}`;
   if (u.pathname === '/menu') return hash === 'bar' ? 'menu-bar' : 'menu';
   if (u.pathname === '/ticket') return `ticket-${u.searchParams.get('t')}`;
   if (u.pathname === '/tickets') {
@@ -33,6 +36,7 @@ function parse(token) {
   if ((m = token.match(/^order-([A-Z0-9]+)(-new)?$/))) return { page: 'tickets', order: m[1], fresh: Boolean(m[2]) };
   if (token === 'tickets') return { page: 'tickets' };
   if (token === 'admin') return { page: 'admin' };
+  if ((m = token.match(/^doc-(\w+)$/)) && DOCS.includes(m[1])) return { page: 'doc', name: m[1] };
   return { page: 'home', anchor: token === 'afisha' ? 'afisha' : '' };
 }
 
@@ -44,6 +48,7 @@ async function show(token) {
   document.querySelectorAll('.site-header, .site-footer, dialog').forEach((el) => el.remove());
   const app = document.getElementById('app');
   app.innerHTML = '';
+  app.className = '';
   window.scrollTo(0, 0);
   const mod = await PAGES[route.page]();
   if (current !== token) return;
@@ -74,8 +79,22 @@ document.addEventListener('click', (e) => {
     return;
   }
   e.preventDefault();
+  // документ из оформления заказа (target=_blank) открываем поверх, чтобы не потерять бронь
+  const doc = a.target === '_blank' && DOCS.find((d) => href === `/${d}`);
+  if (doc) return showDoc(doc);
   navigate(href.startsWith('#') ? href.slice(1) : toToken(href));
 });
+async function showDoc(name) {
+  const dlg = document.createElement('dialog');
+  dlg.className = 'doc-dlg';
+  dlg.innerHTML = '<div class="dlg-head"><b>Документ</b><button class="icon-close" aria-label="Закрыть">×</button></div><div class="dlg-body doc"></div>';
+  document.body.append(dlg);
+  dlg.querySelector('button').addEventListener('click', () => { dlg.close(); dlg.remove(); });
+  dlg.showModal();
+  const html = await (await fetch(`docs/${name}.html`)).text().catch(() => '');
+  dlg.querySelector('.dlg-body').innerHTML = html.match(/<main[^>]*>([\s\S]*)<\/main>/)?.[1] || 'Документ не загрузился';
+}
+
 window.addEventListener('popstate', () => show(location.hash.slice(1) || 'home'));
 
 show(location.hash.slice(1) || 'home');

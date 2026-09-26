@@ -700,3 +700,28 @@ a, button, summary, label.check, .tbl, .event-row { touch-action: manipulation; 
 .edit-block h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 17px; }
 .edit-block .btn { justify-self: start; }
 .edit-block .check { font-weight: 500; font-size: 14px; }
+
+/* подвал: документы и реквизиты продавца */
+.site-footer .footer-legal { display: grid; gap: 10px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; }
+.footer-legal nav { display: flex; flex-wrap: wrap; gap: 0 20px; }
+.footer-legal nav a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+.footer-legal nav a:hover { color: var(--cream); }
+.footer-legal p { margin: 0; line-height: 1.5; }
+
+/* страницы документов */
+.doc { max-width: 760px; }
+.doc h1 { font-size: clamp(28px, 5vw, 40px); }
+.doc .doc-meta { color: var(--muted); margin-top: 10px; }
+.doc h2 { font-size: 20px; margin: 32px 0 10px; color: var(--cream); }
+.doc p, .doc li { line-height: 1.65; }
+.doc ol, .doc ul { padding-left: 22px; }
+.doc li + li { margin-top: 6px; }
+.doc a { color: var(--orange-2); }
+.doc .req { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 8px 20px; margin-top: 12px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.doc .req dt { color: var(--muted); }
+.doc .req dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .doc .req { grid-template-columns: 1fr; gap: 2px; } .doc .req dd { margin-bottom: 10px; } }
+.consent { align-items: flex-start; font-weight: 500; font-size: 14px; line-height: 1.45; }
+.consent input { flex: none; margin-top: 1px; }
+.consent a, .offer-note a { color: var(--orange-2); }
+.offer-note { margin: -6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
