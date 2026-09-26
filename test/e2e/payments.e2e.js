@@ -79,14 +79,14 @@ after(async () => {
 
 let guest;
 
-test('гость платит на странице ЮKassa и возвращается к билетам, чек со строкой депозита', async () => {
+test('гость платит на странице ЮKassa и возвращается к билетам, в чеке строка на каждый билет', async () => {
   assert.equal((await (await fetch(`${B}/api/config`)).json()).paymentMode, 'yookassa');
   guest = await page();
   await buy(guest, 'K25');
   const [p] = [...yk.payments.values()];
   assert.equal(p.amount.value, '2000.00');
   assert.deepEqual(p.receipt.customer, { email: 'boris@example.ru', full_name: 'Борис' });
-  assert.deepEqual(p.receipt.items.map((i) => [i.amount.value, i.payment_mode]), [['500.00', 'full_payment'], ['500.00', 'advance'], ['500.00', 'full_payment'], ['500.00', 'advance']]);
+  assert.deepEqual(p.receipt.items.map((i) => [i.amount.value, i.payment_mode, i.payment_subject]), [['1000.00', 'full_payment', 'service'], ['1000.00', 'full_payment', 'service']]);
   await guest.click('#pay');
   await guest.waitForURL(/\/tickets/);
   await guest.waitForSelector('.ticket .qr svg', { timeout: 10000 });
@@ -127,7 +127,7 @@ test('админ аннулирует один билет — деньги за 
   assert.equal((await admin.textContent('.toast')).trim(), 'Билет сохранён');
   assert.equal(yk.refunds.length, 1);
   assert.equal(yk.refunds[0].amount.value, '1000.00');
-  assert.equal(yk.refunds[0].receipt.items.length, 2);
+  assert.equal(yk.refunds[0].receipt.items.length, 1);
 });
 
 test('гость возвращает оставшийся билет сам — возврат на остаток суммы', async () => {

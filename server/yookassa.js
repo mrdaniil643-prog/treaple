@@ -11,17 +11,19 @@ const dateOf = (iso) => new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month
 // Настройки чека. Какие ставить, скажет бухгалтер:
 //  YOOKASSA_VAT_CODE — ставка НДС по справочнику ЮKassa: 1 без НДС, 2 — 0%, 3 — 10%, 4 — 20%, 7 — 5%, 8 — 7%
 //  YOOKASSA_TAX_SYSTEM — система налогообложения (1 ОСН, 2 УСН доходы, 3 УСН доходы минус расходы, 6 патент); можно не задавать
-//  YOOKASSA_DEPOSIT_ADVANCE — 1 (по умолчанию): депозит на еду и напитки идёт в чеке отдельной строкой «аванс»
+//  YOOKASSA_DEPOSIT_ADVANCE — 0 (по умолчанию): билет одной строкой. Билеты продаёт организатор (ИП), а еду и напитки —
+//    бар (другое юрлицо), поэтому аванс за еду в чеке организатора не пробиваем. 1 — депозит отдельной строкой «аванс»,
+//    только если билеты и бар оформлены на одно лицо.
 export function receiptSettings(env = process.env) {
   return {
     vatCode: Number(env.YOOKASSA_VAT_CODE) || 1,
     taxSystem: Number(env.YOOKASSA_TAX_SYSTEM) || null,
-    depositAsAdvance: env.YOOKASSA_DEPOSIT_ADVANCE !== '0',
+    depositAsAdvance: env.YOOKASSA_DEPOSIT_ADVANCE === '1',
   };
 }
 
-// Чек: по строке на билет, а депозит — отдельной строкой с признаком «аванс».
-// Потом, когда гость заказывает в баре, на кассе бара пробивается чек с зачётом этого аванса.
+// Чек: по строке на билет. С YOOKASSA_DEPOSIT_ADVANCE=1 депозит идёт отдельной строкой с признаком «аванс»,
+// и тогда на кассе бара пробивается чек с зачётом этого аванса.
 export function buildReceipt(lines, contacts, settings = receiptSettings()) {
   const items = [];
   for (const l of lines) {
