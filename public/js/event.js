@@ -37,8 +37,7 @@ function render() {
     <h1>${esc(e.title)}</h1>
     ${e.image ? `<img class="poster" src="${esc(e.image)}" alt="Афиша: ${esc(e.title)}" width="1024" height="1536" decoding="async">` : ''}
     <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}<span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
-    <p class="desc">${esc(e.description)}</p>
-    ${e.lineup ? `<p class="desc"><b>${esc(e.lineup)}</b></p>` : ''}
+    ${e.description || e.lineup ? `<p class="desc">${esc(e.description || e.lineup)}</p>` : ''}
     <p class="desc muted">${esc(VENUE.address)}. ${esc(VENUE.entry)}, возьмите с собой паспорт.</p>
   </section>
   <section class="wrap booking">
@@ -220,8 +219,7 @@ function renderCart(bump = false) {
     ${items ? `<ul class="cart-list">${items}</ul>` : '<p class="cart-empty">Нажмите на стол на схеме. В один заказ можно взять несколько столов.</p>'}
     <div class="cart-total"><span>${seats ? `${seatsWord(seats)}` : 'Итого'}</span><b>${money(total)}</b></div>
     ${state.blocked ? `<p class="form-error">${esc(state.blocked)}</p>` : ''}
-    <button class="btn block" id="go" ${seats && !state.blocked ? '' : 'disabled'}>Забронировать на ${state.config.holdMinutes} минут</button>
-    <p class="cart-note">Места держатся за вами, пока вы оплачиваете. Каждый гость получит свой билет.</p>`;
+    <button class="btn block" id="go" ${seats && !state.blocked ? '' : 'disabled'}>Забронировать на ${state.config.holdMinutes} минут</button>`;
   cart.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
     state.selection.delete(b.dataset.remove);
     renderCart();

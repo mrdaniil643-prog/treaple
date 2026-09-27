@@ -113,6 +113,9 @@ function migrate(db) {
   // событие по умолчанию 25 октября: если его ещё не меняли, подставляем данные с афиши
   db.prepare("UPDATE events SET title = ?, genre = ?, lineup = ?, description = ?, image = ? WHERE slug = 'karaoke-25-october' AND title = 'Караоке-вечер'")
     .run(DEFAULT_EVENT.title, DEFAULT_EVENT.genre, DEFAULT_EVENT.lineup, DEFAULT_EVENT.description, DEFAULT_EVENT.image);
+  // начало перенесли с 21:00 на 16:00 и сократили описание; правки из админки не трогаем
+  db.prepare("UPDATE events SET starts_at = '2026-10-25T06:00:00.000Z', doors_at = '2026-10-25T05:00:00.000Z' WHERE slug = 'karaoke-25-october' AND starts_at = '2026-10-25T11:00:00.000Z'").run();
+  db.prepare("UPDATE events SET description = ? WHERE slug = 'karaoke-25-october' AND description = ?").run(DEFAULT_EVENT.description, OLD_DESCRIPTION);
   const ticketCols = db.prepare('PRAGMA table_info(tickets)').all().map((c) => c.name);
   if (!ticketCols.includes('paid_price')) db.exec('ALTER TABLE tickets ADD COLUMN paid_price INTEGER');
 }
@@ -149,11 +152,12 @@ function at(date, hh, mm) {
 // Афиша по умолчанию: один вечер 25 октября 2026. Сидится только в пустую базу,
 // остальные события заводятся в админке.
 // Событие по умолчанию — с афиши бара: отчётный концерт 25 октября
+const OLD_DESCRIPTION = 'Отчётный концерт и открытый микрофон в караоке-баре МТ. На сцену выйдут те, кто готовил песни вместе с Rock Some!, и приглашённые артисты. В программе розыгрыш сертификатов от партнёров. Хотите выступить сами? Подготовка начинается 1 октября, участие стоит 1000\u00a0₽.';
 export const DEFAULT_EVENT = {
   title: 'Отчётный концерт × Открытый микрофон',
   genre: 'Концерт',
   lineup: 'Rock Some! и приглашённые артисты',
-  description: 'Отчётный концерт и открытый микрофон в караоке-баре МТ. На сцену выйдут те, кто готовил песни вместе с Rock Some!, и приглашённые артисты. В программе розыгрыш сертификатов от партнёров. Хотите выступить сами? Подготовка начинается 1 октября, участие стоит 1000\u00a0₽.',
+  description: 'Выступят те, кто готовил песни с Rock Some!, и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
   image: '/img/events/otchetny-koncert-25-10.jpg',
 };
 
@@ -165,5 +169,5 @@ export function seedEvents(db) {
   db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run('karaoke-25-october', e.title, e.lineup, e.description,
-      at(d, 21, 0), at(d, 19, 30), JSON.stringify(['karaoke', 'main']), 1000, 500, e.genre, e.image);
+      at(d, 16, 0), at(d, 15, 0), JSON.stringify(['karaoke', 'main']), 1000, 500, e.genre, e.image);
 }

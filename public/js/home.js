@@ -42,19 +42,19 @@ async function main() {
       <div>
         <div class="hero-mark"><i class="corner tr"></i>${LOGO}<i class="corner bl"></i></div>
         <h1 class="hero-sub">Музыкальный бар и караоке</h1>
-        <p class="hero-lead">Караоке до утра и живые концерты по выходным. Билет берёте сразу на стол: его видно на схеме зала.</p>
+        <p class="hero-lead">Билет берёте сразу на место за столом. Стол выбираете на схеме зала.</p>
       </div>
       <div id="hero-stub"></div>
     </div>
   </section>
 
   <section class="section wrap" id="afisha">
-    <div class="section-head"><h2>Афиша</h2><p>Выберите вечер, и откроется схема зала.</p></div>
+    <div class="section-head"><h2>Афиша</h2></div>
     <div class="events" id="events"><p class="muted">Загружаем афишу…</p></div>
   </section>
 
   <section class="section wrap">
-    <div class="section-head"><h2>Меню</h2><p>Устрицы, гребешки, роллы и мясо на гриле. В баре авторские коктейли, вино и разливное пиво.</p></div>
+    <div class="section-head"><h2>Меню</h2></div>
     <div class="menu-duo">
       <a class="menu-card" href="/menu#kitchen" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Живые гребешки, тартары, роллы и баскский чизкейк.</p></a>
       <a class="menu-card" href="/menu#bar" style="--img:url('/img/bottles.jpg')"><span class="brush">Бар</span><p>Авторские коктейли, шоты сетами по 10 штук и разливное пиво.</p></a>
@@ -65,9 +65,9 @@ async function main() {
     <div class="section-head"><h2>Как купить билет</h2></div>
     <ol class="steps">
       <li><h3>Выберите стол</h3><p>Светлые столы свободны, медные заняты частично, серые заняты целиком.</p></li>
-      <li><h3>Укажите число мест</h3><p>Берите одно место или весь стол. Пока вы оплачиваете, места держатся за вами 10 минут.</p></li>
+      <li><h3>Укажите число мест</h3><p>Одно место или весь стол. Пока вы оплачиваете, места держатся за вами 10 минут.</p></li>
       <li><h3>Оплатите</h3><p>Часть цены билета идёт в депозит. Его вы тратите на еду и напитки в тот же вечер.</p></li>
-      <li><h3>Покажите билет на входе</h3><p>У каждого гостя свой билет, друзьям отправьте их ссылкой. Скриншот на входе не примут: QR на билете меняется каждые 30 секунд.</p></li>
+      <li><h3>Покажите билет на входе</h3><p>У каждого гостя свой билет, друзьям отправьте его ссылкой. QR меняется каждые 30 секунд, поэтому скриншот не подойдёт. Можно скачать PDF.</p></li>
     </ol>
   </section>`;
 
