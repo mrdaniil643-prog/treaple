@@ -36,7 +36,7 @@ function heroStub(e) {
 
 async function main() {
   app.innerHTML = `
-  <section class="hero">
+  <section class="hero" id="afisha">
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="wrap">
       <div>
@@ -48,9 +48,9 @@ async function main() {
     </div>
   </section>
 
-  <section class="section wrap" id="afisha">
+  <section class="section wrap" id="more" hidden>
     <div class="section-head"><h2>Афиша</h2></div>
-    <div class="events" id="events"><p class="muted">Загружаем афишу…</p></div>
+    <div class="events" id="events"></div>
   </section>
 
   <section class="section wrap">
@@ -73,10 +73,18 @@ async function main() {
 
   try {
     const events = await api('/api/events');
-    $('#events').innerHTML = events.length ? events.map(eventRow).join('') : '<p class="muted">Афиша на ближайшие дни пока пустая. Стол на обычный вечер можно забронировать по телефону.</p>';
-    $('#hero-stub').innerHTML = heroStub(events.find((e) => e.status === 'on_sale' && e.seatsFree > 0));
+    const hero = events.find((e) => e.status === 'on_sale' && e.seatsFree > 0);
+    $('#hero-stub').innerHTML = heroStub(hero);
+    // ближайшее событие уже в шапке, списком показываем только остальные
+    const rest = events.filter((e) => e !== hero);
+    if (rest.length || !hero) {
+      $('#more h2').textContent = hero ? 'Ещё в афише' : 'Афиша';
+      $('#events').innerHTML = rest.length ? rest.map(eventRow).join('') : '<p class="muted">Афиша на ближайшие дни пока пустая. Стол на обычный вечер можно забронировать по телефону.</p>';
+      $('#more').hidden = false;
+    }
   } catch (err) {
     $('#events').innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    $('#more').hidden = false;
   }
   renderFooter();
 }
