@@ -95,8 +95,11 @@ async function toggleCamera() {
     $('#scan').textContent = 'Сканировать';
     return;
   }
-  if (!('BarcodeDetector' in window)) {
-    toast('Этот браузер не читает QR. Сканируйте обычной камерой телефона.', { error: true, ms: 7000 });
+  let detect;
+  try {
+    detect = await qrReader(video);
+  } catch {
+    toast('Не удалось включить сканер. Сканируйте обычной камерой телефона.', { error: true, ms: 7000 });
     return;
   }
   try {
@@ -109,18 +112,49 @@ async function toggleCamera() {
   video.hidden = false;
   $('#scan').textContent = 'Выключить камеру';
   await video.play();
-  const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
   const loop = async () => {
     if (!stream) return;
     if (!busy) {
       try {
-        const [c] = await detector.detect(video);
-        if (c) await check(c.rawValue, 'scan');
+        const text = await detect();
+        if (text) await check(text, 'scan');
       } catch { /* кадр не распознан */ }
     }
-    requestAnimationFrame(loop);
+    setTimeout(loop, 120); // около 8 кадров в секунду: хватает и не греет телефон
   };
   loop();
+}
+
+// Встроенный распознаватель есть в Chrome на Android. В Safari и браузерах на iPhone его нет,
+// там кадры разбирает jsQR: скрипт грузится, только когда он нужен.
+async function qrReader(video) {
+  if ('BarcodeDetector' in window) {
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    return async () => (await detector.detect(video))[0]?.rawValue;
+  }
+  if (!window.jsQR) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = '/vendor/jsqr.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.append(s);
+    });
+  }
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  return async () => {
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) return null;
+    // уменьшаем кадр: QR на экране гостя крупный, а разбор идёт быстрее
+    const k = Math.min(1, 640 / Math.max(w, h));
+    canvas.width = Math.round(w * k);
+    canvas.height = Math.round(h * k);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    return window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })?.data;
+  };
 }
 
 async function main() {
