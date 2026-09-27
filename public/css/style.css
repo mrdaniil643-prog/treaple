@@ -725,3 +725,19 @@ a, button, summary, label.check, .tbl, .event-row { touch-action: manipulation; 
 .consent input { flex: none; margin-top: 1px; }
 .consent a, .offer-note a { color: var(--orange-2); }
 .offer-note { margin: -6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+
+/* постер события */
+.event-hero .poster { display: block; width: min(100%, 340px); height: auto; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 16px; margin: 0 0 20px; box-shadow: 0 24px 48px -20px rgba(0, 0, 0, .7); }
+@media (min-width: 900px) {
+  .event-hero.has-poster { display: grid; grid-template-columns: minmax(0, 1fr) 300px; column-gap: 48px; align-items: start; }
+  .event-hero.has-poster > * { grid-column: 1; }
+  .event-hero.has-poster .poster { grid-column: 2; grid-row: 1 / span 8; width: 100%; margin: 0; }
+}
+.hero-poster { display: block; width: min(100%, 300px); margin: 0 auto 18px; border-radius: 16px; overflow: hidden; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .6); animation: stub-in .9s .6s var(--ease) both; }
+.hero-poster img { display: block; width: 100%; height: auto; aspect-ratio: 2 / 3; object-fit: cover; }
+@media (max-width: 899px) {
+  .event-hero .poster { float: right; width: 36%; max-width: 170px; margin: 14px 0 12px 16px; border-radius: 12px; }
+  .event-hero .desc { clear: none; }
+  .event-hero::after { content: ''; display: block; clear: both; }
+  .hero-poster { width: min(62%, 230px); }
+}

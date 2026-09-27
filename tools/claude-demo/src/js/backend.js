@@ -33,6 +33,8 @@ function load() {
   memory.orders ||= {};
   memory.tickets ||= {};
   memory.events ||= [DEFAULT_EVENT()];
+  // у тех, кто открывал демо раньше, событие по умолчанию ещё старое
+  for (const e of memory.events) if (e.slug === 'e1' && e.title === 'Караоке-вечер') Object.assign(e, POSTER);
   return memory;
 }
 function save() {
@@ -46,8 +48,12 @@ const listeners = new Set();
 const VENUE_OFFSET = 10 * 3600e3;
 const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - VENUE_OFFSET).toISOString();
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
+const POSTER = {
+  title: 'Отчётный концерт × Открытый микрофон', lineup: 'Rock Some! и приглашённые артисты', genre: 'Концерт', image: 'img/events/otchetny-koncert-25-10.jpg',
+  description: 'Отчётный концерт и открытый микрофон в караоке-баре МТ. На сцену выйдут те, кто готовил песни вместе с Rock Some!, и приглашённые артисты. В программе розыгрыш сертификатов от партнёров. Хотите выступить сами? Подготовка начинается 1 октября, участие стоит 1000\u00a0₽.',
+};
 const DEFAULT_EVENT = () => ({
-  id: 1, slug: 'e1', title: 'Караоке-вечер', lineup: '', description: 'Караоке до утра в обоих залах.', genre: 'Караоке',
+  id: 1, slug: 'e1', ...POSTER,
   halls: ['karaoke', 'main'], price: 1000, deposit: 500, status: 'on_sale', starts_at: at(21, 0), doors_at: at(19, 30), sample: true,
 });
 window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); for (const fn of listeners) fn(); } });

@@ -11,6 +11,7 @@ for d in ['css', 'js', 'img', 'vendor']:
 shutil.copy(f'{SITE}/public/css/style.css', f'{OUT}/css/style.css')
 for f in ['bar.jpg', 'bottles.jpg', 'kitchen.jpg']:
     shutil.copy(f'{SITE}/public/img/{f}', f'{OUT}/img/{f}')
+shutil.copytree(f'{SITE}/public/img/events', f'{OUT}/img/events')
 shutil.copy(f'{SITE}/public/vendor/qrcode.js', f'{OUT}/vendor/qrcode.js')
 shutil.copy(f'{SITE}/server/halls.js', f'{OUT}/js/halls.js')
 for f in ['backend.js', 'app.js', 'doc.js']:

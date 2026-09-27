@@ -32,9 +32,10 @@ function render() {
   const e = state.event;
   const halls = state.config.halls.filter((h) => e.halls.includes(h.id));
   app.innerHTML = `
-  <section class="wrap event-hero">
+  <section class="wrap event-hero${e.image ? ' has-poster' : ''}">
     <a class="back" href="/#afisha">← Вся афиша</a>
     <h1>${esc(e.title)}</h1>
+    ${e.image ? `<img class="poster" src="${esc(e.image)}" alt="Афиша: ${esc(e.title)}" width="1024" height="1536" decoding="async">` : ''}
     <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}<span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
     <p class="desc">${esc(e.description)}</p>
     ${e.lineup ? `<p class="desc"><b>${esc(e.lineup)}</b></p>` : ''}
