@@ -2,12 +2,15 @@
 # Установка и обновление сайта на VPS (Ubuntu/Debian, например Beget Cloud).
 #   git clone -b claude/table-booking-ticket-system-7ax845 https://github.com/mrdaniil643-prog/treaple.git mt && cd mt && sudo bash scripts/install.sh
 # Повторный запуск обновляет сайт: берёт свежий код и перезапускает, настройки из .env сохраняются.
-# Ключи ЮKassa потом: sudo bash scripts/install.sh --keys
+# Ключи ЮKassa потом: sudo bash scripts/install.sh --keys; поменять адрес сайта: --domain
 # Без вопросов: DOMAIN=bilety.mtbarkhv.ru YOOKASSA_SHOP_ID=… YOOKASSA_SECRET_KEY=… sudo -E bash scripts/install.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 say() { printf '\n\033[1;33m%s\033[0m\n' "$*"; }
+# адрес без https:// и слешей, маленькими буквами; только латиница — частая ошибка: русская буква из раскладки
+clean_domain() { printf '%s' "$1" | sed -e 's|^[a-zA-Z]*://||' -e 's|/.*$||' -e 's/[[:space:]]//g' | tr 'A-Z' 'a-z'; }
+valid_domain() { printf '%s' "$1" | LC_ALL=C grep -qE '^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$'; }
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Запустите через sudo: sudo bash scripts/install.sh"
@@ -26,8 +29,12 @@ fi
 
 if [ ! -f .env ]; then
   say "Первый запуск: настройки сайта"
-  DOMAIN="${DOMAIN:-}"
-  while [ -z "$DOMAIN" ]; do read -rp "Адрес сайта без https:// (например bilety.mtbarkhv.ru): " DOMAIN; done
+  DOMAIN="$(clean_domain "${DOMAIN:-}")"
+  while ! valid_domain "$DOMAIN"; do
+    [ -n "$DOMAIN" ] && echo "Адрес «${DOMAIN}» не подходит: только латиница, цифры, точки и дефис. Проверьте раскладку клавиатуры."
+    read -rp "Адрес сайта без https:// (например bilety-mt.ru): " DOMAIN
+    DOMAIN="$(clean_domain "$DOMAIN")"
+  done
   if [ -z "${YOOKASSA_SHOP_ID+x}" ]; then
     read -rp "ЮKassa shopId (Enter — пропустить, оплата будет закрыта): " YOOKASSA_SHOP_ID
     if [ -n "$YOOKASSA_SHOP_ID" ]; then read -rsp "ЮKassa секретный ключ: " YOOKASSA_SECRET_KEY; echo; fi
@@ -40,6 +47,18 @@ if [ ! -f .env ]; then
       -e "s|^YOOKASSA_SECRET_KEY=.*|YOOKASSA_SECRET_KEY=${YOOKASSA_SECRET_KEY:-}|" \
       .env.example > .env
   echo "Настройки записаны в .env (его видит только root)."
+fi
+
+# bash scripts/install.sh --domain — поменять адрес сайта
+if [ "${1:-}" = "--domain" ]; then
+  NEW_DOMAIN=""
+  while ! valid_domain "$NEW_DOMAIN"; do
+    read -rp "Новый адрес сайта без https://: " NEW_DOMAIN
+    NEW_DOMAIN="$(clean_domain "$NEW_DOMAIN")"
+    valid_domain "$NEW_DOMAIN" || echo "Только латиница, цифры, точки и дефис. Проверьте раскладку клавиатуры."
+  done
+  sed -i "s|^DOMAIN=.*|DOMAIN=${NEW_DOMAIN}|" .env
+  echo "Адрес записан: ${NEW_DOMAIN}"
 fi
 
 # bash scripts/install.sh --keys — вписать или поменять ключи ЮKassa, не открывая .env
