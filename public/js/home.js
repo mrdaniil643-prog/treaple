@@ -23,7 +23,7 @@ function eventRow(e) {
 
 function heroStub(e) {
   if (!e) return '';
-  return `${e.image ? `<a class="hero-poster" href="/event?id=${e.id}"><img src="${esc(e.image)}" alt="Афиша: ${esc(e.title)}" width="1024" height="1536" decoding="async"></a>` : ''}<div class="stub" style="--cut:104px">
+  return `<div class="stub" style="--cut:104px">
     <div class="stub-date"><b>${fmt.day(e.starts_at)}</b><span>${fmt.month(e.starts_at)}</span></div>
     <div class="stub-body">
       <span class="stub-kicker">${fmt.weekday(e.starts_at)}, ${fmt.time(e.starts_at)}</span>
