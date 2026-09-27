@@ -2,6 +2,7 @@
 # Установка и обновление сайта на VPS (Ubuntu/Debian, например Beget Cloud).
 #   git clone -b claude/table-booking-ticket-system-7ax845 https://github.com/mrdaniil643-prog/treaple.git mt && cd mt && sudo bash scripts/install.sh
 # Повторный запуск обновляет сайт: берёт свежий код и перезапускает, настройки из .env сохраняются.
+# Ключи ЮKassa потом: sudo bash scripts/install.sh --keys
 # Без вопросов: DOMAIN=bilety.mtbarkhv.ru YOOKASSA_SHOP_ID=… YOOKASSA_SECRET_KEY=… sudo -E bash scripts/install.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -41,6 +42,14 @@ if [ ! -f .env ]; then
   echo "Настройки записаны в .env (его видит только root)."
 fi
 
+# bash scripts/install.sh --keys — вписать или поменять ключи ЮKassa, не открывая .env
+if [ "${1:-}" = "--keys" ]; then
+  read -rp "ЮKassa shopId: " NEW_SHOP
+  read -rsp "ЮKassa секретный ключ: " NEW_SECRET; echo
+  sed -i -e "s|^YOOKASSA_SHOP_ID=.*|YOOKASSA_SHOP_ID=${NEW_SHOP}|" -e "s|^YOOKASSA_SECRET_KEY=.*|YOOKASSA_SECRET_KEY=${NEW_SECRET}|" .env
+  echo "Ключи записаны."
+fi
+
 DOMAIN="$(grep -E '^DOMAIN=' .env | cut -d= -f2-)"
 
 say "Собираю и запускаю сайт…"
@@ -69,5 +78,5 @@ elif [ -n "$MY_IP" ] && [ "$DNS_IP" != "$MY_IP" ]; then
   echo "Внимание: ${DOMAIN} ведёт на ${DNS_IP}, а у этого сервера ${MY_IP}. Если сервер не за NAT, поправьте A-запись."
 fi
 if ! grep -qE '^YOOKASSA_SHOP_ID=.+' .env; then
-  echo "Оплата пока закрыта: впишите YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY в .env и запустите скрипт ещё раз."
+  echo "Оплата пока закрыта. Когда получите ключи ЮKassa: bash scripts/install.sh --keys"
 fi
