@@ -154,7 +154,7 @@ route('GET', '/api/health', () => {
   db.prepare('SELECT 1').get();
   return { ok: true };
 });
-route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: Boolean(PAYMENTS), paymentMode: PAYMENTS }));
+route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: Boolean(PAYMENTS), paymentMode: PAYMENTS, paymentTest: PAYMENTS === 'yookassa' && process.env.YOOKASSA_SECRET_KEY.startsWith('test_') }));
 route('GET', '/api/events', () => booking.listEvents());
 route('GET', '/api/events/:id', ({ id }) => booking.getEvent(id));
 route('GET', '/api/events/:id/availability', ({ id }) => booking.availability(id));

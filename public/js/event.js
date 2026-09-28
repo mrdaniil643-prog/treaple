@@ -313,7 +313,7 @@ function openCheckout() {
         <button class="btn block" type="submit">Оплатить ${money(o.total)}</button>
         <button class="btn ghost block" type="button" id="release">Отменить бронь</button>
       </div>
-      <p class="demo-note">${state.config.paymentMode === 'yookassa' ? 'Оплата картой или через СБП на странице ЮKassa. Чек придёт на почту или по СМС.' : 'Тестовый режим: деньги не списываются.'}</p>
+      <p class="demo-note">${state.config.paymentMode === 'yookassa' && !state.config.paymentTest ? 'Оплата картой или через СБП на странице ЮKassa. Чек придёт на почту или по СМС.' : 'Тестовый режим: деньги не списываются.'}</p>
     </form>`;
   dlg.setAttribute('aria-labelledby', 'checkout-title');
   dlg.showModal();
