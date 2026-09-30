@@ -150,7 +150,7 @@ STAIR_D = 1.943
 TRIBUNES = {}   # id -> info for annotations
 
 def tribune(tid, x0, y_front, rows, per_side, h0, aisle=1.95, facing=-1, row_colors=None,
-            top_red=False, skirt=True, label=None):
+            top_red=False, skirt=True, label=None, place=None):
     """Build a grandstand. Local frame: x 0..L, y 0 (front) .. D (back), stair at y<0."""
     mat('seat_blue', '#1f5fb8', 0.35); mat('seat_red', '#c8161d', 0.35); mat('seat_white', '#f2f2f2', 0.35)
     mat('deck', '#8d949b', 0.7, 0.2); mat('steel', '#b9bec4', 0.35, 0.8); mat('stair', '#b8743f', 0.7)
@@ -230,14 +230,17 @@ def tribune(tid, x0, y_front, rows, per_side, h0, aisle=1.95, facing=-1, row_col
         mb.tube('rail', (x, -sd, 0.95), (x, 0, h0+0.95), 0.045)
         mb.box2('rail', (x-0.02, -sd, 0), (x+0.02, -sd+0.04, 0.95))
     # place
-    if facing == -1:
+    if place:
+        loc, rz = place(L, D, sd)
+    elif facing == -1:
         loc, rz = (x0, y_front, 0), 0.0
     else:
         loc, rz = (x0 + L, y_front, 0), math.pi
     mb.build(loc, rz)
+    cz, sz = math.cos(rz), math.sin(rz)
     def W(p):  # local -> world
         x, y, z = p
-        return (loc[0] + x, loc[1] + y, z) if facing == -1 else (loc[0] - x, loc[1] - y, z)
+        return (loc[0] + x*cz - y*sz, loc[1] + x*sz + y*cz, z)
     TRIBUNES[tid] = dict(
         id=tid, L=L, D=D + sd, rows=rows, seats=rows*per_side*2, label=label,
         badge=W((L/2, D*0.55, top + rh + 3.2)),
@@ -388,7 +391,7 @@ def build_scene():
             if not (-3 < x < 11):
                 fir(mbt, x + random.uniform(-0.8, 0.8), yy + random.uniform(-1, 1), random.uniform(13, 19))
             x += random.uniform(4.2, 5.4)
-    for x, y in ((-62, 20), (-58, 26), (68, 22), (72, 28), (-120, 20), (125, 18), (-66, -40), (-80, -32), (90, -40)):
+    for x, y in ((-62, 20), (-58, 26), (68, 22), (72, 28), (-120, 20), (125, 18), (90, -40)):
         leafy(mbt, x, y, random.uniform(9, 13))
     mbt.build()
 
@@ -473,13 +476,13 @@ def build_scene():
 # ---------------------------------------------------------------- views
 VIEWS = {
     # 1A: from the square toward the Lenin-monument side, all 8 grandstands (like the scheme)
-    '1A': dict(loc=(4, -74, 13), look=(4, 4, 8.5), lens=20, res=(3000, 1500)),
+    '1A': dict(loc=(4, -84, 12), look=(4, 4, 7.0), lens=17, res=(3000, 1500)),
     # 1B: side view toward Pushkin St, grandstand 1 closest to the viewer
     '1B': dict(loc=(-93, -22, 7.5), look=(-40, 6, 2.2), lens=24, res=(2560, 1440)),
     # 1B detail: grandstand 1 close up
     '1B_detail': dict(loc=(-75.5, -9.5, 4.2), look=(-58, 7.5, 2.4), lens=24, res=(2560, 1440)),
     # 2: side view toward Pushkin St: all grandstands + grandstand 9 by the shop
-    '2': dict(loc=(-106, -50, 17), look=(-22, -2, 1.5), lens=24, res=(2560, 1440)),
+    '2': dict(loc=(-98, -13, 14), look=(-24, -3, 0.5), lens=22, res=(2560, 1440)),
     # 3: same direction, higher/overall with every detail
     '3': dict(loc=(-120, -95, 55), look=(0, 0, 0), lens=26, res=(2560, 1440)),
 }
@@ -498,6 +501,7 @@ def set_camera(v):
 
 def project(cam, p):
     sc = bpy.context.scene
+    bpy.context.view_layer.update()
     c = world_to_camera_view(sc, cam, Vector(p))
     return [c.x*sc.render.resolution_x, (1-c.y)*sc.render.resolution_y, c.z]
 
@@ -514,7 +518,7 @@ def ann_data(cam, screens):
     return out
 
 def main():
-    argv = sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else []
+    argv = sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else sys.argv[1:]
     samples, scale, views = 64, 100, []
     it = iter(argv)
     for a in it:
@@ -543,4 +547,5 @@ def main():
     with open(os.path.join(OUT, 'tribunes.json'), 'w') as f:
         json.dump({k: {kk: t[kk] for kk in ('L', 'D', 'rows', 'seats', 'height')} for k, t in TRIBUNES.items()}, f, indent=1)
 
-main()
+if __name__ == '__main__':
+    main()

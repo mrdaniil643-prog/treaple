@@ -86,7 +86,7 @@ def annotate(view):
             d.polygon(pts, fill=(255, 30, 30, 45))
             lab = 'ГРАНИЦЫ ТРИБУНЫ № 9'
             cx = sum(p[0] for p in pts)/4; cy = max(p[1] for p in pts)
-            tag(d, (cx, cy + 34*s), lab, font(22*s), RED)
+            tag(d, (cx, cy + 95*s), lab, font(22*s), RED)
     # dimension lines (close-ups)
     for tid in DIMLINES[view]:
         t = T[tid]
@@ -178,5 +178,6 @@ def annotate(view):
     img.convert('RGB').save(os.path.join(OUT, f'render_{view}.jpg'), quality=92)
     print('annotated', view)
 
-for v in (sys.argv[1:] or ['1A', '1B', '1B_detail', '2', '3']):
+if __name__ == '__main__':
+  for v in (sys.argv[1:] or ['1A', '1B', '1B_detail', '2', '3']):
     if os.path.exists(os.path.join(OUT, f'raw_{v}.png')): annotate(v)
