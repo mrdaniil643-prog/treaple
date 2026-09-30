@@ -9,3 +9,9 @@ scene.py:38: DeprecationWarning: 'Material.use_nodes' is expected to be removed 
 scene.py:461: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
   w = bpy.data.worlds.new('world'); sc.world = w; w.use_nodes = True; nt = w.node_tree
 Info: Saved as "scene.blend"
+01:52.670  render           | Saved: '/home/user/treaple/renders-9may/out/raw_2.png'
+rendered 2
+03:35.274  render           | Saved: '/home/user/treaple/renders-9may/out/raw_3.png'
+rendered 3
+05:33.989  render           | Saved: '/home/user/treaple/renders-9may/out/raw_1A.png'
+rendered 1A
