@@ -90,7 +90,7 @@ test('заявка на бронь стола доходит до админки
   await p.goto(`${B}/event?id=${eventId}`);
   await p.fill('#request [name=name]', 'Олег');
   await p.fill('#request [name=phone]', '+7 914 111-22-33');
-  await p.fill('#request [name=guests]', '6');
+  await p.selectOption('#request [name=guests]', '6');
   await p.fill('#request [name=comment]', 'Поближе к сцене');
   await p.click('#request [type=submit]');
   assert.match(await p.textContent('#request .form-error'), /согласие/, 'без согласия не отправляется');
@@ -210,7 +210,16 @@ for (const [label, device] of [['iPhone SE', devices['iPhone SE']], ['iPhone 13'
     await p.waitForSelector('#checkout[open]');
     await p.waitForTimeout(500); // окно выезжает с анимацией
     for (const x of await mobileProblems(p)) problems.push(`оформление: ${x}`);
-    await p.tap('#release');
+    assert.equal(await p.evaluate(() => document.activeElement.id), 'checkout-title', 'клавиатура не открывается сама');
+    await p.fill('#pay-form [name=name]', 'Гость');
+    await p.fill('#pay-form [name=phone]', '+7 912 000-11-22');
+    await p.check('#pay-form [name=consent]');
+    await p.tap('#pay-form [type=submit]');
+    await p.waitForSelector('.ticket .qr svg');
+    for (const x of await mobileProblems(p)) problems.push(`билеты: ${x}`);
+    await p.goto(`${B}/`);
+    await p.selectOption('#request [name=eventId]', '');
+    for (const x of await mobileProblems(p)) problems.push(`заявка на другой вечер: ${x}`);
     assert.deepEqual(problems, []);
   });
 }

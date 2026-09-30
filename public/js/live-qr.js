@@ -3,8 +3,13 @@ import { fmt, qrSvg, toast, STATUS_TEXT, TZ, $$ } from './common.js';
 // Живые QR: сервер присылает подписанный код на текущие 30 секунд и статус билета.
 // Скриншот QR устаревает через минуту, а при проходе экран гостя сразу меняется.
 export function startLiveTickets(root) {
+  // вырезы по бокам билета — точно на линии отрыва, какой бы высоты ни была верхняя часть
+  const tear = new ResizeObserver((entries) => {
+    for (const e of entries) e.target.parentElement.style.setProperty('--tear', `${e.target.offsetHeight}px`);
+  });
+  $$('.ticket .ticket-top', root).forEach((t) => tear.observe(t));
   const cards = $$('.ticket[data-code]', root).filter((c) => c.dataset.status === 'active' || c.dataset.status === 'used');
-  if (!cards.length) return () => {};
+  if (!cards.length) return () => tear.disconnect();
   const byCode = new Map(cards.map((c) => [c.dataset.code, c]));
   let lastMessage = 0, validUntil = 0, windowSec = 30, es = null, retry = null, stopped = false;
   const startedAt = Date.now();
@@ -81,5 +86,5 @@ export function startLiveTickets(root) {
   };
   const timer = setInterval(tick, 250);
   tick();
-  return () => { stopped = true; clearInterval(timer); clearTimeout(retry); es?.close(); };
+  return () => { stopped = true; clearInterval(timer); clearTimeout(retry); es?.close(); tear.disconnect(); };
 }

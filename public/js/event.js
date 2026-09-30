@@ -105,7 +105,7 @@ function openCheckout() {
   const o = state.order;
   const dlg = $('#checkout');
   dlg.innerHTML = `
-    <div class="dlg-head"><h2 id="checkout-title">Оформление</h2><span class="timer" id="timer-box" title="Столько времени билеты держатся за вами"><small>Бронь</small> <b id="timer"></b></span></div>
+    <div class="dlg-head"><h2 id="checkout-title" tabindex="-1" autofocus>Оформление</h2><span class="timer" id="timer-box" title="Столько времени билеты держатся за вами"><small>Бронь</small> <b id="timer"></b></span></div>
     <form class="dlg-body" id="pay-form" novalidate>
       <div class="summary-lines">
         <div><span>Входной билет × ${o.tickets.length}</span><span>${money(o.total)}</span></div>

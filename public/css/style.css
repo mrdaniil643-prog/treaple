@@ -108,9 +108,16 @@ p { margin: 0; }
 .field { display: grid; gap: 6px; }
 .field > span { font-size: 14px; font-weight: 600; color: var(--muted); }
 .input {
-  width: 100%; min-height: 48px; padding: 0 14px; border-radius: 10px;
-  background: var(--night-2); border: 1.5px solid var(--line); outline: none;
+  display: block; width: 100%; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 10px;
+  background-color: var(--night-2); border: 1.5px solid var(--line); outline: none; color: var(--text);
+  font-size: 16px; /* меньше 16 px — iPhone приближает страницу при фокусе */
+  -webkit-appearance: none; appearance: none; /* в Safari поля и списки иначе свои: ниже, со своей рамкой */
   transition: border-color .2s, box-shadow .2s;
+}
+select.input {
+  padding-right: 40px; text-overflow: ellipsis; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%239aa7ba' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
 }
 textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
 .input:focus { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(240, 122, 43, .15); }
@@ -286,7 +293,15 @@ textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
 .stepper.big button { width: 56px; height: 56px; font-size: 26px; }
 .stepper.big output { min-width: 48px; font-size: 26px; }
 .check { display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 600; }
-.check input { width: 20px; height: 20px; accent-color: var(--orange); }
+.check input[type=checkbox] {
+  flex: none; display: grid; place-content: center; width: 24px; height: 24px; margin: 0;
+  border: 2px solid #5b6b84; border-radius: 7px; background: var(--night-2); cursor: pointer;
+  -webkit-appearance: none; appearance: none; transition: background-color .15s, border-color .15s;
+}
+.check input[type=checkbox]::after { content: ''; width: 6px; height: 12px; margin-top: -3px; border: solid var(--night-2); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) scale(0); transition: transform .15s; }
+.check input[type=checkbox]:checked { background: var(--orange); border-color: var(--orange); }
+.check input[type=checkbox]:checked::after { transform: rotate(45deg) scale(1); }
+.check input[type=checkbox]:focus-visible { outline: 2px solid var(--orange-2); outline-offset: 2px; }
 
 .cart-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .cart-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 12px 14px; background: var(--night-2); border-radius: 10px; animation: pop-in .3s var(--ease); }
@@ -348,7 +363,7 @@ dialog[open] { animation: pop-in .35s var(--ease); }
 .ticket-top { padding: 20px 20px 18px; display: grid; gap: 10px; }
 .ticket-top .t-event { font: 700 18px/1.2 var(--f-display); }
 .ticket-top .t-when { font-weight: 700; color: #6d5238; font-size: 14px; }
-.t-place { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 18px; margin-top: 6px; }
+.t-place { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 6px; min-width: 0; }
 .t-place div { display: grid; }
 .t-place small { font-size: 12px; font-weight: 700; color: var(--ticket-muted); }
 .t-place b { font: 800 26px/1.05 var(--f-display); }
@@ -650,3 +665,24 @@ dialog, .menu-nav { overscroll-behavior: contain; }
   .buy-total { font-size: 22px; white-space: nowrap; }
   .dlg-head h2 { font-size: 20px; }
 }
+
+/* узкий экран: время на билете в одну строку, крестик закрытия окна не меньше 44 px */
+@media (max-width: 380px) {
+  .t-place { gap: 8px 14px; }
+  .t-place b { font-size: 22px; }
+}
+/* телефон: QR крупно по центру, его легче считать с другого телефона; код и кнопки под ним */
+@media (max-width: 480px) {
+  .ticket-bottom { grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 12px; }
+  .ticket-bottom .qr-wrap { width: min(220px, 70vw); }
+  .ticket-bottom .qr { width: 100%; height: auto; aspect-ratio: 1; padding: 8px; }
+  .ticket-bottom > div:last-child { width: 100%; }
+  .t-pin b { white-space: nowrap; font-size: 26px; }
+  .ticket-actions { justify-content: center; }
+}
+.icon-close { min-width: 44px; min-height: 44px; }
+.dlg-head h2:focus { outline: none; }
+/* статусы на светлом билете: цвета темнее, чтобы читались на кремовом фоне */
+.ticket .status.active { background: rgba(31, 122, 69, .14); color: #1d6b3e; }
+.ticket .status.used { background: rgba(26, 34, 48, .1); color: #4a5568; }
+.ticket .status.cancelled, .ticket .status.refunded { background: rgba(179, 38, 30, .12); color: #a1241b; }
