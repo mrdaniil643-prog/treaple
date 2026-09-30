@@ -119,7 +119,11 @@ def annotate(view):
         d.ellipse([bx-r, y-r, bx+r, y+r], fill=RED, outline=WHITE, width=max(3, int(r*0.12)))
         d.text((bx, y), str(tid), font=font(r/0.85), fill=WHITE, anchor='mm')
         placed.append([bx-r, y-r, bx+r, y+r])
-        if plen(t) > 170*s:
+        if view == '1A':
+            g = t['ground_front']; gx = (g[0][0]+g[1][0])/2; gy = max(g[0][1], g[1][1]) + 30*s
+            tag(d, (gx, gy), SEATS[tid], f_dim, (24, 28, 36, 225))
+            tag(d, (gx, gy + f_dim.size*1.7), dims_text(tid, t), f_dim, (255, 255, 255, 235), fg=DARK)
+        elif plen(t) > 170*s:
             for text, fill, fg, dy in ((dims_text(tid, t), (255, 255, 255, 235), DARK, 1.25), (SEATS[tid], (24, 28, 36, 225), WHITE, 2.95)):
                 xy = (bx, y - r - f_dim.size*dy)
                 bb = d.textbbox(xy, text, font=f_dim, anchor='mm')
@@ -138,6 +142,8 @@ def annotate(view):
         if view == '1B' and tid == 1: side = -1
         fx = max(p1[0], p2[0]) + 150*s if side > 0 else min(p1[0], p2[0]) - 150*s
         fy = min(p1[1], p2[1]) - 25*s
+        if view == '1A':
+            fx = (p1[0]+p2[0])/2 + side*60*s; fy = t['badge'][1] - 150*s
         fp = font(28*s if view != '1A' else 22*s)
         box = tag(d, (fx, fy), '+32 места', fp, RED, outline=WHITE)
         ex = box[0] if side > 0 else box[2]

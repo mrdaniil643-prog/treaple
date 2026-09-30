@@ -473,7 +473,7 @@ def build_scene():
 # ---------------------------------------------------------------- views
 VIEWS = {
     # 1A: from the square toward the Lenin-monument side, all 8 grandstands (like the scheme)
-    '1A': dict(loc=(4, -88, 19), look=(4, 4, 5.5), lens=21, res=(3000, 1500)),
+    '1A': dict(loc=(4, -74, 13), look=(4, 4, 8.5), lens=20, res=(3000, 1500)),
     # 1B: side view toward Pushkin St, grandstand 1 closest to the viewer
     '1B': dict(loc=(-93, -22, 7.5), look=(-40, 6, 2.2), lens=24, res=(2560, 1440)),
     # 1B detail: grandstand 1 close up
