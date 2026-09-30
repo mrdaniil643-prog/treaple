@@ -113,7 +113,7 @@ export function renderHeader(current) {
     skip.className = 'skip-link';
     skip.href = '#app';
     skip.textContent = 'Перейти к содержимому';
-    // адрес не меняем: во фрагменте живут #order=…, #bar и #invite=…
+    // адрес не меняем: во фрагменте живут #order=… и #invite=…
     skip.addEventListener('click', (e) => {
       e.preventDefault();
       const app = document.getElementById('app');

@@ -159,7 +159,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
           sold: t.sold,
           held: t.held,
           free,
-          price: seatPrice(event, table),
+          price: seatPrice(event),
           // стол можно взять целиком, только если за ним ещё никого нет
           wholeAvailable: busy === 0,
           status: free === 0 ? 'full' : busy > 0 ? 'partial' : 'free',
@@ -174,8 +174,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     const vals = Object.values(av.tables);
     const free = vals.reduce((s, t) => s + t.free, 0);
     const total = vals.reduce((s, t) => s + t.seats, 0);
-    const minPrice = vals.length ? Math.min(...vals.map((t) => t.price)) : e.price;
-    return { ...e, seatsFree: free, seatsTotal: total, minPrice };
+    return { ...e, seatsFree: free, seatsTotal: total };
   }
 
   function listEvents() {
@@ -227,7 +226,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
         taken.get(s.table_id).add(s.seat_no);
       }
       let total = 0;
-      for (const { table, seats } of merged.values()) total += seatPrice(event, table) * seats;
+      for (const { seats } of merged.values()) total += seatPrice(event) * seats;
 
       const createdAt = iso();
       const expiresAt = new Date(now().getTime() + HOLD_MINUTES * 60e3).toISOString();
@@ -238,7 +237,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
         let seatNo = 1;
         for (let i = 0; i < seats; i++) {
           while (busy.has(seatNo)) seatNo++;
-          const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, table.id, seatNo, seatPrice(event, table), whole ? 1 : 0, randomBytes(9).toString('base64url'));
+          const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, table.id, seatNo, seatPrice(event), whole ? 1 : 0, randomBytes(9).toString('base64url'));
           log(Number(lastInsertRowid), Number(orderId), 'held');
           seatNo++;
         }

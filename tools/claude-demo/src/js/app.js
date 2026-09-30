@@ -19,7 +19,7 @@ export function toToken(href) {
   if (u.pathname === '/event') return `event-${u.searchParams.get('id')}`;
   if (u.pathname === '/admin') return 'admin';
   if (DOCS.includes(u.pathname.slice(1))) return `doc-${u.pathname.slice(1)}`;
-  if (u.pathname === '/menu') return hash === 'bar' ? 'menu-bar' : 'menu';
+  if (u.pathname === '/menu') return 'menu';
   if (u.pathname === '/ticket') return `ticket-${u.searchParams.get('t')}`;
   if (u.pathname === '/tickets') {
     const p = new URLSearchParams(hash);
@@ -31,7 +31,7 @@ export function toToken(href) {
 function parse(token) {
   let m;
   if ((m = token.match(/^event-(\d+)$/))) return { page: 'event', id: m[1] };
-  if (token === 'menu' || token === 'menu-bar') return { page: 'menu', tab: token === 'menu-bar' ? 'bar' : 'kitchen' };
+  if (token === 'menu') return { page: 'menu' };
   if ((m = token.match(/^ticket-([A-Z0-9]+)$/))) return { page: 'ticket', code: m[1] };
   if ((m = token.match(/^order-([A-Z0-9]+)(-new)?$/))) return { page: 'tickets', order: m[1], fresh: Boolean(m[2]) };
   if (token === 'tickets') return { page: 'tickets' };

@@ -54,9 +54,9 @@ check('A01 админ-токен не даёт роль контролёра ч�
 
 # ===== API3 Mass assignment
 h = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K23', 'seats': 1, 'price': 1}], 'total': 1, 'status': 'paid'}).json()
-check('API3 цена и статус из запроса игнорируются', h['total'] == 1300 and h['status'] == 'held', f"total={h.get('total')} status={h.get('status')}")
+check('API3 цена и статус из запроса игнорируются', h['total'] == 1000 and h['status'] == 'held', f"total={h.get('total')} status={h.get('status')}")
 pd = post(f"/api/orders/{h['secret']}/pay", {'name': 'Вера', 'phone': '9333333333', 'consent': True, 'status': 'refunded', 'total': 0, 'tickets': []}).json()
-check('API3 оплата не принимает посторонние поля', pd['status'] == 'paid' and pd['total'] == 1300)
+check('API3 оплата не принимает посторонние поля', pd['status'] == 'paid' and pd['total'] == 1000)
 r = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K24', 'seats': -5}]})
 check('API3 отрицательное число мест отклонено', r.status_code == 400)
 r = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K24', 'seats': 1e9}]})

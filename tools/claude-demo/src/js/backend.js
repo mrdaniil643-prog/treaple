@@ -118,7 +118,7 @@ function availability(eventId) {
       const free = m.whole ? 0 : Math.max(0, table.seats - busy);
       tables[table.id] = {
         seats: table.seats, sold, held: m.held, free, other,
-        price: seatPrice(event, table), wholeAvailable: busy === 0,
+        price: seatPrice(event), wholeAvailable: busy === 0,
         status: free === 0 ? 'full' : busy > 0 ? 'partial' : 'free',
       };
     }
@@ -128,10 +128,7 @@ function availability(eventId) {
 
 function publicEvent(e) {
   const vals = Object.values(availability(e.id).tables);
-  return {
-    ...e, seatsFree: vals.reduce((s, t) => s + t.free, 0), seatsTotal: vals.reduce((s, t) => s + t.seats, 0),
-    minPrice: Math.min(...vals.map((t) => t.price)),
-  };
+  return { ...e, seatsFree: vals.reduce((s, t) => s + t.free, 0), seatsTotal: vals.reduce((s, t) => s + t.seats, 0) };
 }
 
 function orderView(o) {
@@ -197,7 +194,7 @@ function hold(eventId, items) {
     for (let i = 0; i < it._seats; i++) {
       while (taken.has(seat)) seat++;
       const code = rand(12);
-      memory.tickets[code] = { code, order: secret, event_id: event.id, table_id: it._table.id, seat, price: seatPrice(event, it._table), whole: it._whole, status: 'held' };
+      memory.tickets[code] = { code, order: secret, event_id: event.id, table_id: it._table.id, seat, price: seatPrice(event), whole: it._whole, status: 'held' };
       order.tickets.push(code);
       seat++;
     }

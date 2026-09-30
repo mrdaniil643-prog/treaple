@@ -1,11 +1,11 @@
 // Схемы залов. Координаты взяты с планов заведения (единицы — пиксели исходных картинок),
 // клиент рисует по ним SVG. seats — сколько гостей помещается за столом,
-// zone — ценовая зона, wholeOnly — стол продаётся только целиком (VIP-комната).
+// zone — где стоит стол (подпись в карточке), wholeOnly — стол продаётся только целиком (VIP-комната).
 
 export const ZONES = {
-  standard: { title: 'Зал', multiplier: 1 },
-  stage: { title: 'У сцены', multiplier: 1.3 },
-  vip: { title: 'Караоке VIP', multiplier: 1.6 },
+  standard: { title: 'Зал' },
+  stage: { title: 'У сцены' },
+  vip: { title: 'Караоке VIP' },
 };
 
 export const HALLS = [
@@ -95,7 +95,7 @@ export function findTable(id) {
   return byId.get(id) || null;
 }
 
-export function seatPrice(event, table) {
-  const m = ZONES[table.zone]?.multiplier ?? 1;
-  return Math.round((event.price * m) / 50) * 50;
+// цена одна на все места события, зона на неё не влияет
+export function seatPrice(event) {
+  return event.price;
 }

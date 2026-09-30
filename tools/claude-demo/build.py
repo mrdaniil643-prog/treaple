@@ -9,7 +9,7 @@ shutil.rmtree(OUT, ignore_errors=True)
 for d in ['css', 'js', 'img', 'vendor']:
     os.makedirs(f'{OUT}/{d}')
 shutil.copy(f'{SITE}/public/css/style.css', f'{OUT}/css/style.css')
-for f in ['bar.jpg', 'bottles.jpg', 'kitchen.jpg']:
+for f in ['bar.jpg', 'kitchen.jpg']:
     shutil.copy(f'{SITE}/public/img/{f}', f'{OUT}/img/{f}')
 shutil.copytree(f'{SITE}/public/img/events', f'{OUT}/img/events')
 shutil.copy(f'{SITE}/public/vendor/qrcode.js', f'{OUT}/vendor/qrcode.js')
@@ -127,8 +127,6 @@ write('home.js', wrap(s))
 # ---------- menu.js ----------
 s = read('menu.js')
 s = rep(s, "import { esc, money, renderHeader, renderFooter, $, $$ } from './common.js';", "import { esc, money, renderHeader, renderFooter, onLeave, $, $$ } from './common.js';", 'menu')
-s = rep(s, "let tab = location.hash === '#bar' ? 'bar' : 'kitchen';", "let tab = route.tab === 'bar' ? 'bar' : 'kitchen';", 'menu')
-s = rep(s, "  history.replaceState(null, '', `#${tab}`);\n", "", 'menu')
 s = rep(s, "draw();\nrenderFooter();", "draw();\nrenderFooter();\nonLeave(() => observer?.disconnect());", 'menu')
 # ссылки разделов меню (#s-…) — прокрутка внутри страницы
 s = rep(s, "$('#q').addEventListener('input',", "$('#menu-nav').addEventListener('click', (e) => {\n  const a = e.target.closest('a[href^=\"#s-\"]');\n  if (!a) return;\n  e.preventDefault();\n  e.stopPropagation();\n  document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });\n});\n$('#q').addEventListener('input',", 'menu')

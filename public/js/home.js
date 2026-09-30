@@ -14,7 +14,7 @@ function eventRow(e) {
       <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}${e.lineup ? `<span>${esc(e.lineup)}</span>` : ''}<span>Начало в ${fmt.time(e.starts_at)}</span></div>
     </div>
     <div class="event-side">
-      <span class="price">${soldOut ? 'Мест нет' : `от ${money(e.minPrice)}`}</span>
+      <span class="price">${soldOut ? 'Мест нет' : money(e.price)}</span>
       <span class="seats-bar" aria-hidden="true"><i style="width:${pct}%"></i></span>
       <span class="seats-left${low ? ' low' : ''}">${soldOut ? (e.status === 'on_sale' ? 'Все столы заняты' : 'Продажа закрыта') : `Осталось ${e.seatsFree} ${plural(e.seatsFree, 'место', 'места', 'мест')}`}</span>
     </div>
@@ -55,10 +55,7 @@ async function main() {
 
   <section class="section wrap">
     <div class="section-head"><h2>Меню</h2></div>
-    <div class="menu-duo">
-      <a class="menu-card" href="/menu#kitchen" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Живые гребешки, тартары, роллы и баскский чизкейк.</p></a>
-      <a class="menu-card" href="/menu#bar" style="--img:url('/img/bottles.jpg')"><span class="brush">Бар</span><p>Авторские коктейли, шоты сетами по 10 штук и разливное пиво.</p></a>
-    </div>
+    <a class="menu-card" href="/menu" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Живые гребешки, тартары, роллы и баскский чизкейк.</p></a>
   </section>
 
   <section class="section wrap">

@@ -1,25 +1,15 @@
 import { esc, money, renderHeader, renderFooter, $, $$ } from './common.js';
-import { KITCHEN, BAR, BAR_GROUPS } from './menu-data.js';
+import { KITCHEN } from './menu-data.js';
 
 renderHeader('menu');
 const app = $('#app');
-let tab = location.hash === '#bar' ? 'bar' : 'kitchen';
 let query = '';
 
-const priceHtml = (item, section) => {
-  if (Array.isArray(item.p)) {
-    const vol = item.d && /мл|л$/.test(item.d) ? item.d : section.en && /мл|бутылка|л/.test(section.en) ? section.en : '';
-    return `${money(item.p[0])} / ${money(item.p[1])}${vol ? `<small>${esc(vol)}</small>` : ''}`;
-  }
-  return money(item.p);
-};
-
-function dish(item, section) {
-  const desc = item.d && !/^\d+ мл/.test(item.d) ? item.d : '';
+function dish(item) {
   return `<li class="dish">
     <span class="name">${esc(item.n)}${item.w ? ` <span class="w">${esc(item.w)}</span>` : ''}</span>
-    <span class="price">${priceHtml(item, section)}</span>
-    ${desc ? `<p class="desc">${esc(desc)}</p>` : ''}
+    <span class="price">${money(item.p)}</span>
+    ${item.d ? `<p class="desc">${esc(item.d)}</p>` : ''}
   </li>`;
 }
 
@@ -28,21 +18,13 @@ const matches = (item) => !query || `${item.n} ${item.d || ''}`.toLowerCase().in
 function sectionHtml(s) {
   const items = s.items.filter(matches);
   if (!items.length) return '';
-  const sub = s.en && !/мл|бутылка|л$/.test(s.en) ? s.en : '';
-  return `<section class="menu-section" id="s-${s.id}"><h2>${esc(s.title)}${sub ? `<small>${esc(sub)}</small>` : ''}</h2>
-    <ul class="dishes">${items.map((i) => dish(i, s)).join('')}</ul></section>`;
+  return `<section class="menu-section" id="s-${s.id}"><h2>${esc(s.title)}</h2>
+    <ul class="dishes">${items.map(dish).join('')}</ul></section>`;
 }
 
 function draw() {
-  const nav = tab === 'kitchen'
-    ? KITCHEN.map((s) => `<a href="#s-${s.id}">${esc(s.title)}</a>`).join('')
-    : BAR_GROUPS.map((g) => `<span class="group">${esc(g.title)}</span>${g.ids.map((id) => BAR.find((s) => s.id === id)).map((s) => `<a href="#s-${s.id}">${esc(s.title)}</a>`).join('')}`).join('');
-  const body = tab === 'kitchen'
-    ? KITCHEN.map(sectionHtml).join('')
-    : BAR_GROUPS.flatMap((g) => g.ids.map((id) => sectionHtml(BAR.find((s) => s.id === id)))).join('');
-  $('#menu-nav').innerHTML = nav;
-  $('#menu-body').innerHTML = body || `<p class="menu-empty">Ничего не нашлось по запросу «${esc(query)}». Попробуйте другое слово или откройте ${tab === 'kitchen' ? 'барную карту' : 'меню кухни'}.</p>`;
-  $$('.menu-switch button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  $('#menu-nav').innerHTML = KITCHEN.map((s) => `<a href="#s-${s.id}">${esc(s.title)}</a>`).join('');
+  $('#menu-body').innerHTML = KITCHEN.map(sectionHtml).join('') || `<p class="menu-empty">Ничего не нашлось по запросу «${esc(query)}». Попробуйте другое слово.</p>`;
   observe();
 }
 
@@ -69,28 +51,18 @@ function observe() {
 }
 
 app.innerHTML = `<section class="wrap page-head">
-  <h1>Меню</h1>
-  <div class="menu-switch" role="tablist">
-    <button role="tab" data-tab="kitchen">Кухня</button>
-    <button role="tab" data-tab="bar">Бар</button>
-  </div>
+  <h1>Меню кухни</h1>
   <div class="menu-layout">
     <nav class="menu-nav" id="menu-nav" aria-label="Разделы меню"></nav>
     <div>
       <label class="field menu-search"><span class="visually-hidden">Поиск по меню</span>
-        <input class="input" id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Найти блюдо или напиток: краб, негрони, чизкейк"></label>
+        <input class="input" id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Найти блюдо: краб, роллы, чизкейк"></label>
       <div id="menu-body"></div>
       <p class="menu-legal">Меню с полной информацией о составе, выходе и энергетической ценности каждого блюда находится в уголке потребителя. Если у вас аллергия на какой-либо ингредиент, сообщите об этом официанту. Цены в рублях.</p>
     </div>
   </div>
 </section>`;
 
-$$('.menu-switch button').forEach((b) => b.addEventListener('click', () => {
-  tab = b.dataset.tab;
-  history.replaceState(null, '', `#${tab}`);
-  draw();
-  $('#menu-body').animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: 'ease-out' });
-}));
 $('#q').addEventListener('input', (e) => { query = e.target.value.trim().toLowerCase(); draw(); });
 draw();
 renderFooter();

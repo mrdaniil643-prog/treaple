@@ -77,14 +77,14 @@ test('ЮKassa: возвраты считаются по цене оплаты', 
   const held = booking.hold(1, [{ tableId: 'K21', seats: 2 }]);
   booking.startPayment(held.secret, guest);
   booking.attachPayment(held.secret, 'pay-5', 'u');
-  booking.applyPayment(paymentOf('pay-5', 2600));
+  booking.applyPayment(paymentOf('pay-5', 2000));
   const [a] = booking.getOrder({ secret: held.secret }).tickets;
   booking.adminEditTicket(a.code, { price: 5000 }); // цену поменяли уже после оплаты
   const one = booking.ticketRefundPlan(a.code, { status: 'cancelled' });
-  assert.equal(one.amount, 1300, 'возвращаем то, что заплатили, а не новую цену');
+  assert.equal(one.amount, 1000, 'возвращаем то, что заплатили, а не новую цену');
   assert.equal(booking.ticketRefundPlan(a.code, { guestName: 'Вера' }), null, 'не аннулирование — без возврата');
   const all = booking.guestRefundPlan(held.secret);
-  assert.equal(all.amount, 2600);
+  assert.equal(all.amount, 2000);
   assert.equal(all.paymentId, 'pay-5');
 });
 
