@@ -12,6 +12,7 @@ export const SELLER = {
 };
 
 export const LEGAL_LINKS = [
+  ['/prices', 'Цены и оплата'],
   ['/offer', 'Оферта'],
   ['/refund', 'Возврат билетов'],
   ['/privacy', 'Политика обработки данных'],

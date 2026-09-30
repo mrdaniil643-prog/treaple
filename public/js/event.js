@@ -30,8 +30,8 @@ function render() {
     <div class="buy-card" id="buy" aria-live="polite"></div>
     <div class="request-card">
       <h2>Бронь стола</h2>
-      <p class="table-deposit">Депозит на стол от ${money(VENUE.tableDeposit)}</p>
-      <p class="muted">Депозит тратите на еду и напитки в этот вечер. Оставьте заявку, администратор перезвонит и подтвердит стол. Билет на вход нужен каждому гостю, его покупают отдельно.</p>
+      <p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p>
+      <p class="muted">Депозит тратите на еду и напитки в этот вечер, оплачивается он в баре. Оставьте заявку, администратор перезвонит и подтвердит стол. Билет на вход нужен каждому гостю, его покупают отдельно.</p>
       <div id="request"></div>
     </div>
   </section>
@@ -68,7 +68,8 @@ function renderBuy() {
       <b class="buy-total">${money(e.price * state.qty)}</b>
     </div>
     <button class="btn block buy-go" id="go">Купить ${state.qty > 1 ? ticketsWord(state.qty) : 'билет'}</button>
-    <p class="buy-left${left <= 12 ? ' low' : ''}">Осталось ${ticketsWord(left)}</p>`}`;
+    <p class="buy-left${left <= 12 ? ' low' : ''}">Осталось ${ticketsWord(left)}</p>`}
+    <p class="buy-pay">Оплата картой или через СБП на странице ЮKassa, чек придёт на почту или по СМС. <a href="/prices">Цены и оплата</a></p>`;
   $$('[data-d]', box).forEach((b) => b.addEventListener('click', () => {
     state.qty += Number(b.dataset.d);
     renderBuy();

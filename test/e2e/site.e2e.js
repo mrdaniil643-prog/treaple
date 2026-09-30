@@ -200,7 +200,7 @@ for (const [label, device] of [['iPhone SE', devices['iPhone SE']], ['iPhone 13'
   test(`мобильная вёрстка: ${label}`, async () => {
     const p = await page(device);
     const problems = [];
-    for (const path of ['/', `/event?id=${eventId}`, '/menu', '/tickets', '/staff', '/admin', '/nope', '/offer', '/refund', '/privacy', '/consent', '/contacts']) {
+    for (const path of ['/', `/event?id=${eventId}`, '/menu', '/tickets', '/staff', '/admin', '/nope', '/offer', '/refund', '/privacy', '/consent', '/contacts', '/prices']) {
       await p.goto(B + path);
       await p.waitForLoadState('networkidle').catch(() => {});
       for (const x of await mobileProblems(p)) problems.push(`${path}: ${x}`);

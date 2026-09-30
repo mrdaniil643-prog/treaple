@@ -41,7 +41,7 @@ function localIso(iso) {
 
 // Страницы, которые не должны попадать в поиск: личные билеты, админка, контролёр
 const PRIVATE = new Set(['admin.html', 'staff.html', 'c.html', 'ticket.html', 'tickets.html', '404.html']);
-const PUBLIC_PAGES = ['/', '/menu', '/contacts', '/offer', '/refund', '/privacy', '/consent'];
+const PUBLIC_PAGES = ['/', '/menu', '/prices', '/contacts', '/offer', '/refund', '/privacy', '/consent'];
 
 export function createSeo({ booking }) {
   const address = () => ({
@@ -90,6 +90,18 @@ export function createSeo({ booking }) {
 
   const upcoming = () => booking.listEvents().filter((e) => e.status !== 'cancelled');
 
+  // Таблица цен для страницы «Цены и оплата»: у каждого события одна фиксированная цена билета.
+  // Та же вёрстка в public/js/prices.js — она обновляет таблицу в браузере.
+  function priceList(events) {
+    if (!events.length) return '<p>Сейчас в продаже нет мероприятий. Новые появятся в афише.</p>';
+    return `<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody>
+${events.map((e) => {
+      const state = e.status !== 'on_sale' ? 'продажа закрыта' : e.ticketsLeft ? '' : 'билеты закончились';
+      return `<tr><td><a href="/event?id=${e.id}">${esc(e.title)}</a></td><td>${dateRu(e.starts_at)}, ${timeRu(e.starts_at)}</td><td><b>${rub(e.price)}</b>${state ? `<br><span class="muted">${state}</span>` : ''}</td></tr>`;
+    }).join('\n')}
+</tbody></table></div>`;
+  }
+
   // Что знаем о странице: заголовок, описание, картинка, разметка и текст до загрузки скриптов
   function describe(file, url, origin) {
     if (file === 'index.html') {
@@ -131,6 +143,9 @@ ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price
         body: `<section class="wrap page-head"><h1>Меню кухни</h1>${KITCHEN.map((s) => `<h2>${esc(s.title)}</h2><ul>${s.items.map((d) => `<li>${esc(d.n)}${d.w ? `, ${esc(d.w)}` : ''} — ${rub(d.p)}</li>`).join('')}</ul>`).join('')}</section>`,
       };
     }
+    if (file === 'prices.html') {
+      return { canonical: '/prices', list: priceList(upcoming()) };
+    }
     const path = `/${file.replace(/\.html$/, '')}`;
     return PUBLIC_PAGES.includes(path) ? { canonical: path } : {};
   }
@@ -163,6 +178,7 @@ ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price
     html = html.replace('</head>', `${head}\n</head>`);
     // текст до загрузки скриптов: скрипт страницы потом заменит его своей вёрсткой
     if (info.body) html = html.replace('<main id="app"></main>', `<main id="app">${info.body}</main>`);
+    if (info.list) html = html.replace('<div id="price-list"></div>', `<div id="price-list">${info.list}</div>`);
     return html;
   }
 

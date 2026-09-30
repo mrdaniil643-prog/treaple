@@ -10,7 +10,7 @@ const PAGES = {
   admin: () => import('./admin.js'),
   doc: () => import('./doc.js'),
 };
-const DOCS = ['offer', 'refund', 'privacy', 'consent', 'contacts'];
+const DOCS = ['offer', 'refund', 'privacy', 'consent', 'contacts', 'prices'];
 
 // Адреса сайта (/event?id=1, /tickets#order=…) → внутренние метки (event-1, order-…)
 export function toToken(href) {

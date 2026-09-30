@@ -21,6 +21,10 @@ open(f'{OUT}/css/fonts.css', 'w').write(open(f'{SITE}/public/css/fonts.css').rea
 os.makedirs(f'{OUT}/docs')
 for f in ['offer', 'refund', 'privacy', 'consent', 'contacts']:
     shutil.copy(f'{SITE}/public/{f}.html', f'{OUT}/docs/{f}.html')
+# «Цены и оплата»: на сайте таблицу цен вписывает сервер, в демо — событие по умолчанию
+prices = open(f'{SITE}/public/prices.html').read()
+assert '<div id="price-list"></div>' in prices
+open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Отчётный концерт × Открытый микрофон</td><td>25 октября, 16:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
 
 
 def rep(s, a, b, name, count=1):

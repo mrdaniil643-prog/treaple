@@ -73,3 +73,23 @@ test('у каждой страницы есть значок для поиска
   }
   for (const f of ['tickets.html', 'ticket.html', 'admin.html', 'staff.html', 'c.html', '404.html']) assert.match(page(f), /name="robots" content="noindex"/, f);
 });
+
+test('«Цены и оплата»: фиксированная цена каждого события без «от», порядок оплаты через ЮKassa', () => {
+  const { seo } = setup();
+  const html = seo.render('prices.html', page('prices.html'), new URL(`${ORIGIN}/prices`), ORIGIN);
+  assert.match(html, /<a href="\/event\?id=1">Отчётный концерт × Открытый микрофон<\/a><\/td><td>25 октября, 16:00<\/td><td><b>1\s000\s₽<\/b>/);
+  assert.match(html, /ЮKassa/);
+  assert.match(html, /54-ФЗ/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/bilety-mt\.ru\/prices">/);
+  assert.match(seo.sitemap(ORIGIN), /<loc>https:\/\/bilety-mt\.ru\/prices<\/loc>/);
+});
+
+test('нигде на сайте нет цен «от …»: ЮKassa принимает только фиксированные цены', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = new URL('../public/', import.meta.url);
+  const files = [...readdirSync(dir).filter((f) => f.endsWith('.html')), ...readdirSync(new URL('js/', dir)).map((f) => `js/${f}`)];
+  for (const f of files) {
+    const text = readFileSync(new URL(f, dir), 'utf8');
+    assert.doesNotMatch(text, /(?:^|[\s>«(])от\s*(?:\d[\d\s ]*(?:&nbsp;)?\s*(?:₽|руб)|\$\{money)/i, f);
+  }
+});
