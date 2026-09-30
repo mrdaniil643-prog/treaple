@@ -86,12 +86,12 @@ function drawPage(ctx, t, event, qrData) {
   y += 52;
   if (event.doorsAt) text(ctx, `Двери открываются в ${fmt.time(event.doorsAt)}`, M, y, { size: 30, weight: 500, color: C.muted });
 
-  // зал, стол, место
+  // вид билета и время
   y += 50;
   const cols = [
-    [t.whole ? 'Стол целиком' : 'Зал', t.hall],
-    ['Стол', String(t.table)],
-    ['Место', t.whole ? 'все' : String(t.seat)],
+    ['Билет', 'Входной'],
+    ['Двери', event.doorsAt ? fmt.time(event.doorsAt) : '—'],
+    ['Начало', fmt.time(event.startsAt)],
   ];
   const gap = 24, bw = (W - M * 2 - gap * 2) / 3, bh = 170;
   cols.forEach(([label, value], i) => {
@@ -207,7 +207,7 @@ export async function downloadTicketsPdf(tickets, event) {
   const one = active.length === 1 ? active[0] : null;
   // имя латиницей: браузеры и телефоны теряют кириллицу в имени скачанного файла
   const day = new Date(event.startsAt).toISOString().slice(0, 10);
-  const name = one ? `MT-bilet-${day}-stol-${one.table}-mesto-${one.seat}.pdf` : `MT-bilety-${day}.pdf`;
+  const name = one ? `MT-bilet-${day}-${one.code.slice(-4)}.pdf` : `MT-bilety-${day}.pdf`;
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.append(a);

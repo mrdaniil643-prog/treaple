@@ -1,4 +1,4 @@
-// Сквозные проверки в настоящем браузере: покупка, вход по живому QR, мобильная вёрстка.
+// Сквозные проверки в настоящем браузере: покупка, заявка на стол, вход по живому QR, мобильная вёрстка.
 // Запуск: npm run e2e. Сервер поднимается сам на пустой временной базе.
 // Нужен Playwright: локально подойдёт глобальный (npm i -g playwright), в CI ставится в шаге workflow.
 import { test, before, after } from 'node:test';
@@ -52,7 +52,7 @@ before(async () => {
   const res = await fetch(`${B}/api/admin/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: B, 'X-Admin-Token': TOKEN },
-    body: JSON.stringify({ title: 'Проверка', startsAt, price: 1000, deposit: 500, halls: ['karaoke', 'main'] }),
+    body: JSON.stringify({ title: 'Проверка', startsAt, price: 1000, deposit: 500, capacity: 50 }),
   });
   eventId = (await res.json()).id;
   browser = await chromium.launch();
@@ -66,22 +66,47 @@ after(async () => {
 
 let ticketCode, guest, staff;
 
-test('гость выбирает стол, оплачивает и видит живой QR', async () => {
+test('гость покупает два входных билета и видит живой QR', async () => {
   guest = await page();
   await guest.goto(`${B}/event?id=${eventId}`);
-  await guest.click('.tbl[data-id="K25"]');
-  await guest.click('.table-pop [data-act="add"]');
+  await guest.click('#buy [data-d="1"]');
+  assert.equal((await guest.textContent('#go')).trim(), 'Купить 2 билета');
   await guest.click('#go');
-  await guest.fill('[name=name]', 'Борис');
-  await guest.fill('[name=phone]', '+7 912 000-11-22');
-  await guest.check('[name=consent]');
+  await guest.fill('#pay-form [name=name]', 'Борис');
+  await guest.fill('#pay-form [name=phone]', '+7 912 000-11-22');
+  await guest.check('#pay-form [name=consent]');
   await guest.click('#pay-form [type=submit]');
   await guest.waitForURL(/tickets/);
   await guest.waitForSelector('.ticket .qr svg');
   ticketCode = await guest.getAttribute('.ticket', 'data-code');
   assert.match(ticketCode, /^[A-Z0-9]{12}$/);
   const av = await (await fetch(`${B}/api/events/${eventId}/availability`)).json();
-  assert.equal(av.tables.K25.sold, 2, 'места за столом проданы');
+  assert.deepEqual([av.sold, av.free], [2, 48], 'билеты проданы');
+  assert.equal(await guest.locator('.ticket').count(), 2);
+});
+
+test('заявка на бронь стола доходит до админки', async () => {
+  const p = await page();
+  await p.goto(`${B}/event?id=${eventId}`);
+  await p.fill('#request [name=name]', 'Олег');
+  await p.fill('#request [name=phone]', '+7 914 111-22-33');
+  await p.fill('#request [name=guests]', '6');
+  await p.fill('#request [name=comment]', 'Поближе к сцене');
+  await p.click('#request [type=submit]');
+  assert.match(await p.textContent('#request .form-error'), /согласие/, 'без согласия не отправляется');
+  await p.check('#request [name=consent]');
+  await p.click('#request [type=submit]');
+  await p.waitForSelector('.request-done');
+  const admin = await page();
+  admin.on('dialog', (d) => d.accept());
+  await admin.goto(`${B}/admin`);
+  await admin.fill('[name=p]', TOKEN);
+  await admin.click('#login button');
+  await admin.waitForSelector('#requests [data-to="confirmed"]');
+  assert.match(await admin.textContent('#requests'), /Олег.*9141112233.*6.*Поближе к сцене/s);
+  assert.equal((await admin.textContent('#req-count')).trim(), '1');
+  await admin.click('#requests [data-to="confirmed"]');
+  await admin.waitForSelector('#requests >> text=Новых заявок нет');
 });
 
 test('контролёр гасит билет по QR один раз, посторонний ничего не видит', async () => {
@@ -122,7 +147,7 @@ test('PDF-билет скачивается, его QR пускает один �
     guest.waitForResponse((r) => r.url().includes(`/api/tickets/${code}/print`)),
     btn.click(),
   ]);
-  assert.match(download.suggestedFilename(), /^MT-bilet-\d{4}-\d{2}-\d{2}-stol-25-mesto-\d\.pdf$/);
+  assert.match(download.suggestedFilename(), /^MT-bilet-\d{4}-\d{2}-\d{2}-[A-Z0-9]{4}\.pdf$/);
   const file = await download.path();
   const { readFileSync } = await import('node:fs');
   const pdf = readFileSync(file);
@@ -157,7 +182,7 @@ async function mobileProblems(p) {
     const vw = document.documentElement.clientWidth;
     const out = [];
     if (document.documentElement.scrollWidth > vw) out.push(`прокрутка вбок на ${document.documentElement.scrollWidth - vw}px`);
-    for (const el of document.querySelectorAll('a[href], button, input, select, textarea, [role="button"], .tbl')) {
+    for (const el of document.querySelectorAll('a[href], button, input, select, textarea, [role="button"]')) {
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
       if (cs.visibility === 'hidden' || cs.display === 'none' || !r.width || !r.height) continue;
@@ -181,10 +206,11 @@ for (const [label, device] of [['iPhone SE', devices['iPhone SE']], ['iPhone 13'
       for (const x of await mobileProblems(p)) problems.push(`${path}: ${x}`);
     }
     await p.goto(`${B}/event?id=${eventId}`);
-    await p.tap('.tbl[data-id="K27"]');
-    await p.waitForSelector('.table-pop');
-    await p.waitForTimeout(600); // шторка выезжает с анимацией
-    for (const x of await mobileProblems(p)) problems.push(`карточка стола: ${x}`);
+    await p.tap('#go');
+    await p.waitForSelector('#checkout[open]');
+    await p.waitForTimeout(500); // окно выезжает с анимацией
+    for (const x of await mobileProblems(p)) problems.push(`оформление: ${x}`);
+    await p.tap('#release');
     assert.deepEqual(problems, []);
   });
 }

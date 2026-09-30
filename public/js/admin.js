@@ -1,11 +1,10 @@
-import { api, esc, fmt, money, seatsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';
-import { mountHall } from './hallmap.js';
+import { api, esc, fmt, money, ticketsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';
 import { occupancyChart, salesChart, entryMeter } from './charts.js';
 
 renderHeader('');
 const app = $('#app');
 let token = sessionStorage.getItem('mt.admin') || '';
-let config, events = [], currentId = null, map = null, es = null;
+let events = [], currentId = null, es = null;
 
 const adm = (path, opts = {}) => api(path, { ...opts, admin: token });
 
@@ -30,7 +29,7 @@ function login(error = '') {
 
 async function start() {
   try {
-    [config, events] = await Promise.all([api('/api/config'), adm('/api/admin/events')]);
+    events = await adm('/api/admin/events');
   } catch (err) {
     sessionStorage.removeItem('mt.admin');
     return login(err.status === 401 ? '' : err.message);
@@ -60,8 +59,18 @@ async function start() {
         <div class="row" id="sale-controls"></div></div>
     </div>
     <div class="admin-grid" style="margin-top:20px">
-      <div class="card"><h3>Заполненность залов</h3><div id="occupancy"></div></div>
-      <div class="card"><h3>Продано мест по дням</h3><div id="sales-chart"></div></div>
+      <div class="card"><h3>Билеты</h3><div id="occupancy"></div>
+        <form class="row" id="event-edit" style="align-items:end;margin-top:14px">
+          <label class="field" style="flex:0 1 160px"><span>Сколько продавать</span><input class="input" name="capacity" type="number" inputmode="numeric" min="1" max="5000" required></label>
+          <label class="field" style="flex:0 1 140px"><span>Цена, ₽</span><input class="input" name="price" type="number" inputmode="numeric" min="1" required></label>
+          <button class="btn small" type="submit">Сохранить</button>
+        </form></div>
+      <div class="card"><h3>Продано билетов по дням</h3><div id="sales-chart"></div></div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <div class="row" style="justify-content:space-between;align-items:center"><h3>Заявки на бронь стола <span class="req-count" id="req-count" hidden></span></h3>
+        <label class="check"><input type="checkbox" id="req-all"> Показать обработанные</label></div>
+      <div class="table-wrap" id="requests"></div>
     </div>
     <div class="card" style="margin-top:20px">
       <div class="row" style="justify-content:space-between;align-items:center"><h3>Контролёры</h3>
@@ -73,12 +82,8 @@ async function start() {
       <div id="invite"></div>
       <div class="table-wrap" id="staff-list"></div>
     </div>
-    <div class="card" style="margin-top:20px">
-      <div class="row" style="justify-content:space-between"><h3>Схема зала</h3><div class="hall-tabs" id="admin-halls"></div></div>
-      <div id="admin-map" style="width:100%"></div>
-    </div>
     <div class="card" style="margin-top:20px"><h3>Заказы</h3>
-      <input class="input" id="filter" placeholder="Поиск по имени, телефону, номеру заказа или столу">
+      <input class="input" id="filter" placeholder="Поиск по имени, телефону или номеру заказа">
       <div class="table-wrap" id="orders"></div></div>
     <details class="card" style="margin-top:20px"><summary style="cursor:pointer"><h3 style="display:inline">Новое событие</h3></summary>
       <form id="new-event" class="dlg-body" style="padding:12px 0 0">
@@ -93,10 +98,10 @@ async function start() {
           <label class="field"><span>Открытие дверей</span><input class="input" type="datetime-local" name="doorsAt"></label>
         </div>
         <div class="row">
-          <label class="field"><span>Цена места, ₽</span><input class="input" type="number" name="price" min="1" required value="1000"></label>
+          <label class="field"><span>Цена билета, ₽</span><input class="input" type="number" name="price" min="1" required value="1000"></label>
           <label class="field"><span>Из них депозит, ₽</span><input class="input" type="number" name="deposit" min="0" value="500"></label>
+          <label class="field"><span>Сколько билетов продавать</span><input class="input" type="number" name="capacity" min="1" max="5000" required value="136"></label>
         </div>
-        <div class="row">${config.halls.map((h) => `<label class="check"><input type="checkbox" name="halls" value="${h.id}" checked> ${esc(h.title)}</label>`).join('')}</div>
         <p class="form-error" id="new-error"></p>
         <button class="btn" type="submit">Открыть продажу</button>
       </form>
@@ -109,8 +114,11 @@ async function start() {
   $('#filter').addEventListener('input', () => drawOrders());
   $('#new-event').addEventListener('submit', createEvent);
   $('#invite-form').addEventListener('submit', inviteStaff);
+  $('#event-edit').addEventListener('submit', saveEvent);
+  $('#req-all').addEventListener('change', drawRequests);
   loadReport();
   loadStaff();
+  loadRequests();
 }
 
 let report;
@@ -129,7 +137,7 @@ async function loadReport() {
   const s = report.stats;
   const e = report.event;
   $('#stats').innerHTML = `
-    <div><b>${s.seatsSold}</b><span>мест продано</span></div>
+    <div><b>${s.seatsSold}</b><span>билетов продано</span></div>
     <div><b>${s.checkedIn}</b><span>гостей пришло</span></div>
     <div><b>${s.seatsHeld}</b><span>в брони (ждут оплаты)</span></div>
     <div><b>${money(s.revenue)}</b><span>выручка по билетам</span></div>`;
@@ -145,25 +153,16 @@ async function loadReport() {
     } catch (err) { toast(err.message, { error: true }); }
   }));
 
-  const halls = config.halls.filter((h) => e.halls.includes(h.id));
-  eventHalls = halls;
+  const f = $('#event-edit');
+  f.capacity.value = e.capacity;
+  f.price.value = e.price;
   drawCharts();
-  $('#admin-halls').innerHTML = halls.map((h, i) => `<button data-h="${h.id}" aria-selected="${i === 0}">${esc(h.title)}</button>`).join('');
-  const show = (id) => {
-    const hall = config.halls.find((h) => h.id === id);
-    map = mountHall($('#admin-map'), hall, { readonly: true, rotate: innerWidth >= 900 && hall.viewBox[3] > hall.viewBox[2] * 1.3 });
-    map.update(report.availability.tables);
-    $$('#admin-halls button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.h === id)));
-  };
-  $$('#admin-halls button').forEach((b) => b.addEventListener('click', () => show(b.dataset.h)));
-  show(halls[0].id);
   drawOrders();
 
   es?.close();
   es = new EventSource(`/api/events/${currentId}/stream`);
   let t;
-  es.onmessage = (m) => {
-    map?.update(JSON.parse(m.data).tables);
+  es.onmessage = () => {
     clearTimeout(t);
     t = setTimeout(async () => {
       report = await adm(`/api/admin/events/${currentId}/report`).catch(() => report);
@@ -175,25 +174,22 @@ async function loadReport() {
   };
 }
 
-let eventHalls = [];
 function drawCharts() {
-  occupancyChart($('#occupancy'), eventHalls, report.availability.tables);
+  occupancyChart($('#occupancy'), report.availability);
   salesChart($('#sales-chart'), report.orders);
   entryMeter($('#entry-meter'), report.stats.checkedIn, report.stats.seatsSold);
 }
 
 function drawOrders() {
   const q = $('#filter').value.trim().toLowerCase();
-  const rows = report.orders.filter((o) => !q || [o.code, o.name, o.phone, o.email, ...o.tickets.map((t) => `стол ${t.table}`), ...o.tickets.map((t) => t.guestName)]
+  const rows = report.orders.filter((o) => !q || [o.code, o.name, o.phone, o.email, ...o.tickets.map((t) => t.guestName)]
     .filter(Boolean).join(' ').toLowerCase().includes(q));
-  $('#orders').innerHTML = rows.length ? `<table class="list"><thead><tr><th>Заказ</th><th>Гость</th><th>Места</th><th>Сумма</th><th>Статус</th><th></th></tr></thead><tbody>
+  $('#orders').innerHTML = rows.length ? `<table class="list"><thead><tr><th>Заказ</th><th>Гость</th><th>Билеты</th><th>Сумма</th><th>Статус</th><th></th></tr></thead><tbody>
     ${rows.map((o) => {
-      const byTable = {};
-      for (const t of o.tickets) (byTable[t.table] ||= []).push(t);
-      const places = Object.entries(byTable).map(([n, ts]) => `Стол ${n}: ${ts.filter((t) => t.status === 'used').length}/${ts.length} пришли`).join('<br>');
+      const came = o.tickets.filter((t) => t.status === 'used').length;
       return `<tr><td><b>${esc(o.code)}</b><br><span class="muted">${fmt.date(o.createdAt)}, ${fmt.time(o.createdAt)}</span></td>
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
-        <td>${places}<br><span class="muted">${seatsWord(o.tickets.length)}</span></td>
+        <td>${ticketsWord(o.tickets.length)}<br><span class="muted">пришли ${came}</span></td>
         <td>${money(o.total)}${o.paidOnline ? '<br><span class="muted">ЮKassa</span>' : ''}${o.refundedAmount ? `<br><span class="muted">возвращено ${money(o.refundedAmount)}</span>` : ''}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
         <td>${o.status === 'paid' ? `<button class="link-btn" data-edit="${esc(o.code)}">Изменить</button><br>${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
@@ -205,7 +201,7 @@ function drawOrders() {
   }));
   $$('[data-edit]').forEach((b) => b.addEventListener('click', () => openEditor(b.dataset.edit)));
   $$('[data-refund]').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm(`Оформить возврат по заказу ${b.dataset.refund}? Все билеты заказа перестанут действовать, места освободятся.`)) return;
+    if (!confirm(`Оформить возврат по заказу ${b.dataset.refund}? Все билеты заказа перестанут действовать и вернутся в продажу.`)) return;
     try {
       await adm(`/api/admin/orders/${b.dataset.refund}/refund`, { method: 'POST' });
       toast('Возврат оформлен');
@@ -229,12 +225,6 @@ function editorDialog() {
   return dlg;
 }
 
-function tableOptions(current) {
-  return eventHalls.map((h) => `<optgroup label="${esc(h.title)}">${h.tables.map((t) => `<option value="${t.id}" data-seats="${t.seats}" ${t.id === current ? 'selected' : ''}>Стол ${esc(t.n)}, мест ${t.seats}${t.wholeOnly ? ', только целиком' : ''}</option>`).join('')}</optgroup>`).join('');
-}
-
-const seatOptions = (count, current) => Array.from({ length: count }, (_, i) => `<option ${i + 1 === current ? 'selected' : ''}>${i + 1}</option>`).join('');
-
 function renderEditor() {
   const o = report.orders.find((x) => x.code === editing);
   const dlg = editorDialog();
@@ -256,10 +246,6 @@ function renderEditor() {
         <h3>Билет ${prettyCode(t.code)} <span class="status ${t.status}">${STATUS_TEXT[t.status]}</span></h3>
         <label class="field"><span>Имя гостя</span><input class="input" name="guestName" value="${esc(t.guestName || '')}" maxlength="80" autocomplete="off"></label>
         <div class="row">
-          <label class="field"><span>Стол</span><select class="input" name="tableId">${tableOptions(t.tableId)}</select></label>
-          <label class="field" style="flex:0 1 110px"><span>Место</span><select class="input" name="seat">${seatOptions(eventHalls.flatMap((h) => h.tables).find((x) => x.id === t.tableId)?.seats || t.seat, t.seat)}</select></label>
-        </div>
-        <div class="row">
           <label class="field"><span>Цена, ₽</span><input class="input" name="price" type="number" inputmode="numeric" min="0" step="50" value="${t.price}"></label>
           <label class="field"><span>Статус</span><select class="input" name="status">${EDIT_STATUS.map(([v, l]) => `<option value="${v}" ${v === t.status ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         </div>
@@ -268,11 +254,6 @@ function renderEditor() {
       </form>`).join('')}
     </div>`;
   dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close());
-  // при смене стола — список мест этого стола
-  dlg.querySelectorAll('[name=tableId]').forEach((sel) => sel.addEventListener('change', () => {
-    const seats = Number(sel.selectedOptions[0].dataset.seats);
-    sel.form.seat.innerHTML = seatOptions(seats, 1);
-  }));
   dlg.querySelector('#edit-order').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.currentTarget;
@@ -282,10 +263,9 @@ function renderEditor() {
     e.preventDefault();
     const t = tickets.find((x) => x.code === f.dataset.code);
     const body = {
-      guestName: f.guestName.value, tableId: f.tableId.value, seat: Number(f.seat.value),
-      price: Number(f.price.value), status: f.status.value, newQr: f.newQr.checked,
+      guestName: f.guestName.value, price: Number(f.price.value), status: f.status.value, newQr: f.newQr.checked,
     };
-    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm(`Аннулировать билет? Место освободится, QR перестанет пускать. ${o.paidOnline ? `${money(t.price)} вернутся на карту гостя через ЮKassa, чек возврата уйдёт сам.` : 'Деньги верните на кассе.'}`)) return;
+    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm(`Аннулировать билет? Он вернётся в продажу, QR перестанет пускать. ${o.paidOnline ? `${money(t.price)} вернутся на карту гостя через ЮKassa, чек возврата уйдёт сам.` : 'Деньги верните на кассе.'}`)) return;
     if (body.newQr && !confirm('Выдать новый QR? Гостю нужно открыть билет заново или скачать новый PDF.')) return;
     await saveEdit(`/api/admin/tickets/${encodeURIComponent(t.code)}`, body, 'Билет сохранён');
   }));
@@ -328,7 +308,7 @@ async function checkIn(code) {
       return;
     }
     $('#scan-result').innerHTML = `<div class="scan-result ${cls}">${title}
-      <span>${esc(t.guestName || 'Гость')}, ${esc(t.hall)}, стол ${esc(t.table)}, место ${t.seat}</span>
+      <span>${esc(t.guestName || 'Гость')}</span>
       <span class="muted">${esc(t.event.title)}, ${fmt.date(t.event.startsAt)}. Билет ${prettyCode(t.code)}${t.checkedInAt ? `, вход в ${fmt.time(t.checkedInAt)}` : ''}${r.result === 'invalid' ? `, статус: ${STATUS_TEXT[t.status]}` : ''}</span></div>`;
     navigator.vibrate?.(r.result === 'ok' ? 80 : [60, 60, 60]);
   } catch (err) {
@@ -411,7 +391,6 @@ async function createEvent(e) {
   e.preventDefault();
   const f = e.currentTarget;
   const data = Object.fromEntries(new FormData(f));
-  data.halls = $$('[name=halls]:checked', f).map((i) => i.value);
   // datetime-local без пояса: сервер понимает его как время заведения, а не браузера
   try {
     const ev = await adm('/api/admin/events', { method: 'POST', body: data });
@@ -420,5 +399,56 @@ async function createEvent(e) {
     start();
   } catch (err) { $('#new-error').textContent = err.message; }
 }
+
+async function saveEvent(e) {
+  e.preventDefault();
+  const f = e.currentTarget;
+  try {
+    await adm(`/api/admin/events/${currentId}`, { method: 'POST', body: { capacity: Number(f.capacity.value), price: Number(f.price.value) } });
+    toast('Событие сохранено');
+    loadReport();
+  } catch (err) { toast(err.message, { error: true }); }
+}
+
+// ---- Заявки на бронь стола ----
+const REQ_STATUS = { new: 'Новая', confirmed: 'Подтверждена', declined: 'Отказ' };
+let requests = [];
+async function loadRequests() {
+  requests = await adm('/api/admin/table-requests').catch(() => requests);
+  drawRequests();
+}
+
+function drawRequests() {
+  const all = $('#req-all').checked;
+  const fresh = requests.filter((r) => r.status === 'new').length;
+  $('#req-count').hidden = !fresh;
+  $('#req-count').textContent = fresh;
+  const rows = all ? requests : requests.filter((r) => r.status === 'new');
+  $('#requests').innerHTML = rows.length ? `<table class="list"><thead><tr><th>Когда</th><th>Гость</th><th>Гостей</th><th>Пожелания</th><th>Статус</th><th></th></tr></thead><tbody>
+    ${rows.map((r) => `<tr><td><b>${r.event ? `${fmt.date(r.event.startsAt)}, ${esc(r.event.title)}` : esc(fmt.date(`${r.day}T12:00:00Z`))}</b><br><span class="muted">заявка ${fmt.date(r.createdAt)}, ${fmt.time(r.createdAt)}</span></td>
+      <td>${esc(r.name)}<br><a href="tel:+7${esc(r.phone)}">+7 ${esc(r.phone)}</a></td>
+      <td>${r.guests}</td>
+      <td>${esc(r.comment || '—')}${r.note ? `<br><span class="muted">Заметка: ${esc(r.note)}</span>` : ''}</td>
+      <td><span class="status req-${r.status}">${REQ_STATUS[r.status]}</span></td>
+      <td>${r.status !== 'confirmed' ? `<button class="link-btn" data-req="${r.id}" data-to="confirmed">Подтвердить</button><br>` : ''}${r.status !== 'declined' ? `<button class="link-btn" data-req="${r.id}" data-to="declined">Отказать</button><br>` : ''}<button class="link-btn" data-req="${r.id}" data-note>Заметка</button></td></tr>`).join('')}</tbody></table>`
+    : `<p class="muted">${all ? 'Заявок пока нет.' : 'Новых заявок нет.'}</p>`;
+  $$('[data-req]').forEach((b) => b.addEventListener('click', async () => {
+    const r = requests.find((x) => x.id === Number(b.dataset.req));
+    const body = {};
+    if (b.dataset.to) body.status = b.dataset.to;
+    else {
+      const note = prompt('Заметка к заявке (например, номер стола)', r.note || '');
+      if (note === null) return;
+      body.note = note;
+    }
+    try {
+      await adm(`/api/admin/table-requests/${r.id}`, { method: 'POST', body });
+      toast('Заявка обновлена');
+      loadRequests();
+    } catch (err) { toast(err.message, { error: true }); }
+  }));
+}
+// новые заявки подтягиваем сами, пока админка открыта
+setInterval(() => { if (token && $('#requests')) loadRequests(); }, 60e3);
 
 token ? start() : login();

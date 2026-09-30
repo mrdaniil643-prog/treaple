@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS events (
   description TEXT NOT NULL DEFAULT '',
   starts_at TEXT NOT NULL,          -- ISO, время начала
   doors_at TEXT NOT NULL,           -- ISO, открытие дверей
-  halls TEXT NOT NULL,              -- JSON-массив id залов в продаже
-  price INTEGER NOT NULL,           -- цена места в зоне standard, ₽
+  halls TEXT NOT NULL DEFAULT '[]', -- не используется: раньше билеты продавались на места в залах
+  price INTEGER NOT NULL,           -- цена входного билета, ₽
   deposit INTEGER NOT NULL DEFAULT 0, -- часть цены, которая уходит в депозит на меню
   genre TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'on_sale' -- on_sale | closed | cancelled
@@ -40,18 +40,35 @@ CREATE TABLE IF NOT EXISTS tickets (
   code TEXT UNIQUE NOT NULL,        -- код в QR, по нему проходят на входе
   order_id INTEGER NOT NULL REFERENCES orders(id),
   event_id INTEGER NOT NULL REFERENCES events(id),
-  table_id TEXT NOT NULL,
-  seat_no INTEGER NOT NULL,
+  table_id TEXT NOT NULL,           -- 'GA' — входной билет без места (старые билеты хранят стол)
+  seat_no INTEGER NOT NULL,         -- порядковый номер билета на событии, от 1 до вместимости
   price INTEGER NOT NULL,
   whole_table INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL,             -- held | active | used | released | cancelled
   guest_name TEXT,
   checked_in_at TEXT
 );
--- Одно место на событии может принадлежать только одному живому билету.
+-- Один номер билета на событии принадлежит только одному живому билету:
+-- так вместимость нельзя превысить даже при одновременных покупках.
 CREATE UNIQUE INDEX IF NOT EXISTS tickets_seat_taken
   ON tickets(event_id, table_id, seat_no) WHERE status IN ('held', 'active', 'used');
 CREATE INDEX IF NOT EXISTS tickets_order ON tickets(order_id);
+
+-- Заявки на бронь стола: гость оставляет контакты, администратор перезванивает.
+CREATE TABLE IF NOT EXISTS table_requests (
+  id INTEGER PRIMARY KEY,
+  event_id INTEGER REFERENCES events(id), -- NULL — обычный вечер, дата в day
+  day TEXT,                         -- YYYY-MM-DD для обычного вечера
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  guests INTEGER NOT NULL,
+  comment TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'new', -- new | confirmed | declined
+  admin_note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  consent_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS table_requests_status ON table_requests(status, created_at);
 
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -110,6 +127,8 @@ function migrate(db) {
   // постер события
   const eventCols = db.prepare('PRAGMA table_info(events)').all().map((c) => c.name);
   if (!eventCols.includes('image')) db.exec('ALTER TABLE events ADD COLUMN image TEXT');
+  // сколько входных билетов продаётся на событие
+  if (!eventCols.includes('capacity')) db.exec(`ALTER TABLE events ADD COLUMN capacity INTEGER NOT NULL DEFAULT ${DEFAULT_CAPACITY}`);
   // событие по умолчанию 25 октября: если его ещё не меняли, подставляем данные с афиши
   db.prepare("UPDATE events SET title = ?, genre = ?, lineup = ?, description = ?, image = ? WHERE slug = 'karaoke-25-october' AND title = 'Караоке-вечер'")
     .run(DEFAULT_EVENT.title, DEFAULT_EVENT.genre, DEFAULT_EVENT.lineup, DEFAULT_EVENT.description, DEFAULT_EVENT.image);
@@ -153,6 +172,7 @@ function at(date, hh, mm) {
 // остальные события заводятся в админке.
 // Событие по умолчанию — с афиши бара: отчётный концерт 25 октября
 const OLD_DESCRIPTION = 'Отчётный концерт и открытый микрофон в караоке-баре МТ. На сцену выйдут те, кто готовил песни вместе с Rock Some!, и приглашённые артисты. В программе розыгрыш сертификатов от партнёров. Хотите выступить сами? Подготовка начинается 1 октября, участие стоит 1000\u00a0₽.';
+export const DEFAULT_CAPACITY = 136;
 export const DEFAULT_EVENT = {
   title: 'Отчётный концерт × Открытый микрофон',
   genre: 'Концерт',
@@ -166,8 +186,8 @@ export function seedEvents(db) {
   if (n > 0) return;
   const d = new Date(2026, 9, 25);
   const e = DEFAULT_EVENT;
-  db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+  db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image, capacity)
+    VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?)`)
     .run('karaoke-25-october', e.title, e.lineup, e.description,
-      at(d, 16, 0), at(d, 15, 0), JSON.stringify(['karaoke', 'main']), 1000, 500, e.genre, e.image);
+      at(d, 16, 0), at(d, 15, 0), 1000, 500, e.genre, e.image, DEFAULT_CAPACITY);
 }

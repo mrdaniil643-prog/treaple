@@ -56,18 +56,9 @@ const tableToggle = (rows, head) => `<details class="chart-table"><summary>По�
   <div class="table-wrap"><table class="list"><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
   <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
 
-// Заполненность залов: горизонтальный стек «продано | в брони» на фоне свободных мест
-export function occupancyChart(el, halls, availability) {
-  const rows = [];
-  for (const h of halls) {
-    const r = { title: h.title, seats: 0, sold: 0, held: 0 };
-    for (const t of h.tables) {
-      const a = availability[t.id];
-      if (!a) continue;
-      r.seats += a.seats; r.sold += a.sold; r.held += a.held;
-    }
-    if (r.seats) rows.push({ ...r, free: r.seats - r.sold - r.held });
-  }
+// Сколько билетов разошлось: горизонтальный стек «продано | в брони» на фоне свободных
+export function occupancyChart(el, av) {
+  const rows = [{ title: 'Билеты', seats: av.capacity, sold: av.sold, held: av.held, free: av.free }];
   const seg = (r, n, cls, label) => {
     if (!n) return '';
     const text = `${label}: ${n} из ${r.seats}`;
@@ -81,10 +72,10 @@ export function occupancyChart(el, halls, availability) {
       <div class="occ-head"><span>${esc(r.title)}</span><span class="occ-value">${r.sold + r.held} из ${r.seats}</span></div>
       <div class="occ-bar">${seg(r, r.sold, 'sold', 'продано')}${seg(r, r.held, 'held', 'в брони')}</div>
     </div>`).join('')}
-    ${tableToggle(rows.map((r) => [r.title, r.sold, r.held, r.free, r.seats]), ['Зал', 'Продано', 'В брони', 'Свободно', 'Всего'])}`);
+    ${tableToggle(rows.map((r) => [r.title, r.sold, r.held, r.free, r.seats]), ['', 'Продано', 'В брони', 'Свободно', 'Всего'])}`);
 }
 
-// Продажи по дням: столбики с числом проданных мест за день
+// Продажи по дням: столбики с числом проданных билетов за день
 export function salesChart(el, orders) {
   const byDay = new Map();
   for (const o of orders) {
@@ -93,7 +84,7 @@ export function salesChart(el, orders) {
     byDay.set(k, (byDay.get(k) || 0) + o.tickets.length);
   }
   if (!byDay.size) {
-    render(el, 'empty', '<p class="muted">Продаж пока нет. Здесь появятся места, проданные по дням.</p>');
+    render(el, 'empty', '<p class="muted">Продаж пока нет. Здесь появятся билеты, проданные по дням.</p>');
     return;
   }
   // Непрерывный ряд дней: до сегодня, а если продажи давно закончились — до последней продажи.
@@ -128,18 +119,18 @@ export function salesChart(el, orders) {
     const yt = y(v);
     const r = Math.min(4, (base - yt) / 2, bw / 2);
     const bar = v ? `<path class="bar" d="M${x},${base} V${yt + r} Q${x},${yt} ${x + r},${yt} H${x + bw - r} Q${x + bw},${yt} ${x + bw},${yt + r} V${base} Z"/>` : '';
-    return `<g class="col" tabindex="0" data-focus="${days[i]}" data-tip="${esc(`<b>${labels[i]}</b><br>продано мест: ${v}`)}" aria-label="${labels[i]}: ${v}">
+    return `<g class="col" tabindex="0" data-focus="${days[i]}" data-tip="${esc(`<b>${labels[i]}</b><br>продано билетов: ${v}`)}" aria-label="${labels[i]}: ${v}">
       <rect class="hit" x="${padL + band * i}" y="${padT}" width="${band}" height="${innerH}"/>${bar}
       ${i === peak ? `<text class="val" x="${x + bw / 2}" y="${yt - 6}">${v}</text>` : ''}
       ${(days.length - 1 - i) % every === 0 ? `<text class="day" x="${x + bw / 2}" y="${H - 8}">${labels[i]}</text>` : ''}
     </g>`;
   });
-  render(el, JSON.stringify(values) + days[0], `<svg class="sales-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Проданные места по дням, максимум ${max} в день">
+  render(el, JSON.stringify(values) + days[0], `<svg class="sales-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Проданные билеты по дням, максимум ${max} в день">
     ${ticks.map((v) => `<line class="grid" x1="${padL}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${padL - 6}" y="${y(v)}">${v}</text>`).join('')}
     ${cols.join('')}
   </svg>
-  ${first < start ? `<p class="muted chart-note">Показаны последние ${days.length} дн. Всего продано мест: ${[...byDay.values()].reduce((a, b) => a + b, 0)}.</p>` : ''}
-  ${tableToggle(saleDays.map((k) => [dayLabel(k), byDay.get(k)]), ['День', 'Продано мест'])}`);
+  ${first < start ? `<p class="muted chart-note">Показаны последние ${days.length} дн. Всего продано билетов: ${[...byDay.values()].reduce((a, b) => a + b, 0)}.</p>` : ''}
+  ${tableToggle(saleDays.map((k) => [dayLabel(k), byDay.get(k)]), ['День', 'Продано билетов'])}`);
 }
 
 // Проход гостей: шкала «пришли из проданных»; обновляется на месте, чтобы работала анимация

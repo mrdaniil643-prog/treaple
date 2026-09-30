@@ -13,7 +13,6 @@ for f in ['bar.jpg', 'kitchen.jpg']:
     shutil.copy(f'{SITE}/public/img/{f}', f'{OUT}/img/{f}')
 shutil.copytree(f'{SITE}/public/img/events', f'{OUT}/img/events')
 shutil.copy(f'{SITE}/public/vendor/qrcode.js', f'{OUT}/vendor/qrcode.js')
-shutil.copy(f'{SITE}/server/halls.js', f'{OUT}/js/halls.js')
 for f in ['backend.js', 'app.js', 'doc.js']:
     shutil.copy(f'{SRC}/js/{f}', f'{OUT}/js/{f}')
 # шрифты с сайта (без Google) и документы
@@ -95,7 +94,7 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['hallmap.js', 'seat-layout.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'menu-data.js']:
+for f in ['table-request.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'menu-data.js']:
     write(f, read(f))
 
 s = read('ticket-card.js')
@@ -136,19 +135,21 @@ write('menu.js', wrap(s))
 s = read('event.js')
 s = rep(s, "orderLink, VENUE, $, $$ } from './common.js';", "orderLink, VENUE, onLeave, navigate, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'event')
 s = rep(s, "const eventId = Number(new URLSearchParams(location.search).get('id'));", "const eventId = Number(route.id);", 'event')
-s = rep(s, "wide.addEventListener('change', () => state.map && mountCurrentHall());",
-        "const onWide = () => state.map && document.contains(state.map.svg) && mountCurrentHall();\nwide.addEventListener('change', onWide);\nonLeave(() => wide.removeEventListener('change', onWide));", 'event')
 s = rep(s, """function connectStream() {
   const es = new EventSource(`/api/events/${eventId}/stream`);
-  es.onmessage = (m) => { setLive(true); applyAvailability(JSON.parse(m.data)); };
-  es.onerror = () => setLive(false);
+  es.onmessage = (m) => {
+    state.availability = JSON.parse(m.data);
+    if (!state.order) renderBuy();
+  };
 }""", """function connectStream() {
-  onLeave(watchAvailability(eventId, (av) => { setLive(true); applyAvailability(structuredClone(av)); }));
+  onLeave(watchAvailability(eventId, (av) => {
+    state.availability = structuredClone(av);
+    if (!state.order) renderBuy();
+  }));
 }""", 'event')
 s = rep(s, "      location.href = orderLink(order.secret, '&new=1');", "      navigate(`order-${order.secret}-new`);", 'event')
 s = rep(s, "let timerId;", "let timerId;\nonLeave(() => clearInterval(timerId));", 'event')
 s = rep(s, "  <dialog id=\"checkout\"></dialog>`;", "  `;\n  document.body.insertAdjacentHTML('beforeend', '<dialog id=\"checkout\"></dialog>');", 'event')
-s = s.replace("Схема обновляется сама", "Ваши брони на этом устройстве")
 s = s.replace("<p class=\"demo-note\">Тестовый режим: деньги не списываются.</p>", "<p class=\"demo-note\">Демо-версия: деньги не списываются, билеты сохранятся только в этом браузере.</p>")
 write('event.js', wrap(s))
 
@@ -200,8 +201,8 @@ write('ticket.js', wrap(s))
 
 # ---------- admin.js ----------
 s = read('admin.js')
-s = rep(s, "import { api, esc, fmt, money, seatsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';",
-        "import { api, esc, fmt, money, seatsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, onLeave, ask, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'admin')
+s = rep(s, "import { api, esc, fmt, money, ticketsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';",
+        "import { api, esc, fmt, money, ticketsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, onLeave, ask, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'admin')
 # sessionStorage в просмотрщике может быть недоступен
 s = rep(s, "let token = sessionStorage.getItem('mt.admin') || '';",
         "const store = { getItem: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* нет доступа */ } }, removeItem: (k) => { try { sessionStorage.removeItem(k); } catch { /* нет доступа */ } } };\nlet token = store.getItem('mt.admin') || '';", 'admin')
@@ -213,8 +214,10 @@ s = s.replace('!confirm(', '!await ask(')
 s = rep(s, '      <button class="btn" type="submit">Войти</button>',
         '      <p class="muted">В демо-версии пароль: <b>demo</b></p>\n      <button class="btn" type="submit">Войти</button>', 'admin')
 s = rep(s, 'href="/event?id=${e.id}" target="_blank">Страница события</a>', 'href="/event?id=${e.id}">Страница события</a>', 'admin')
-s = rep(s, "  es?.close();\n  es = new EventSource(`/api/events/${currentId}/stream`);\n  let t;\n  es.onmessage = (m) => {\n    map?.update(JSON.parse(m.data).tables);",
-        "  es?.();\n  let t;\n  es = watchAvailability(currentId, (data) => {\n    map?.update(data.tables);", 'admin')
+s = rep(s, "  es?.close();\n  es = new EventSource(`/api/events/${currentId}/stream`);\n  let t;\n  es.onmessage = () => {",
+        "  es?.();\n  let t;\n  es = watchAvailability(currentId, () => {", 'admin')
+# заявки: обновление раз в минуту только пока админка открыта
+s = rep(s, "setInterval(() => { if (token && $('#requests')) loadRequests(); }, 60e3);", "const reqTimer = setInterval(() => { if (token && $('#requests')) loadRequests(); }, 60e3);\nonLeave(() => clearInterval(reqTimer));", 'admin')
 s = rep(s, "    }, 400);\n  };\n}", "    }, 400);\n  });\n  onLeave(() => es?.());\n}", 'admin')
 s = rep(s, "let stream = null;", "let stream = null;\nonLeave(() => { stream?.getTracks().forEach((x) => x.stop()); stream = null; });", 'admin')
 write('admin.js', wrap(s))

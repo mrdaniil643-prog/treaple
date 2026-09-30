@@ -27,12 +27,12 @@ export function receiptSettings(env = process.env) {
 export function buildReceipt(lines, contacts, settings = receiptSettings()) {
   const items = [];
   for (const l of lines) {
-    const what = `${l.event.title}, ${dateOf(l.event.startsAt)}, стол ${l.table}, место ${l.seat}`;
+    const what = `${l.event.title}, ${dateOf(l.event.startsAt)}`;
     const deposit = settings.depositAsAdvance ? l.deposit : 0;
     const entry = l.price - deposit;
     if (entry > 0) {
       items.push({
-        description: cut(`Билет: ${what}`), quantity: '1.00', amount: money(entry), vat_code: settings.vatCode,
+        description: cut(`Входной билет: ${what}`), quantity: '1.00', amount: money(entry), vat_code: settings.vatCode,
         payment_mode: 'full_payment', payment_subject: 'service',
       });
     }

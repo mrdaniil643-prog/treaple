@@ -8,9 +8,8 @@ import { join, extname, normalize, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, seedEvents } from './db.js';
 import { resolveAdminToken, makeTokenCheck, clientIp, createLimiter, securityHeaders, sameOrigin, isProd } from './security.js';
-import { createBooking, BookingError, HOLD_MINUTES, CANCEL_BEFORE_HOURS, QR_WINDOW_SECONDS } from './booking.js';
+import { createBooking, BookingError, HOLD_MINUTES, MAX_TICKETS_PER_ORDER, CANCEL_BEFORE_HOURS, QR_WINDOW_SECONDS } from './booking.js';
 import { createStaff, readCookie, STAFF_COOKIE } from './staff.js';
-import { HALLS, ZONES } from './halls.js';
 import { createBackups } from './backup.js';
 import { createYooKassa, buildReceipt, receiptSettings } from './yookassa.js';
 
@@ -105,6 +104,7 @@ const LIMITS = {
   order: createLimiter({ limit: 300, windowMs: 10 * 60e3 }),
   adminFail: createLimiter({ limit: 10, windowMs: 10 * 60e3 }),
   invite: createLimiter({ limit: 20, windowMs: 10 * 60e3 }),
+  request: createLimiter({ limit: 10, windowMs: 60 * 60e3 }),
 };
 const tooMany = (res, limiter, key) => send(res, 429, { error: 'Слишком много попыток. Подождите несколько минут и попробуйте снова.' }, { 'Retry-After': String(limiter.retryAfter(key)) });
 
@@ -154,11 +154,12 @@ route('GET', '/api/health', () => {
   db.prepare('SELECT 1').get();
   return { ok: true };
 });
-route('GET', '/api/config', () => ({ halls: HALLS, zones: ZONES, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: Boolean(PAYMENTS), paymentMode: PAYMENTS, paymentTest: PAYMENTS === 'yookassa' && process.env.YOOKASSA_SECRET_KEY.startsWith('test_') }));
+route('GET', '/api/config', () => ({ maxTickets: MAX_TICKETS_PER_ORDER, holdMinutes: HOLD_MINUTES, cancelBeforeHours: CANCEL_BEFORE_HOURS, timeZone: process.env.TZ, paymentsEnabled: Boolean(PAYMENTS), paymentMode: PAYMENTS, paymentTest: PAYMENTS === 'yookassa' && process.env.YOOKASSA_SECRET_KEY.startsWith('test_') }));
 route('GET', '/api/events', () => booking.listEvents());
 route('GET', '/api/events/:id', ({ id }) => booking.getEvent(id));
 route('GET', '/api/events/:id/availability', ({ id }) => booking.availability(id));
-route('POST', '/api/events/:id/hold', ({ id }, body) => booking.hold(id, body.items), { limit: 'hold' });
+route('POST', '/api/events/:id/hold', ({ id }, body) => booking.hold(id, body.qty), { limit: 'hold' });
+route('POST', '/api/table-requests', (_, body) => booking.requestTable(body), { limit: 'request' });
 route('GET', '/api/orders/lookup', (_, __, url) => booking.getOrder({ code: url.searchParams.get('code'), phone: url.searchParams.get('phone') }), { limit: 'lookup' });
 route('GET', '/api/orders/:secret', ({ secret }) => booking.getOrder({ secret }), { limit: 'order' });
 route('POST', '/api/orders/:secret/pay', ({ secret }, body, __, ctx) => (yookassa ? startPayment(secret, body, ctx.req) : booking.pay(secret, body)), { limit: 'order' });
@@ -173,6 +174,9 @@ route('GET', '/api/tickets/:code/print', ({ code }) => booking.printQr(code), { 
 
 route('GET', '/api/admin/events', () => booking.allEvents(), { admin: true });
 route('POST', '/api/admin/events', (_, body) => booking.createEvent(body), { admin: true });
+route('POST', '/api/admin/events/:id', ({ id }, body) => booking.updateEvent(id, body), { admin: true });
+route('GET', '/api/admin/table-requests', () => booking.listTableRequests(), { admin: true });
+route('POST', '/api/admin/table-requests/:id', ({ id }, body) => booking.updateTableRequest(id, body), { admin: true });
 route('POST', '/api/admin/events/:id/status', ({ id }, body) => booking.setEventStatus(id, body.status), { admin: true });
 route('GET', '/api/admin/events/:id/report', ({ id }) => booking.eventReport(id), { admin: true });
 route('POST', '/api/admin/checkin', (_, body) => booking.checkIn(body.code, { eventId: body.eventId, by: 'admin' }), { admin: true });

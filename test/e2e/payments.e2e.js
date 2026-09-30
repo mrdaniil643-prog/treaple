@@ -32,15 +32,14 @@ async function page() {
   return p;
 }
 
-async function buy(p, tableId) {
+async function buy(p) {
   await p.goto(`${B}/event?id=${eventId}`);
-  await p.click(`.tbl[data-id="${tableId}"]`);
-  await p.click('.table-pop [data-act="add"]');
+  await p.click('#buy [data-d="1"]');
   await p.click('#go');
-  await p.fill('[name=name]', 'Борис');
-  await p.fill('[name=phone]', '+7 912 000-11-22');
-  await p.check('[name=consent]');
-  await p.fill('[name=email]', 'boris@example.ru');
+  await p.fill('#pay-form [name=name]', 'Борис');
+  await p.fill('#pay-form [name=phone]', '+7 912 000-11-22');
+  await p.check('#pay-form [name=consent]');
+  await p.fill('#pay-form [name=email]', 'boris@example.ru');
   await p.click('#pay-form [type=submit]');
   await p.waitForURL(/\/checkout\//);
 }
@@ -64,7 +63,7 @@ before(async () => {
   // событие через 3 дня: гость ещё может сам вернуть билеты
   const res = await fetch(`${B}/api/admin/events`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', Origin: B, 'X-Admin-Token': TOKEN },
-    body: JSON.stringify({ title: 'Оплата', startsAt: new Date(Date.now() + 72 * 3600e3).toISOString(), price: 1000, deposit: 500, halls: ['karaoke', 'main'] }),
+    body: JSON.stringify({ title: 'Оплата', startsAt: new Date(Date.now() + 72 * 3600e3).toISOString(), price: 1000, deposit: 500, capacity: 50 }),
   });
   eventId = (await res.json()).id;
   browser = await chromium.launch();
@@ -82,7 +81,7 @@ let guest;
 test('гость платит на странице ЮKassa и возвращается к билетам, в чеке строка на каждый билет', async () => {
   assert.equal((await (await fetch(`${B}/api/config`)).json()).paymentMode, 'yookassa');
   guest = await page();
-  await buy(guest, 'K25');
+  await buy(guest);
   const [p] = [...yk.payments.values()];
   assert.equal(p.amount.value, '2000.00');
   assert.deepEqual(p.receipt.customer, { email: 'boris@example.ru', full_name: 'Борис' });
@@ -97,7 +96,7 @@ test('гость платит на странице ЮKassa и возвраща�
 
 test('поддельное уведомление не подтверждает неоплаченный заказ', async () => {
   const p2 = await page();
-  await buy(p2, 'K26'); // платёж создан, но гость не заплатил
+  await buy(p2); // платёж создан, но гость не заплатил
   const pending = [...yk.payments.values()].find((x) => x.status === 'pending');
   const forge = (id) => fetch(`${B}/api/payments/yookassa`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -106,12 +105,12 @@ test('поддельное уведомление не подтверждает 
   assert.equal((await forge(pending.id)).status, 200);
   assert.equal((await forge('00000000-0000-0000-0000-000000000000')).status, 200);
   const av = await (await fetch(`${B}/api/events/${eventId}/availability`)).json();
-  assert.equal(av.tables.K26.sold, 0, 'места не проданы');
-  assert.equal(av.tables.K26.held, 2, 'бронь просто ждёт оплаты');
+  assert.equal(av.sold, 2, 'новые билеты не проданы, проданы только первые два');
+  assert.equal(av.held, 2, 'бронь просто ждёт оплаты');
   // гость отказался на странице оплаты — бронь снимается
   await p2.click('#cancel');
   await p2.waitForSelector('text=Оплата не прошла');
-  assert.equal((await (await fetch(`${B}/api/events/${eventId}/availability`)).json()).tables.K26.held, 0);
+  assert.equal((await (await fetch(`${B}/api/events/${eventId}/availability`)).json()).held, 0);
 });
 
 test('админ аннулирует один билет — деньги за него уходят через ЮKassa с чеком возврата', async () => {

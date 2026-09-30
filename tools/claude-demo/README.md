@@ -6,7 +6,7 @@
 python3 tools/claude-demo/build.py   # результат в tools/claude-demo/build/
 ```
 
-Сборщик берёт текущие файлы из `public/` и `server/halls.js` и подменяет обращения к серверу на `src/js/backend.js`. После изменений сайта пересоберите и опубликуйте `build/index.html` вместе с папками `css`, `js`, `img`, `vendor`.
+Сборщик берёт текущие файлы из `public/` и подменяет обращения к серверу на `src/js/backend.js`. После изменений сайта пересоберите и опубликуйте `build/index.html` вместе с папками `css`, `js`, `img`, `vendor`.
 
 ## Админка в демо
 

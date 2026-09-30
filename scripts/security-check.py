@@ -24,19 +24,19 @@ def post(path, body=None, headers=None, **kw):
     return requests.post(B + path, data=json.dumps(body if body is not None else {}), headers={**J, **(headers or {})}, **kw)
 
 
-def buy(event_id, table, seats=1, name='Тест', phone='9000000001'):
-    h = post(f'/api/events/{event_id}/hold', {'items': [{'tableId': table, 'seats': seats}]}).json()
+def buy(event_id, qty=1, name='Тест', phone='9000000001'):
+    h = post(f'/api/events/{event_id}/hold', {'qty': qty}).json()
     return post(f"/api/orders/{h['secret']}/pay", {'name': name, 'phone': phone, 'consent': True}).json()
 
 
 # --- подготовка: событие через час, чтобы работал вход
 start = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() + 3600))
-ev = post('/api/admin/events', {'title': 'Пентест', 'startsAt': start, 'price': 1000, 'deposit': 500, 'halls': ['karaoke', 'main']}, ADMIN).json()
+ev = post('/api/admin/events', {'title': 'Пентест', 'startsAt': start, 'price': 1000, 'deposit': 500, 'capacity': 100}, ADMIN).json()
 EID = ev['id']
 
 # ===== A01 Broken Access Control / API1 BOLA
-o1 = buy(EID, 'K21', 2, 'Анна', '9111111111')
-o2 = buy(EID, 'K22', 1, 'Борис', '9222222222')
+o1 = buy(EID, 2, 'Анна', '9111111111')
+o2 = buy(EID, 1, 'Борис', '9222222222')
 check('A01 чужой заказ по номеру без телефона не открывается', requests.get(f"{B}/api/orders/lookup?code={o1['code']}&phone=").status_code == 404)
 check('A01 чужой заказ с чужим телефоном не открывается', requests.get(f"{B}/api/orders/lookup?code={o1['code']}&phone=9222222222").status_code == 404)
 check('A01 угаданный секрет не открывает заказ', requests.get(f"{B}/api/orders/{'A' * 24}").status_code == 404)
@@ -46,23 +46,29 @@ check('A01 без пароля админки билет не править', p
 check('A01 без пароля админки контакты заказа не править', post(f"/api/admin/orders/{o1['code']}", {'phone': '9000000000'}).status_code == 401)
 t = requests.get(f"{B}/api/tickets/{o1['tickets'][0]['code']}").json()
 check('A01 публичный билет без номера заказа/контактов/секрета', not any(k in json.dumps(t, ensure_ascii=False) for k in [o1['code'], o1['secret'], '9111111111']))
-for p in ['/api/admin/events', f'/api/admin/events/{EID}/report', '/api/admin/staff']:
+for p in ['/api/admin/events', f'/api/admin/events/{EID}/report', '/api/admin/staff', '/api/admin/table-requests']:
     check(f'A01 админ-метод без пароля закрыт {p}', requests.get(B + p).status_code == 401)
+check('A01 без пароля заявку на стол не изменить', post('/api/admin/table-requests/1', {'status': 'declined'}).status_code == 401)
+check('A01 без пароля вместимость события не поменять', post(f'/api/admin/events/{EID}', {'capacity': 1}).status_code == 401)
 check('A01 гашение контролёра без cookie закрыто', post('/api/staff/checkin', {'code': 'X'}).status_code == 401)
 check('A01 поддельная cookie контролёра не работает', post('/api/staff/checkin', {'code': 'X'}, {'Cookie': 'mt_staff=' + 'a' * 43}).status_code == 401)
 check('A01 админ-токен не даёт роль контролёра через заголовок', post('/api/staff/checkin', {'code': 'X'}, ADMIN).status_code == 401)
 
 # ===== API3 Mass assignment
-h = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K23', 'seats': 1, 'price': 1}], 'total': 1, 'status': 'paid'}).json()
+h = post(f'/api/events/{EID}/hold', {'qty': 1, 'price': 1, 'total': 1, 'status': 'paid'}).json()
 check('API3 цена и статус из запроса игнорируются', h['total'] == 1000 and h['status'] == 'held', f"total={h.get('total')} status={h.get('status')}")
 pd = post(f"/api/orders/{h['secret']}/pay", {'name': 'Вера', 'phone': '9333333333', 'consent': True, 'status': 'refunded', 'total': 0, 'tickets': []}).json()
 check('API3 оплата не принимает посторонние поля', pd['status'] == 'paid' and pd['total'] == 1000)
-r = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K24', 'seats': -5}]})
-check('API3 отрицательное число мест отклонено', r.status_code == 400)
-r = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K24', 'seats': 1e9}]})
-check('API3 огромное число мест отклонено', r.status_code in (400, 409))
-r = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'K24', 'seats': 1.5}]})
-check('API3 дробное число мест округляется вниз, не ломает', r.status_code in (200, 400))
+r = post(f'/api/events/{EID}/hold', {'qty': -5})
+check('API3 отрицательное число билетов отклонено', r.status_code == 400)
+r = post(f'/api/events/{EID}/hold', {'qty': 1e9})
+check('API3 огромное число билетов отклонено', r.status_code in (400, 409))
+r = post(f'/api/events/{EID}/hold', {'qty': {'$gt': 0}})
+check('API3 объект вместо числа билетов отклонён', r.status_code == 400)
+r = post(f'/api/events/{EID}/hold', {'qty': 1.5})
+check('API3 дробное число билетов округляется вниз, не ломает', r.status_code in (200, 400))
+tr = post('/api/table-requests', {'eventId': EID, 'name': 'Заявка', 'phone': '9555555555', 'guests': 4, 'consent': True, 'status': 'confirmed', 'id': 1})
+check('API3 заявка на стол: статус из запроса игнорируется', tr.status_code == 200 and requests.get(f'{B}/api/admin/table-requests', headers=ADMIN).json()[0]['status'] == 'new', tr.text)
 
 # ===== A03 Injection
 SQLI = ["'", "' OR '1'='1", '" OR "1"="1', "1; DROP TABLE tickets--", "' UNION SELECT secret FROM orders--"]
@@ -70,16 +76,17 @@ for p in SQLI:
     codes = [
         requests.get(f'{B}/api/orders/lookup', params={'code': p, 'phone': p}).status_code,
         requests.get(f'{B}/api/tickets/' + requests.utils.quote(p, safe='')).status_code,
-        post(f'/api/events/{EID}/hold', {'items': [{'tableId': p, 'seats': 1}]}).status_code,
+        post(f'/api/events/{EID}/hold', {'qty': p}).status_code,
+        post('/api/table-requests', {'eventId': p, 'day': p, 'name': p, 'phone': p, 'guests': p, 'consent': True}).status_code,
         post('/api/admin/checkin', {'code': p}, ADMIN).status_code,
     ]
     check(f'A03 SQLi {p!r} → без 500', 500 not in codes, str(codes))
 check('A03 база цела после SQLi', requests.get(f'{B}/api/events').status_code == 200 and requests.get(f"{B}/api/tickets/{o1['tickets'][0]['code']}").status_code == 200)
 
 XSS = '<img src=x onerror=alert(1)>"\'><script>alert(2)</script>'
-x = buy(EID, 'K25', 1, XSS, '9444444444')
+x = buy(EID, 1, XSS, '9444444444')
 check('A03 XSS в имени хранится как текст (экранируется при выводе)', XSS.replace('\u0000', '') in json.dumps(x, ensure_ascii=False) or True)
-xe = post('/api/admin/events', {'title': XSS, 'description': XSS, 'lineup': XSS, 'genre': XSS, 'startsAt': start, 'price': 100, 'halls': ['main']}, ADMIN)
+xe = post('/api/admin/events', {'title': XSS, 'description': XSS, 'lineup': XSS, 'genre': XSS, 'startsAt': start, 'price': 100}, ADMIN)
 check('A03 XSS в событии принимается как текст (проверка вывода — в браузере)', xe.status_code == 200)
 XSS_EVENT = xe.json()['id']
 
@@ -103,17 +110,19 @@ for m in ['PUT', 'DELETE', 'PATCH', 'TRACE', 'OPTIONS']:
     check(f'A05 метод {m} запрещён', requests.request(m, B + '/api/events').status_code == 405)
 
 # ===== CSRF
-r = requests.post(B + f'/api/events/{EID}/hold', data=json.dumps({'items': [{'tableId': 'K26', 'seats': 1}]}), headers={**J, 'Origin': 'https://evil.example'})
+r = requests.post(B + f'/api/events/{EID}/hold', data=json.dumps({'qty': 1}), headers={**J, 'Origin': 'https://evil.example'})
 check('CSRF запрос с чужого Origin отклонён', r.status_code == 403)
-r = requests.post(B + f'/api/events/{EID}/hold', data=json.dumps({'items': [{'tableId': 'K26', 'seats': 1}]}), headers={**J, 'Sec-Fetch-Site': 'cross-site'})
+r = requests.post(B + f'/api/events/{EID}/hold', data=json.dumps({'qty': 1}), headers={**J, 'Sec-Fetch-Site': 'cross-site'})
 check('CSRF Sec-Fetch-Site: cross-site отклонён', r.status_code == 403)
-r = requests.post(B + f'/api/events/{EID}/hold', data='items=1', headers={'Content-Type': 'application/x-www-form-urlencoded'})
+r = requests.post(B + f'/api/events/{EID}/hold', data='qty=1', headers={'Content-Type': 'application/x-www-form-urlencoded'})
 check('CSRF форма (не JSON) отклонена', r.status_code == 415)
 
 # ===== 152-ФЗ: без согласия на обработку данных заказ не оформляется
-hn = post(f'/api/events/{EID}/hold', {'items': [{'tableId': 'M16', 'seats': 1}]}).json()
+hn = post(f'/api/events/{EID}/hold', {'qty': 1}).json()
 nc = post(f"/api/orders/{hn['secret']}/pay", {'name': 'Без согласия', 'phone': '9444444444'})
 check('152-ФЗ: оплата без согласия на обработку данных отклоняется', nc.status_code == 400, nc.text)
+nr = post('/api/table-requests', {'eventId': EID, 'name': 'Без согласия', 'phone': '9444444444', 'guests': 2})
+check('152-ФЗ: заявка на стол без согласия отклоняется', nr.status_code == 400, nr.text)
 
 # ===== A07 Auth: контролёр
 inv = post('/api/admin/staff/invite', {'name': 'Пентест'}, ADMIN).json()

@@ -14,7 +14,6 @@ export const RESULTS = {
 function detail(r) {
   const t = r.ticket;
   if (!t) return r.result === 'expired_qr' ? '<p class="gate-hint">Код не подошёл: он устарел или набран с ошибкой. Попросите гостя открыть билет на телефоне.</p>' : '';
-  const place = `${esc(t.hall)}, стол ${esc(t.table)}, место ${t.seat}${t.whole ? ' (стол целиком)' : ''}`;
   const hints = {
     already_used: `Вход был в ${t.checkedInAt ? fmt.time(t.checkedInAt) : '—'}. Возможно, билет переслали или показывают скриншот.`,
     expired_qr: 'Похоже на скриншот. Попросите открыть билет на телефоне: живой QR меняется каждые 30 секунд.',
@@ -23,7 +22,7 @@ function detail(r) {
     invalid: `Статус: ${esc(STATUS_TEXT[t.status] || t.status)}.`,
   };
   return `<p class="gate-name">${esc(t.guestName || 'Гость')}</p>
-    <p class="gate-place">${place}</p>
+    <p class="gate-place">Входной билет</p>
     ${hints[r.result] ? `<p class="gate-hint">${hints[r.result]}</p>` : `<p class="gate-hint">${esc(t.event.title)}</p>`}
     <p class="gate-code">Билет …${esc(t.ref || t.code?.slice(-4) || '')}</p>`;
 }

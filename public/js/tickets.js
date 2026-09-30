@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, seatsWord, renderHeader, renderFooter, toast, copyText, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
+import { api, esc, fmt, money, ticketsWord, renderHeader, renderFooter, toast, copyText, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
 import { ticketCard } from './ticket-card.js';
 import { startLiveTickets } from './live-qr.js';
 import { downloadTicketsPdf } from './ticket-pdf.js';
@@ -16,7 +16,7 @@ function renderOrder(o, { fresh = false } = {}) {
   box.innerHTML = `<section class="order">
     <div class="order-head">
       <div>
-        <p class="muted">Заказ ${esc(o.code)}, ${seatsWord(o.tickets.length)}, ${money(o.total)}</p>
+        <p class="muted">Заказ ${esc(o.code)}, ${ticketsWord(o.tickets.length)}, ${money(o.total)}</p>
         <h2>${esc(o.event.title)}</h2>
         <p class="muted">${fmt.full(o.event.startsAt)}, двери в ${fmt.time(o.event.doorsAt)}</p>
       </div>
@@ -49,9 +49,8 @@ function renderOrder(o, { fresh = false } = {}) {
       return;
     }
     if (share) {
-      const t = o.tickets.find((x) => x.code === share);
       const url = ticketUrl(share);
-      const text = `Твой билет в МТ: ${o.event.title}, ${fmt.full(o.event.startsAt)}, стол ${t.table}`;
+      const text = `Твой билет в МТ: ${o.event.title}, ${fmt.full(o.event.startsAt)}`;
       if (navigator.share) navigator.share({ title: 'Билет в МТ', text, url }).catch(() => {});
       else if (await copyText(`${text}\n${url}`)) toast('Ссылка на билет скопирована');
       else toast(`Не удалось скопировать. Ссылка: ${url}`, { ms: 12000 });
@@ -66,7 +65,7 @@ function renderOrder(o, { fresh = false } = {}) {
       } catch (err) { toast(err.message, { error: true }); }
     }
     if (ev.target.id === 'share-all') {
-      const lines = o.tickets.filter((t) => t.status === 'active').map((t) => `Стол ${t.table}, место ${t.seat} (${t.guestName}): ${ticketUrl(t.code)}`);
+      const lines = o.tickets.filter((t) => t.status === 'active').map((t) => `${t.guestName}: ${ticketUrl(t.code)}`);
       if (await copyText(`${o.event.title}, ${fmt.full(o.event.startsAt)}\n${lines.join('\n')}`)) toast('Ссылки на все билеты скопированы');
       else toast('Не удалось скопировать. Отправьте билеты по одному кнопкой «Отправить гостю».', { error: true });
     }
@@ -98,8 +97,8 @@ async function waitForPayment(secret) {
     }
     if (o && !o.paymentPending) {
       const text = o.status === 'refunded'
-        ? 'Пока шла оплата, эти места успели занять. Деньги уже возвращены на карту, чек возврата придёт на почту или по СМС.'
-        : 'Оплата не прошла, деньги не списаны. Выберите столы и попробуйте ещё раз.';
+        ? 'Пока шла оплата, билеты успели раскупить. Деньги уже возвращены на карту, чек возврата придёт на почту или по СМС.'
+        : 'Оплата не прошла, деньги не списаны. Попробуйте купить билеты ещё раз.';
       box.innerHTML = `<section class="order"><h2>${o.status === 'refunded' ? 'Места заняли' : 'Оплата не прошла'}</h2><p style="margin-top:8px">${text}</p>
         <a class="btn" style="margin-top:16px" href="/event?id=${o.event.id}">К схеме зала</a></section>`;
       return;
@@ -115,7 +114,7 @@ function renderSaved() {
   $('#saved').innerHTML = list.length ? `<h3 style="margin-top:36px;color:var(--cream)">Заказы с этого устройства</h3>
     <div class="saved-orders">${list.map((o) => `<a href="${orderLink(o.secret)}">
       <span><b>${esc(o.title)}</b><br><span class="muted">${fmt.full(o.startsAt)}</span></span>
-      <span class="muted">${esc(o.code)}, ${seatsWord(o.count)}</span></a>`).join('')}</div>` : '';
+      <span class="muted">${esc(o.code)}, ${ticketsWord(o.count)}</span></a>`).join('')}</div>` : '';
 }
 
 async function main() {

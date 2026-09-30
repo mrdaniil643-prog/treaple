@@ -1,9 +1,10 @@
 import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
-import { HALLS, findTable, seatPrice } from './halls.js';
-import { tx } from './db.js';
+import { tx, DEFAULT_CAPACITY } from './db.js';
 
 export const HOLD_MINUTES = 10;
-export const MAX_SEATS_PER_ORDER = 20;
+export const MAX_TICKETS_PER_ORDER = 10;
+// Входной билет без места: table_id = 'GA', seat_no — порядковый номер на событии
+const GA = 'GA';
 export const CANCEL_BEFORE_HOURS = 24;
 // Живой QR меняется каждые 30 секунд; принимаем текущий и предыдущий интервал.
 export const QR_WINDOW_SECONDS = 30;
@@ -25,20 +26,26 @@ export class BookingError extends Error {
 // Убираем управляющие символы и ограничиваем длину текста от пользователя.
 export const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 
+const ticketsWord = (n) => {
+  const m10 = n % 10, m100 = n % 100;
+  const w = m10 === 1 && m100 !== 11 ? 'билет' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'билета' : 'билетов';
+  return `${n} ${w}`;
+};
+
 export const normalizePhone = (p) => String(p || '').replace(/\D/g, '').slice(-10);
 
 // payments: 'demo' — оплата подтверждается сразу; 'yookassa' — через ЮKassa (сервер ждёт подтверждения платежа);
 // null — онлайн-продажа закрыта.
-export function createBooking(db, { onChange = () => {}, onTickets = () => {}, now = () => new Date(), demoPayments = true, payments } = {}) {
+export function createBooking(db, { onChange = () => {}, onTickets = () => {}, onRequest = () => {}, now = () => new Date(), demoPayments = true, payments } = {}) {
   const mode = payments !== undefined ? payments : demoPayments ? 'demo' : null;
   const q = {
     event: db.prepare('SELECT * FROM events WHERE id = ?'),
     events: db.prepare("SELECT * FROM events WHERE status != 'cancelled' ORDER BY starts_at"),
-    takenSeats: db.prepare(`SELECT table_id, seat_no, status, whole_table FROM tickets
+    takenSeats: db.prepare(`SELECT table_id, seat_no, status FROM tickets
       WHERE event_id = ? AND status IN ('held', 'active', 'used')`),
     orderByCode: db.prepare('SELECT * FROM orders WHERE code = ?'),
     orderBySecret: db.prepare('SELECT * FROM orders WHERE secret = ?'),
-    orderTickets: db.prepare('SELECT * FROM tickets WHERE order_id = ? ORDER BY table_id, seat_no'),
+    orderTickets: db.prepare('SELECT * FROM tickets WHERE order_id = ? ORDER BY id'),
     ticketByCode: db.prepare('SELECT * FROM tickets WHERE code = ?'),
     insOrder: db.prepare(`INSERT INTO orders (code, secret, event_id, status, total, created_at, expires_at)
       VALUES (?, ?, ?, 'held', ?, ?, ?)`),
@@ -108,7 +115,9 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   function parseEvent(row) {
     if (!row) return null;
-    return { ...row, halls: JSON.parse(row.halls) };
+    const event = { ...row };
+    delete event.halls; // старое поле: раньше билеты продавались на места в залах
+    return event;
   }
 
   function getEvent(id) {
@@ -117,7 +126,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return e;
   }
 
-  // Снимает просроченные брони. Вызывается перед любой операцией с местами и по таймеру.
+  // Снимает просроченные брони. Вызывается перед любой операцией с билетами и по таймеру.
   function sweep() {
     const rows = q.expired.all(iso());
     if (!rows.length) return;
@@ -139,42 +148,27 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   }
 
   function computeAvailability(event) {
-    const taken = new Map();
-    for (const s of q.takenSeats.all(event.id)) {
-      if (!taken.has(s.table_id)) taken.set(s.table_id, { sold: 0, held: 0, whole: false });
-      const t = taken.get(s.table_id);
-      if (s.status === 'held') t.held++;
-      else t.sold++;
-      if (s.whole_table) t.whole = true;
+    let sold = 0, held = 0;
+    for (const t of q.takenSeats.all(event.id)) {
+      if (t.status === 'held') held++;
+      else sold++;
     }
-    const tables = {};
-    for (const hall of HALLS) {
-      if (!event.halls.includes(hall.id)) continue;
-      for (const table of hall.tables) {
-        const t = taken.get(table.id) || { sold: 0, held: 0, whole: false };
-        const busy = t.sold + t.held;
-        const free = t.whole ? 0 : table.seats - busy;
-        tables[table.id] = {
-          seats: table.seats,
-          sold: t.sold,
-          held: t.held,
-          free,
-          price: seatPrice(event),
-          // стол можно взять целиком, только если за ним ещё никого нет
-          wholeAvailable: busy === 0,
-          status: free === 0 ? 'full' : busy > 0 ? 'partial' : 'free',
-        };
-      }
-    }
-    return { eventId: event.id, status: event.status, tables };
+    const free = Math.max(0, event.capacity - sold - held);
+    return { eventId: event.id, status: event.status, capacity: event.capacity, sold, held, free, price: event.price };
   }
 
   function publicEvent(e) {
     const av = availability(e.id);
-    const vals = Object.values(av.tables);
-    const free = vals.reduce((s, t) => s + t.free, 0);
-    const total = vals.reduce((s, t) => s + t.seats, 0);
-    return { ...e, seatsFree: free, seatsTotal: total };
+    return { ...e, ticketsLeft: av.free };
+  }
+
+  // Свободные номера билетов на событии. Номер не место: он нужен, чтобы уникальный индекс
+  // не дал продать больше вместимости при одновременных покупках.
+  function freeNumbers(eventId, n) {
+    const busy = new Set(q.takenSeats.all(eventId).filter((t) => t.table_id === GA).map((t) => t.seat_no));
+    const out = [];
+    for (let i = 1; out.length < n; i++) if (!busy.has(i)) out.push(i);
+    return out;
   }
 
   function listEvents() {
@@ -183,64 +177,29 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return q.events.all().map(parseEvent).filter((e) => e.starts_at >= cutoff).map(publicEvent);
   }
 
-  // items: [{ tableId, seats, whole }]
-  function hold(eventId, items) {
-    if (!mode) throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
+  // qty — сколько входных билетов берёт гость
+  function hold(eventId, qty) {
+    if (!mode) throw new BookingError(503, 'Онлайн-продажа билетов пока закрыта.');
     sweep();
     const event = getEvent(eventId);
     if (event.status !== 'on_sale') throw new BookingError(409, 'Продажа билетов на это событие закрыта');
     if (new Date(event.starts_at) < now()) throw new BookingError(409, 'Событие уже началось');
-    if (!Array.isArray(items) || !items.length) throw new BookingError(400, 'Выберите хотя бы один стол');
-    if (items.length > 40) throw new BookingError(400, 'Слишком много столов в одном заказе');
-
-    const merged = new Map();
-    for (const it of items) {
-      const table = typeof it?.tableId === 'string' ? findTable(it.tableId) : null;
-      if (!table || !event.halls.includes(table.hallId)) throw new BookingError(400, 'Один из выбранных столов недоступен на этом событии');
-      const whole = Boolean(it.whole) || Boolean(table.wholeOnly);
-      const seats = whole ? table.seats : Math.floor(Number(it.seats));
-      if (!whole && !(seats >= 1)) throw new BookingError(400, `Укажите число мест за столом ${table.n}`);
-      if (seats > table.seats) throw new BookingError(400, `За столом ${table.n} всего ${table.seats} мест${table.seats < 5 ? 'а' : ''}`);
-      if (merged.has(table.id)) throw new BookingError(400, `Стол ${table.n} выбран дважды`);
-      merged.set(table.id, { table, seats, whole });
-    }
-    const totalSeats = [...merged.values()].reduce((s, x) => s + x.seats, 0);
-    if (totalSeats > MAX_SEATS_PER_ORDER) {
-      throw new BookingError(400, `В одном заказе не больше ${MAX_SEATS_PER_ORDER} мест. Большую компанию бронируйте по телефону.`);
-    }
+    const n = typeof qty === 'number' || typeof qty === 'string' ? Math.floor(Number(qty)) : NaN;
+    if (!(n >= 1)) throw new BookingError(400, 'Укажите, сколько нужно билетов');
+    if (n > MAX_TICKETS_PER_ORDER) throw new BookingError(400, `В одном заказе не больше ${MAX_TICKETS_PER_ORDER} билетов`);
 
     const result = tx(db, () => {
-      const av = computeAvailability(getEvent(event.id)).tables;
-      const conflicts = [];
-      for (const { table, seats, whole } of merged.values()) {
-        const a = av[table.id];
-        if (whole ? !a.wholeAvailable : a.free < seats) conflicts.push({ tableId: table.id, free: a.free });
+      const { free } = computeAvailability(getEvent(event.id));
+      if (free < n) {
+        throw new BookingError(409, free ? `Осталось ${ticketsWord(free)}` : 'Билеты закончились', { free });
       }
-      if (conflicts.length) {
-        const names = conflicts.map((c) => findTable(c.tableId).n).join(', ');
-        throw new BookingError(409, `Места за столом ${names} уже заняли. Выберите другой стол.`, { conflicts });
-      }
-      const taken = new Map();
-      for (const s of q.takenSeats.all(event.id)) {
-        if (!taken.has(s.table_id)) taken.set(s.table_id, new Set());
-        taken.get(s.table_id).add(s.seat_no);
-      }
-      let total = 0;
-      for (const { seats } of merged.values()) total += seatPrice(event) * seats;
-
       const createdAt = iso();
       const expiresAt = new Date(now().getTime() + HOLD_MINUTES * 60e3).toISOString();
       const order = { code: `MT-${code(8)}`, secret: randomBytes(18).toString('base64url') };
-      const { lastInsertRowid: orderId } = q.insOrder.run(order.code, order.secret, event.id, total, createdAt, expiresAt);
-      for (const { table, seats, whole } of merged.values()) {
-        const busy = taken.get(table.id) || new Set();
-        let seatNo = 1;
-        for (let i = 0; i < seats; i++) {
-          while (busy.has(seatNo)) seatNo++;
-          const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, table.id, seatNo, seatPrice(event), whole ? 1 : 0, randomBytes(9).toString('base64url'));
-          log(Number(lastInsertRowid), Number(orderId), 'held');
-          seatNo++;
-        }
+      const { lastInsertRowid: orderId } = q.insOrder.run(order.code, order.secret, event.id, event.price * n, createdAt, expiresAt);
+      for (const no of freeNumbers(event.id, n)) {
+        const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, GA, no, event.price, 0, randomBytes(9).toString('base64url'));
+        log(Number(lastInsertRowid), Number(orderId), 'held');
       }
       return order.secret;
     });
@@ -250,20 +209,14 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   function orderView(o) {
     const event = getEvent(o.event_id);
-    const tickets = q.orderTickets.all(o.id).map((t) => {
-      const table = findTable(t.table_id);
-      const hall = HALLS.find((h) => h.id === table.hallId);
-      return {
-        code: t.code, table: table.n, tableId: t.table_id, hall: hall.title, seat: t.seat_no,
-        price: t.price, whole: Boolean(t.whole_table), status: t.status, guestName: t.guest_name,
-        checkedInAt: t.checked_in_at,
-      };
-    });
+    const tickets = q.orderTickets.all(o.id).map((t) => ({
+      code: t.code, price: t.price, status: t.status, guestName: t.guest_name, checkedInAt: t.checked_in_at,
+    }));
     const hoursLeft = (new Date(event.starts_at) - now()) / 3600e3;
     return {
       code: o.code, secret: o.secret, status: o.status, total: o.total, name: o.name, phone: o.phone, email: o.email,
       createdAt: o.created_at, expiresAt: o.expires_at, paidAt: o.paid_at,
-      // сколько секунд осталось держать места — таймер на клиенте не зависит от его часов
+      // сколько секунд осталось держать билеты — таймер на клиенте не зависит от его часов
       expiresIn: o.status === 'held' && o.expires_at ? Math.max(0, Math.floor((new Date(o.expires_at) - now()) / 1000)) : null,
       canCancel: o.status === 'paid' && hoursLeft >= CANCEL_BEFORE_HOURS && !tickets.some((t) => t.status === 'used'),
       // онлайн-оплата: гость ушёл на страницу ЮKassa, ждём подтверждения
@@ -332,7 +285,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   // Демо-оплата: заказ подтверждается сразу.
   function pay(secret, { name, phone, email, guests, consent } = {}) {
-    if (mode !== 'demo') throw new BookingError(503, mode ? 'Оплата проходит через платёжную страницу' : 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
+    if (mode !== 'demo') throw new BookingError(503, mode ? 'Оплата проходит через платёжную страницу' : 'Онлайн-продажа билетов пока закрыта.');
     const o = findOrder({ secret });
     // Пока гость оформлял, событие могли закрыть, отменить или оно уже началось
     if (o.status === 'held') {
@@ -343,7 +296,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       }
     }
     if (o.status === 'paid') return orderView(o);
-    if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
+    if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Оформите билеты заново.');
     const contacts = contactsOf({ name, phone, email, consent });
     tx(db, () => {
       saveGuests(o, contacts, guests);
@@ -355,13 +308,13 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
 
   // ---- Онлайн-оплата (ЮKassa) ----
   // Шаг 1: гость ввёл контакты. Сохраняем их и отдаём всё, что нужно для платежа и чека.
-  // Бронь продлеваем, чтобы места держались, пока гость на платёжной странице.
+  // Бронь продлеваем, чтобы билеты держались, пока гость на платёжной странице.
   const PAYMENT_HOLD_MINUTES = 20;
   function startPayment(secret, { name, phone, email, guests, consent } = {}) {
-    if (mode !== 'yookassa') throw new BookingError(503, 'Онлайн-оплата пока не подключена. Позвоните нам, чтобы забронировать стол.');
+    if (mode !== 'yookassa') throw new BookingError(503, 'Онлайн-продажа билетов пока закрыта.');
     const o = findOrder({ secret });
     if (o.status === 'paid') return { order: orderView(o), paid: true };
-    if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Выберите столы заново.');
+    if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Оформите билеты заново.');
     checkStillOnSale(o, secret);
     if (o.payment_id && o.payment_status === 'pending' && o.payment_url) return { order: orderView(o), url: o.payment_url };
     const contacts = contactsOf({ name, phone, email, consent });
@@ -377,8 +330,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   function receiptLines(o, tickets = q.orderTickets.all(o.id).filter((t) => t.status !== 'released')) {
     const event = getEvent(o.event_id);
     return tickets.map((t) => ({
-      code: t.code, table: findTable(t.table_id).n, seat: t.seat_no, whole: Boolean(t.whole_table),
-      price: t.paid_price ?? t.price, deposit: Math.min(event.deposit || 0, t.paid_price ?? t.price),
+      code: t.code, price: t.paid_price ?? t.price, deposit: Math.min(event.deposit || 0, t.paid_price ?? t.price),
       event: { title: event.title, startsAt: event.starts_at },
     }));
   }
@@ -390,7 +342,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   }
 
   // Шаг 3: сервер сам запросил платёж у ЮKassa и получил его состояние.
-  // Возвращает { refund } если деньги пришли, а места за время оплаты уже заняли: тогда их нужно вернуть.
+  // Возвращает { refund } если деньги пришли, а билеты за время оплаты уже раскупили: тогда деньги нужно вернуть.
   function applyPayment(payment) {
     const o = db.prepare('SELECT * FROM orders WHERE payment_id = ?').get(String(payment?.id ?? ''));
     if (!o) return { ignored: 'unknown' };
@@ -401,7 +353,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     }
     if (payment.status !== 'succeeded') return { ignored: payment.status };
     const lateRefund = () => ({ refund: { order: o, amount: o.total, lines: receiptLines(o, q.orderTickets.all(o.id)) } });
-    // возврат за занятые места ещё не прошёл: пробуем снова, пока ЮKassa его не примет
+    // возврат за раскупленные билеты ещё не прошёл: пробуем снова, пока ЮKassa его не примет
     if (o.payment_status === 'refund_due') return lateRefund();
     if (o.payment_status === 'succeeded' || o.payment_status === 'refunded') return { already: true };
     const paid = Math.round(Number(payment.amount?.value) * 100);
@@ -416,15 +368,17 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
         return markPaid(o);
       }
       if (o.status === 'paid') return;
-      // бронь успела истечь: пробуем вернуть те же места, если их никто не занял
+      // бронь успела истечь: оформляем билеты, если они ещё остались
       const tickets = q.orderTickets.all(o.id);
-      const busy = tickets.some((t) => db.prepare("SELECT 1 FROM tickets WHERE event_id = ? AND table_id = ? AND seat_no = ? AND status IN ('held', 'active', 'used') AND id != ?")
-        .get(t.event_id, t.table_id, t.seat_no, t.id));
-      if (busy || getEvent(o.event_id).status === 'cancelled') {
+      const event = getEvent(o.event_id);
+      if (computeAvailability(event).free < tickets.length || event.status === 'cancelled') {
         refund = true;
         db.prepare("UPDATE orders SET payment_status = 'refund_due' WHERE id = ?").run(o.id);
         return;
       }
+      // пока бронь стояла снятой, её номера могли отдать другим: берём свободные
+      const nums = freeNumbers(event.id, tickets.length);
+      tickets.forEach((t, i) => db.prepare('UPDATE tickets SET table_id = ?, seat_no = ? WHERE id = ?').run(GA, nums[i], t.id));
       db.prepare("UPDATE orders SET payment_status = 'succeeded' WHERE id = ?").run(o.id);
       markPaid(o);
       log(null, o.id, 'paid_late');
@@ -434,10 +388,10 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return refund ? lateRefund() : { paid: true };
   }
 
-  // Деньги за занятые места вернули автоматически
+  // Деньги за раскупленные билеты вернули автоматически
   function markLateRefunded(o) {
     db.prepare("UPDATE orders SET status = 'refunded', payment_status = 'refunded', refunded_amount = total, cancelled_at = ? WHERE id = ?").run(iso(), o.id);
-    log(null, o.id, 'refunded', 'места заняли, пока шла оплата');
+    log(null, o.id, 'refunded', 'билеты раскупили, пока шла оплата');
   }
 
   // Заказы, по которым ЮKassa ещё не ответила: их проверяем сами, если уведомление потерялось
@@ -526,15 +480,15 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return { ...view.tickets.find((x) => x.code === t.code), order: o.code, event: view.event, orderStatus: o.status };
   }
 
-  // По ссылке на билет гость видит только своё место: без номера заказа,
+  // По ссылке на билет гость видит только свой билет: без номера заказа,
   // контактов покупателя и чужих билетов — иначе один билет открывал бы весь заказ.
   function getTicket(ticketCode) {
     const t = q.ticketByCode.get(String(ticketCode ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20));
     if (!t || t.status === 'held' || t.status === 'released') throw new BookingError(404, 'Билет не найден');
     const full = ticketView(t);
-    const { code, table, hall, seat, whole, price, status, guestName, checkedInAt, event } = full;
+    const { code, price, status, guestName, checkedInAt, event } = full;
     return {
-      code, table, hall, seat, whole, price, status, guestName, checkedInAt,
+      code, price, status, guestName, checkedInAt,
       event: { title: event.title, startsAt: event.startsAt, doorsAt: event.doorsAt, deposit: event.deposit },
     };
   }
@@ -548,10 +502,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       const cancelled = parseEvent(q.event.get(t.event_id)).status === 'cancelled';
       const status = cancelled && t.status === 'active' ? 'cancelled' : t.status;
       const live = status === 'active' ? qrToken(t) : null;
-      // место и имя тоже: администратор мог пересадить гостя, экран билета обновится сам
-      const table = findTable(t.table_id);
-      const place = { hall: HALLS.find((h) => h.id === table.hallId).title, table: table.n, seat: t.seat_no, whole: Boolean(t.whole_table), guestName: t.guest_name };
-      out[t.code] = { status, checkedInAt: t.checked_in_at, ...place, ...(live ? { qr: live.token, pin: live.pin } : {}) };
+      // имя тоже: администратор мог его поправить, экран билета обновится сам
+      out[t.code] = { status, checkedInAt: t.checked_in_at, guestName: t.guest_name, ...(live ? { qr: live.token, pin: live.pin } : {}) };
     }
     return { tickets: out, validFor: validFor(), window: QR_WINDOW_SECONDS };
   }
@@ -580,11 +532,11 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     return rows.find((t) => [w, w - 1].some((x) => timingSafeEqual(Buffer.from(pinOf(t.code, x)), want))) || null;
   }
 
-  // Что видит контролёр: только место и имя гостя, без номера заказа и контактов.
+  // Что видит контролёр: только имя гостя, без номера заказа и контактов.
   function gateView(t) {
     const full = ticketView(t);
-    const { table, hall, seat, whole, status, guestName, checkedInAt, event } = full;
-    return { ref: t.gate_id.slice(-4), table, hall, seat, whole, status, guestName, checkedInAt, event: { title: event.title, startsAt: event.startsAt } };
+    const { status, guestName, checkedInAt, event } = full;
+    return { ref: t.gate_id.slice(-4), status, guestName, checkedInAt, event: { title: event.title, startsAt: event.startsAt } };
   }
 
   // Что может прийти на вход:
@@ -663,7 +615,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   }
 
   // ---- Правка билета и заказа из админки ----
-  // Меняются: имя гостя, стол и место, цена, статус (действует / прошёл / аннулирован),
+  // Меняются: имя гостя, цена, статус (действует / прошёл / аннулирован),
   // номер для входа (новый QR: старые живой QR и PDF перестают пускать).
   const TICKET_STATUSES = ['active', 'used', 'cancelled'];
   function adminEditTicket(ticketCode, patch = {}) {
@@ -679,20 +631,12 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
         if (!TICKET_STATUSES.includes(patch.status)) throw new BookingError(400, 'Неизвестный статус билета');
         status = patch.status;
       }
-      // стол и место: проверяем, что место есть в зале события и свободно
-      let tableId = t.table_id, seat = t.seat_no, whole = t.whole_table;
-      if (patch.tableId !== undefined || patch.seat !== undefined) {
-        const table = findTable(typeof patch.tableId === 'string' ? patch.tableId : t.table_id);
-        if (!table || !event.halls.includes(table.hallId)) throw new BookingError(400, 'Этого стола нет на событии');
-        const s = Math.floor(Number(patch.seat ?? t.seat_no));
-        if (!(s >= 1 && s <= table.seats)) throw new BookingError(400, `За столом ${table.n} места с 1 по ${table.seats}`);
-        if (table.id !== t.table_id) whole = 0;
-        tableId = table.id; seat = s;
-      }
-      if (status !== 'cancelled' && (tableId !== t.table_id || seat !== t.seat_no || t.status === 'cancelled')) {
-        const busy = db.prepare("SELECT 1 FROM tickets WHERE event_id = ? AND table_id = ? AND seat_no = ? AND status IN ('held', 'active', 'used') AND id != ?")
-          .get(t.event_id, tableId, seat, t.id);
-        if (busy) throw new BookingError(409, `Место ${seat} за столом ${findTable(tableId).n} уже занято`);
+      // аннулированный билет снова в деле: нужен свободный билет из вместимости и свободный номер
+      let tableId = t.table_id, seat = t.seat_no;
+      if (status !== 'cancelled' && t.status === 'cancelled') {
+        if (computeAvailability(event).free < 1) throw new BookingError(409, 'Все билеты на событие уже проданы');
+        tableId = GA;
+        [seat] = freeNumbers(event.id, 1);
       }
       let price = t.price;
       if (patch.price !== undefined) {
@@ -703,14 +647,13 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
       const checkedInAt = status === 'used' ? t.checked_in_at || iso() : null;
       const gate = patch.newQr ? randomBytes(9).toString('base64url') : t.gate_id;
 
-      if (tableId !== t.table_id || seat !== t.seat_no) changes.push(`место ${findTable(t.table_id).n}/${t.seat_no} → ${findTable(tableId).n}/${seat}`);
       if (status !== t.status) changes.push(`статус ${t.status} → ${status}`);
       if (price !== t.price) changes.push(`цена ${t.price} → ${price}`);
       if (guest !== t.guest_name) changes.push('имя гостя');
       if (gate !== t.gate_id) changes.push('новый QR');
       if (!changes.length) return;
-      db.prepare(`UPDATE tickets SET table_id = ?, seat_no = ?, whole_table = ?, price = ?, status = ?, guest_name = ?, checked_in_at = ?, gate_id = ?
-        WHERE id = ?`).run(tableId, seat, whole, price, status, guest, checkedInAt, gate, t.id);
+      db.prepare(`UPDATE tickets SET table_id = ?, seat_no = ?, price = ?, status = ?, guest_name = ?, checked_in_at = ?, gate_id = ?
+        WHERE id = ?`).run(tableId, seat, price, status, guest, checkedInAt, gate, t.id);
       // сумма заказа — по билетам, которые не аннулированы
       db.prepare("UPDATE orders SET total = (SELECT COALESCE(SUM(price), 0) FROM tickets WHERE order_id = ? AND status IN ('active', 'used')) WHERE id = ?").run(o.id, o.id);
       log(t.id, o.id, 'admin_edit', changes.join('; '));
@@ -740,19 +683,89 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
     const title = cleanText(data.title, 120);
     const startsAt = new Date(data.startsAt);
     const doorsAt = data.doorsAt ? new Date(data.doorsAt) : new Date(startsAt.getTime() - 3600e3);
-    const halls = (Array.isArray(data.halls) ? data.halls : []).filter((h) => HALLS.some((x) => x.id === h));
     const price = Math.round(Number(data.price));
+    const capacity = data.capacity === undefined || data.capacity === '' ? DEFAULT_CAPACITY : Math.floor(Number(data.capacity));
     if (!title) throw new BookingError(400, 'Укажите название');
     if (Number.isNaN(startsAt.getTime())) throw new BookingError(400, 'Укажите дату и время начала');
     if (Number.isNaN(doorsAt.getTime())) throw new BookingError(400, 'Проверьте время открытия дверей');
     if (doorsAt > startsAt) throw new BookingError(400, 'Двери должны открываться до начала события');
-    if (!halls.length) throw new BookingError(400, 'Выберите хотя бы один зал');
     if (!(price > 0 && price <= 1e6)) throw new BookingError(400, 'Укажите цену билета');
+    if (!(capacity >= 1 && capacity <= 5000)) throw new BookingError(400, 'Укажите, сколько билетов продавать');
     const slug = `${title.toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').slice(0, 40)}-${code(4).toLowerCase()}`;
-    const { lastInsertRowid } = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(slug, title, cleanText(data.lineup, 200), String(data.description ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim().slice(0, 3000),
-      startsAt.toISOString(), doorsAt.toISOString(), JSON.stringify(halls), price, Math.min(price, Math.max(0, Math.round(Number(data.deposit) || 0))), cleanText(data.genre, 40));
+    const { lastInsertRowid } = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, capacity)
+      VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?)`).run(slug, title, cleanText(data.lineup, 200), String(data.description ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim().slice(0, 3000),
+      startsAt.toISOString(), doorsAt.toISOString(), price, Math.min(price, Math.max(0, Math.round(Number(data.deposit) || 0))), cleanText(data.genre, 40), capacity);
     return getEvent(lastInsertRowid);
+  }
+
+  // Вместимость и цену можно поменять после создания. Новая цена действует для новых покупок.
+  function updateEvent(eventId, patch = {}) {
+    const event = getEvent(eventId);
+    let { capacity, price } = event;
+    if (patch.capacity !== undefined) {
+      capacity = Math.floor(Number(patch.capacity));
+      const { sold, held } = computeAvailability(event);
+      if (!(capacity >= 1 && capacity <= 5000)) throw new BookingError(400, 'Укажите, сколько билетов продавать');
+      if (capacity < sold + held) throw new BookingError(409, `Уже продано или в брони ${ticketsWord(sold + held)}, меньше нельзя`);
+    }
+    if (patch.price !== undefined) {
+      price = Math.round(Number(patch.price));
+      if (!(price > 0 && price <= 1e6)) throw new BookingError(400, 'Укажите цену билета');
+    }
+    db.prepare('UPDATE events SET capacity = ?, price = ?, deposit = MIN(deposit, ?) WHERE id = ?').run(capacity, price, price, event.id);
+    onChange(event.id);
+    return getEvent(event.id);
+  }
+
+  // ---- Заявки на бронь стола ----
+  // Гость оставляет контакты, администратор перезванивает и подтверждает. Денег здесь нет.
+  const REQUEST_STATUSES = ['new', 'confirmed', 'declined'];
+  const venueDay = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: process.env.TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  function requestTable(data = {}) {
+    if (data.consent !== true) throw new BookingError(400, 'Отметьте согласие на обработку персональных данных');
+    const name = cleanText(data.name, 80);
+    const phone = normalizePhone(data.phone);
+    const guests = Math.floor(Number(data.guests));
+    if (name.length < 2) throw new BookingError(400, 'Укажите имя');
+    if (phone.length !== 10) throw new BookingError(400, 'Укажите телефон в формате +7 900 000-00-00');
+    if (!(guests >= 1 && guests <= 50)) throw new BookingError(400, 'Укажите, сколько будет гостей');
+    let eventId = null, day = null;
+    if (data.eventId !== undefined && data.eventId !== null && data.eventId !== '') {
+      const event = getEvent(data.eventId);
+      if (event.status === 'cancelled') throw new BookingError(409, 'Событие отменено');
+      if (new Date(event.starts_at) < now()) throw new BookingError(409, 'Событие уже прошло');
+      eventId = event.id;
+    } else {
+      day = String(data.day ?? '');
+      const today = venueDay(now());
+      const last = venueDay(new Date(now().getTime() + 180 * 86400e3));
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(day))) throw new BookingError(400, 'Укажите дату');
+      if (day < today || day > last) throw new BookingError(400, 'Бронь принимаем с сегодняшнего дня и на полгода вперёд');
+    }
+    const at = iso();
+    db.prepare(`INSERT INTO table_requests (event_id, day, name, phone, guests, comment, created_at, consent_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(eventId, day, name, phone, guests, cleanText(data.comment, 500), at, at);
+    onRequest();
+    return { ok: true };
+  }
+
+  function listTableRequests() {
+    return db.prepare(`SELECT r.*, e.title AS event_title, e.starts_at AS event_starts_at FROM table_requests r
+      LEFT JOIN events e ON e.id = r.event_id ORDER BY (r.status = 'new') DESC, r.created_at DESC LIMIT 500`).all().map((r) => ({
+      id: r.id, status: r.status, name: r.name, phone: r.phone, guests: r.guests, comment: r.comment, note: r.admin_note,
+      createdAt: r.created_at, day: r.day, event: r.event_id ? { id: r.event_id, title: r.event_title, startsAt: r.event_starts_at } : null,
+    }));
+  }
+
+  function updateTableRequest(id, patch = {}) {
+    const r = db.prepare('SELECT * FROM table_requests WHERE id = ?').get(Math.floor(Number(id)) || 0);
+    if (!r) throw new BookingError(404, 'Заявка не найдена');
+    const status = patch.status ?? r.status;
+    if (!REQUEST_STATUSES.includes(status)) throw new BookingError(400, 'Неизвестный статус заявки');
+    const note = patch.note !== undefined ? cleanText(patch.note, 300) : r.admin_note;
+    db.prepare('UPDATE table_requests SET status = ?, admin_note = ? WHERE id = ?').run(status, note, r.id);
+    onRequest();
+    return listTableRequests().find((x) => x.id === r.id);
   }
 
   function setEventStatus(eventId, status) {
@@ -765,7 +778,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, n
   }
 
   return {
-    sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder,
+    sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder, updateEvent,
+    requestTable, listTableRequests, updateTableRequest,
     cancelByGuest, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
     guestRefundPlan, adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),

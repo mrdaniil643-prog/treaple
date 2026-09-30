@@ -7,10 +7,10 @@ import { createStaff } from '../server/staff.js';
 // Два вечера в разные дни: сегодня и через 12 дней (для проверок «не тот вечер»)
 function seedEvents(db, now) {
   const at = (off, hh, mm) => { const d = new Date(now); d.setDate(d.getDate() + off); d.setHours(hh, mm, 0, 0); return d.toISOString(); };
-  const ins = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
-    VALUES (?, ?, '', '', ?, ?, ?, ?, ?, '')`);
-  ins.run('today', 'Сегодня', at(0, 21, 0), at(0, 19, 30), JSON.stringify(['karaoke', 'main']), 1000, 500);
-  ins.run('later', 'Позже', at(12, 20, 0), at(12, 19, 0), JSON.stringify(['main']), 1300, 800);
+  const ins = db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, capacity)
+    VALUES (?, ?, '', '', ?, ?, '[]', ?, ?, '', ?)`);
+  ins.run('today', 'Сегодня', at(0, 21, 0), at(0, 19, 30), 1000, 500, 136);
+  ins.run('later', 'Позже', at(12, 20, 0), at(12, 19, 0), 1300, 800, 6);
 }
 
 function setup() {
@@ -23,45 +23,38 @@ function setup() {
 }
 const guest = { name: 'Анна', phone: '+7 (912) 345-67-89', consent: true };
 
-test('гость берёт несколько мест за одним столом', () => {
+test('гость берёт несколько входных билетов, цена одна', () => {
   const { booking, event } = setup();
-  const order = booking.hold(event.id, [{ tableId: 'K24', seats: 3 }]);
+  const order = booking.hold(event.id, 3);
   assert.equal(order.status, 'held');
   assert.equal(order.tickets.length, 3);
-  assert.deepEqual(order.tickets.map((t) => t.seat), [1, 2, 3]);
-  const av = booking.availability(event.id).tables.K24;
-  assert.equal(av.free, 1);
-  assert.equal(av.status, 'partial');
-  assert.equal(av.wholeAvailable, false);
+  assert.equal(order.total, 3000);
+  const av = booking.availability(event.id);
+  assert.deepEqual([av.capacity, av.held, av.sold, av.free], [136, 3, 0, 133]);
+  assert.equal(booking.listEvents()[0].ticketsLeft, 133);
 });
 
-test('на одно место нельзя продать два билета', () => {
-  const { booking, event } = setup();
-  booking.hold(event.id, [{ tableId: 'K24', seats: 3 }]);
-  assert.throws(() => booking.hold(event.id, [{ tableId: 'K24', seats: 2 }]), (e) => e instanceof BookingError && e.status === 409);
-  const second = booking.hold(event.id, [{ tableId: 'K24', seats: 1 }]);
-  assert.equal(second.tickets[0].seat, 4);
-  assert.equal(booking.availability(event.id).tables.K24.status, 'full');
-});
-
-test('стол целиком и VIP-комната', () => {
-  const { booking, event } = setup();
-  const o = booking.hold(event.id, [{ tableId: 'K27', whole: true }, { tableId: 'K34', seats: 1 }]);
-  assert.equal(o.tickets.length, 6 + 6, 'VIP-стол продаётся только целиком');
-  assert.throws(() => booking.hold(event.id, [{ tableId: 'K27', seats: 1 }]), BookingError);
+test('больше вместимости не продать', () => {
+  const { booking } = setup();
+  const later = booking.listEvents().at(-1); // вместимость 6
+  booking.hold(later.id, 4);
+  assert.throws(() => booking.hold(later.id, 3), (e) => e instanceof BookingError && e.status === 409 && /Осталось 2 билета/.test(e.message));
+  booking.hold(later.id, 2);
+  assert.throws(() => booking.hold(later.id, 1), (e) => e.status === 409 && /закончились/.test(e.message));
+  assert.equal(booking.availability(later.id).free, 0);
 });
 
 test('неоплаченная бронь снимается через 10 минут', () => {
   const { booking, event, tick } = setup();
-  const o = booking.hold(event.id, [{ tableId: 'K21', seats: 2 }]);
+  const o = booking.hold(event.id, 2);
   tick(HOLD_MINUTES + 1);
-  assert.equal(booking.availability(event.id).tables.K21.free, 4);
+  assert.equal(booking.availability(event.id).free, 136);
   assert.throws(() => booking.pay(o.secret, guest), (e) => e.status === 410);
 });
 
 test('оплата, поиск заказа по телефону, проход по билету', () => {
   const { booking, event } = setup();
-  const held = booking.hold(event.id, [{ tableId: 'M15', seats: 2 }]);
+  const held = booking.hold(event.id, 2);
   const paid = booking.pay(held.secret, { ...guest, guests: { [held.tickets[1].code]: 'Борис' } });
   assert.equal(paid.status, 'paid');
   assert.deepEqual(paid.tickets.map((t) => t.guestName), ['Анна', 'Борис']);
@@ -77,7 +70,7 @@ test('оплата, поиск заказа по телефону, проход 
 test('возврат освобождает места', () => {
   const { booking } = setup();
   const later = booking.listEvents().at(-1);
-  const held = booking.hold(later.id, [{ tableId: later.halls[0] === 'main' ? 'M1' : 'K28', seats: 4 }]);
+  const held = booking.hold(later.id, 4);
   booking.pay(held.secret, guest);
   const refunded = booking.cancelByGuest(held.secret);
   assert.equal(refunded.status, 'refunded');
@@ -88,30 +81,31 @@ test('возврат освобождает места', () => {
 
 test('ссылка на билет не раскрывает заказ, контакты и чужие билеты', () => {
   const { booking, event } = setup();
-  const held = booking.hold(event.id, [{ tableId: 'K22', seats: 3 }]);
+  const held = booking.hold(event.id, 3);
   const paid = booking.pay(held.secret, { ...guest, email: 'anna@example.com' });
   const pub = booking.getTicket(paid.tickets[1].code);
   const json = JSON.stringify(pub);
   for (const leak of [paid.code, paid.secret, paid.tickets[0].code, paid.tickets[2].code, '9123456789', 'anna@example.com']) {
     assert.ok(!json.includes(leak), `в публичном билете не должно быть ${leak}`);
   }
-  assert.equal(pub.seat, 2);
+  assert.equal(pub.guestName, 'Анна');
 });
 
 test('без подключённой оплаты нельзя ни забронировать, ни оплатить', () => {
   const db = openDb(':memory:');
   seedEvents(db, new Date('2026-09-25T12:00:00Z'));
   const booking = createBooking(db, { now: () => new Date('2026-09-25T12:00:00Z'), demoPayments: false });
-  assert.throws(() => booking.hold(booking.listEvents()[0].id, [{ tableId: 'K21', seats: 1 }]), (e) => e.status === 503);
+  assert.throws(() => booking.hold(booking.listEvents()[0].id, 1), (e) => e.status === 503);
   assert.throws(() => booking.pay('x'.repeat(24), guest), (e) => e.status === 503);
 });
 
 test('мусор во входных данных не ломает сервер', () => {
   const { booking, event } = setup();
-  assert.throws(() => booking.hold(event.id, [{ tableId: { toString: 1 }, seats: 1 }]), (e) => e.status === 400);
-  assert.throws(() => booking.hold(event.id, [{ tableId: '__proto__', seats: 1 }]), (e) => e.status === 400);
-  assert.throws(() => booking.hold(event.id, Array(50).fill({ tableId: 'K21', seats: 1 })), (e) => e.status === 400);
-  const held = booking.hold(event.id, [{ tableId: 'K25', seats: 2 }]);
+  for (const bad of [{ toString: 1 }, '__proto__', [3], -2, 0, 1.5e9, 'много', null]) {
+    assert.throws(() => booking.hold(event.id, bad), (e) => e.status === 400);
+  }
+  assert.throws(() => booking.hold(event.id, 11), (e) => e.status === 400 && /не больше 10/.test(e.message));
+  const held = booking.hold(event.id, 2);
   const paid = booking.pay(held.secret, { name: 'Анна\u0000‮', phone: '9123456789', guests: null, consent: true });
   assert.equal(paid.tickets[0].guestName, 'Анна');
   assert.throws(() => booking.getOrder({ code: paid.code, phone: '' }), (e) => e.status === 404);
@@ -120,7 +114,7 @@ test('мусор во входных данных не ломает сервер
 test('живой QR гасит билет один раз, а скриншот старше минуты не проходит', () => {
   const { booking, event, tick } = setup();
   tick(6 * 60); // вечер события
-  const held = booking.hold(event.id, [{ tableId: 'K26', seats: 2 }]);
+  const held = booking.hold(event.id, 2);
   const paid = booking.pay(held.secret, guest);
   const [a, b] = paid.tickets.map((t) => t.code);
 
@@ -150,7 +144,7 @@ test('живой QR гасит билет один раз, а скриншот �
 test('контролёр пропускает только на события этого вечера', () => {
   const { booking, tick } = setup();
   const later = booking.listEvents().at(-1);
-  const held = booking.hold(later.id, [{ tableId: later.halls[0] === 'main' ? 'M3' : 'K29', seats: 1 }]);
+  const held = booking.hold(later.id, 1);
   const paid = booking.pay(held.secret, guest);
   const t = paid.tickets[0].code;
   assert.equal(booking.checkIn(booking.liveTickets([t]).tickets[t].qr, { by: 'staff:1' }).result, 'wrong_day');
@@ -176,7 +170,7 @@ test('приглашение контролёра одноразовое и ис
 test('на отменённое событие не пускают и QR не выдают', () => {
   const { booking, event, tick } = setup();
   tick(6 * 60);
-  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K32', seats: 1 }]).secret, guest);
+  const paid = booking.pay(booking.hold(event.id, 1).secret, guest);
   const c = paid.tickets[0].code;
   const qr = booking.liveTickets([c]).tickets[c].qr;
   booking.setEventStatus(event.id, 'cancelled');
@@ -186,33 +180,50 @@ test('на отменённое событие не пускают и QR не в
 
 test('бронь нельзя оплатить, если событие закрыли во время оформления', () => {
   const { booking, event } = setup();
-  const held = booking.hold(event.id, [{ tableId: 'K31', seats: 2 }]);
+  const held = booking.hold(event.id, 2);
   assert.ok(held.expiresIn > 500 && held.expiresIn <= 600);
   booking.setEventStatus(event.id, 'cancelled');
   assert.throws(() => booking.pay(held.secret, guest), (e) => e.status === 409);
   assert.equal(booking.getOrder({ secret: held.secret }).status, 'cancelled');
-  assert.equal(booking.availability(event.id).tables.K31.free, 4, 'места вернулись');
+  assert.equal(booking.availability(event.id).free, 136, 'билеты вернулись в продажу');
 });
 
 test('админ не может вернуть заказ, по которому гости уже прошли', () => {
   const { booking, event } = setup();
-  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K33', seats: 2 }]).secret, guest);
+  const paid = booking.pay(booking.hold(event.id, 2).secret, guest);
   booking.checkIn(paid.tickets[0].code, { eventId: event.id });
   assert.throws(() => booking.adminRefund(paid.code), (e) => e.status === 409);
 });
 
 test('время открытия дверей проверяется', () => {
   const { booking } = setup();
-  const base = { title: 'Вечер', startsAt: '2026-10-10T21:00', price: 1000, halls: ['main'] };
+  const base = { title: 'Вечер', startsAt: '2026-10-10T21:00', price: 1000 };
   assert.throws(() => booking.createEvent({ ...base, doorsAt: 'завтра' }), (e) => e.status === 400);
   assert.throws(() => booking.createEvent({ ...base, doorsAt: '2026-10-10T22:00' }), (e) => e.status === 400);
-  assert.equal(booking.createEvent(base).title, 'Вечер');
+  assert.throws(() => booking.createEvent({ ...base, capacity: 0 }), (e) => e.status === 400);
+  const e = booking.createEvent(base);
+  assert.equal(e.title, 'Вечер');
+  assert.equal(e.capacity, 136, 'вместимость по умолчанию');
+  assert.equal(booking.createEvent({ ...base, capacity: 80 }).capacity, 80);
+});
+
+test('админ меняет вместимость и цену, но не ниже проданного', () => {
+  const { booking, event } = setup();
+  booking.pay(booking.hold(event.id, 5).secret, guest);
+  assert.throws(() => booking.updateEvent(event.id, { capacity: 4 }), (e) => e.status === 409 && /5 билетов/.test(e.message));
+  const e = booking.updateEvent(event.id, { capacity: 5, price: 1200 });
+  assert.equal(e.capacity, 5);
+  assert.equal(booking.availability(event.id).free, 0);
+  assert.equal(booking.getEvent(event.id).deposit, 500);
+  assert.throws(() => booking.hold(event.id, 1), (x) => x.status === 409);
+  booking.updateEvent(event.id, { capacity: 6 });
+  assert.equal(booking.hold(event.id, 1).total, 1200, 'новая цена для новых покупок');
 });
 
 test('по фото QR нельзя получить новые QR: в QR нет кода билета', () => {
   const { booking, event, tick } = setup();
   tick(6 * 60);
-  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K24', seats: 1 }]).secret, guest);
+  const paid = booking.pay(booking.hold(event.id, 1).secret, guest);
   const code = paid.tickets[0].code;
   const qr = booking.liveTickets([code]).tickets[code].qr;
   const gate = qr.split('.')[0];
@@ -224,23 +235,20 @@ test('по фото QR нельзя получить новые QR: в QR нет
   assert.equal(r.ticket.code, undefined, 'контролёру не отдаём код билета');
 });
 
-test('понятные отказы: мест больше, чем за столом, стол не из этого зала, повторный возврат', () => {
+test('понятные отказы: повторный возврат, закрытая продажа', () => {
   const { booking, event } = setup();
-  assert.throws(() => booking.hold(event.id, [{ tableId: 'K24', seats: 5 }]), (e) => e.status === 400 && /всего 4 места/.test(e.message));
-  const later = booking.listEvents().at(-1); // только основной зал
-  assert.throws(() => booking.hold(later.id, [{ tableId: 'K24', seats: 1 }]), (e) => e.status === 400);
-  const vip = booking.hold(event.id, [{ tableId: 'K34', seats: 2 }]);
-  assert.equal(vip.tickets.length, 6, 'VIP-комната продаётся только целиком');
-  const paid = booking.pay(booking.hold(later.id, [{ tableId: 'M1', seats: 2 }]).secret, guest);
+  const later = booking.listEvents().at(-1);
+  const paid = booking.pay(booking.hold(later.id, 2).secret, guest);
   assert.equal(booking.cancelByGuest(paid.secret).status, 'refunded');
   assert.throws(() => booking.cancelByGuest(paid.secret), (e) => e.status === 409 && /уже возвращён/.test(e.message));
-  assert.equal(booking.release(vip.secret).status !== 'paid', true);
+  booking.setEventStatus(event.id, 'closed');
+  assert.throws(() => booking.hold(event.id, 1), (e) => e.status === 409 && /закрыта/.test(e.message));
 });
 
 test('QR из PDF пускает один раз и не открывает билет', () => {
   const { booking, event, tick } = setup();
   tick(6 * 60);
-  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K24', seats: 2 }]).secret, guest);
+  const paid = booking.pay(booking.hold(event.id, 2).secret, guest);
   const [a, b] = paid.tickets.map((t) => t.code);
   const { qr } = booking.printQr(a);
   assert.ok(!qr.includes(a), 'в QR нет кода билета');
@@ -252,24 +260,20 @@ test('QR из PDF пускает один раз и не открывает би
   assert.equal(booking.checkIn(qr, { by: 'staff:1', requireSigned: true }).result, 'already_used');
   assert.throws(() => booking.printQr(a), (e) => e.status === 409, 'погашенный билет не печатается');
   // возврат: распечатанный QR перестаёт пускать
-  const other = booking.pay(booking.hold(event.id, [{ tableId: 'K25', seats: 1 }]).secret, guest);
+  const other = booking.pay(booking.hold(event.id, 1).secret, guest);
   const printed = booking.printQr(other.tickets[0].code).qr;
   booking.adminRefund(other.code);
   assert.notEqual(booking.checkIn(printed, { by: 'staff:1', requireSigned: true }).result, 'ok');
   assert.ok(b);
 });
 
-test('админ правит билет: место, цена, статус, имя, новый QR', () => {
+test('админ правит билет: цена, статус, имя, новый QR', () => {
   const { booking, event, tick } = setup();
   tick(6 * 60);
-  const paid = booking.pay(booking.hold(event.id, [{ tableId: 'K24', seats: 2 }]).secret, guest);
+  const paid = booking.pay(booking.hold(event.id, 2).secret, guest);
   const [a, b] = paid.tickets.map((t) => t.code);
-  // пересадка на свободное место и на занятое
-  let t = booking.adminEditTicket(a, { tableId: 'K25', seat: 3, guestName: 'Вера', price: 1500 });
-  assert.equal(t.table, '25'); assert.equal(t.seat, 3); assert.equal(t.guestName, 'Вера'); assert.equal(t.price, 1500);
-  assert.equal(booking.availability(event.id).tables.K24.sold, 1, 'старое место освободилось');
-  assert.throws(() => booking.adminEditTicket(b, { tableId: 'K25', seat: 3 }), (e) => e.status === 409);
-  assert.throws(() => booking.adminEditTicket(b, { tableId: 'K25', seat: 9 }), (e) => e.status === 400);
+  const t = booking.adminEditTicket(a, { guestName: 'Вера', price: 1500 });
+  assert.equal(t.guestName, 'Вера'); assert.equal(t.price, 1500);
   assert.equal(booking.getOrder({ secret: paid.secret }).total, 1500 + paid.tickets[1].price, 'сумма заказа пересчитана');
   // отметить проход и отменить отметку
   assert.equal(booking.adminEditTicket(b, { status: 'used' }).status, 'used');
@@ -280,11 +284,17 @@ test('админ правит билет: место, цена, статус, и
   booking.adminEditTicket(b, { newQr: true });
   assert.throws(() => booking.checkIn(oldQr, { by: 'staff:1', requireSigned: true }), (e) => e.status === 404, 'старый QR больше не пускает');
   assert.equal(booking.checkIn(booking.printQr(b).qr, { by: 'staff:1', requireSigned: true }).result, 'ok');
-  // аннулировать: место освобождается, сумма уменьшается
+  // аннулировать: билет возвращается в продажу, сумма уменьшается
   booking.adminEditTicket(a, { status: 'cancelled' });
-  assert.equal(booking.availability(event.id).tables.K25.sold, 0);
+  assert.equal(booking.availability(event.id).sold, 1);
   assert.equal(booking.getOrder({ secret: paid.secret }).total, paid.tickets[1].price);
   assert.throws(() => booking.adminEditTicket(a, { status: 'lost' }), (e) => e.status === 400);
+  // вернуть аннулированный можно, только если есть свободный билет
+  booking.updateEvent(event.id, { capacity: 1 });
+  assert.throws(() => booking.adminEditTicket(a, { status: 'active' }), (e) => e.status === 409);
+  booking.updateEvent(event.id, { capacity: 10 });
+  assert.equal(booking.adminEditTicket(a, { status: 'active' }).status, 'active');
+  assert.equal(booking.availability(event.id).sold, 2);
   // контакты заказа
   const o = booking.adminEditOrder(paid.code, { name: 'Анна Петрова', phone: '8 (900) 111-22-33', email: 'a@b.ru' });
   assert.equal(o.name, 'Анна Петрова'); assert.equal(o.phone, '9001112233');
@@ -293,9 +303,37 @@ test('админ правит билет: место, цена, статус, и
 
 test('без согласия на обработку данных заказ не оплачивается, время согласия сохраняется', () => {
   const { db, booking, event } = setup();
-  const held = booking.hold(event.id, [{ tableId: 'K24', seats: 1 }]);
+  const held = booking.hold(event.id, 1);
   assert.throws(() => booking.pay(held.secret, { ...guest, consent: undefined }), (e) => e.status === 400 && /согласие/.test(e.message));
   assert.throws(() => booking.pay(held.secret, { ...guest, consent: 'true' }), (e) => e.status === 400, 'только настоящая галочка');
   booking.pay(held.secret, guest);
   assert.ok(db.prepare('SELECT consent_at FROM orders WHERE secret = ?').get(held.secret).consent_at);
+});
+
+test('заявка на бронь стола: на событие или на обычный вечер, без согласия не принимается', () => {
+  const { booking, event, db } = setup();
+  let pinged = 0;
+  const b2 = createBooking(db, { now: () => new Date('2026-09-25T12:00:00Z'), onRequest: () => pinged++ });
+  const req = { name: 'Олег', phone: '+7 914 111-22-33', guests: 6, comment: 'У сцены, день рождения', consent: true };
+  assert.deepEqual(b2.requestTable({ ...req, eventId: event.id }), { ok: true });
+  assert.deepEqual(b2.requestTable({ ...req, day: '2026-09-30', eventId: '' }), { ok: true });
+  assert.equal(pinged, 2);
+  assert.throws(() => b2.requestTable({ ...req, eventId: event.id, consent: 'yes' }), (e) => e.status === 400 && /согласие/.test(e.message));
+  assert.throws(() => b2.requestTable({ ...req, eventId: event.id, phone: '12' }), (e) => e.status === 400);
+  assert.throws(() => b2.requestTable({ ...req, eventId: event.id, guests: 0 }), (e) => e.status === 400);
+  assert.throws(() => b2.requestTable({ ...req, day: '2026-09-01' }), (e) => e.status === 400, 'прошедшая дата');
+  assert.throws(() => b2.requestTable({ ...req, day: '<script>' }), (e) => e.status === 400);
+  assert.throws(() => b2.requestTable({ ...req, eventId: 999 }), (e) => e.status === 404);
+  const list = booking.listTableRequests();
+  assert.equal(list.length, 2);
+  const onEvent = list.find((r) => r.event);
+  assert.equal(onEvent.event.title, 'Сегодня');
+  assert.equal(onEvent.phone, '9141112233');
+  assert.equal(onEvent.comment, 'У сцены, день рождения');
+  assert.equal(list.find((r) => !r.event).day, '2026-09-30');
+  const done = booking.updateTableRequest(onEvent.id, { status: 'confirmed', note: 'Стол 21' });
+  assert.deepEqual([done.status, done.note], ['confirmed', 'Стол 21']);
+  assert.equal(booking.listTableRequests()[0].status, 'new', 'новые заявки сверху');
+  assert.throws(() => booking.updateTableRequest(onEvent.id, { status: 'maybe' }), (e) => e.status === 400);
+  assert.throws(() => booking.updateTableRequest(12345, { status: 'declined' }), (e) => e.status === 404);
 });

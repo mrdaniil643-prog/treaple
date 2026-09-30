@@ -8,9 +8,9 @@ export function ticketCard(t, event, { actions = true } = {}) {
       <span class="t-when">${fmt.full(event.startsAt)}</span>
       <span class="t-event">${esc(event.title)}</span>
       <div class="t-place">
-        <div><small>${t.whole ? 'Стол целиком' : 'Зал'}</small><b style="font-size:15px;line-height:1.9">${esc(t.hall)}</b></div>
-        <div><small>Стол</small><b>${esc(t.table)}</b></div>
-        <div><small>Место</small><b>${t.seat}</b></div>
+        <div><small>Билет</small><b style="font-size:15px;line-height:1.9">Входной</b></div>
+        ${event.doorsAt ? `<div><small>Двери</small><b>${fmt.time(event.doorsAt)}</b></div>` : ''}
+        <div><small>Начало</small><b>${fmt.time(event.startsAt)}</b></div>
       </div>
       <div class="t-guest"><span>${esc(t.guestName || 'Гость')}</span><span class="status ${t.status}">${STATUS_TEXT[t.status]}</span></div>
     </div>

@@ -31,7 +31,7 @@ export const plural = (n, one, few, many) => {
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
 };
-export const seatsWord = (n) => `${n} ${plural(n, 'место', 'места', 'мест')}`;
+export const ticketsWord = (n) => `${n} ${plural(n, 'билет', 'билета', 'билетов')}`;
 
 const f = (opts) => new Intl.DateTimeFormat('ru-RU', { timeZone: TZ, ...opts });
 export const fmt = {

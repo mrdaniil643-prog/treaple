@@ -7,8 +7,8 @@ import { buildReceipt } from '../server/yookassa.js';
 function setup() {
   let clock = new Date('2026-09-25T12:00:00Z');
   const db = openDb(':memory:');
-  db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre)
-    VALUES ('e', 'Караоке-вечер', '', '', '2026-10-25T18:00:00Z', '2026-10-25T16:30:00Z', '["karaoke","main"]', 1000, 500, '')`).run();
+  db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, capacity)
+    VALUES ('e', 'Караоке-вечер', '', '', '2026-10-25T18:00:00Z', '2026-10-25T16:30:00Z', '[]', 1000, 500, '', 3)`).run();
   const booking = createBooking(db, { now: () => clock, payments: 'yookassa' });
   return { db, booking, tick: (min) => (clock = new Date(clock.getTime() + min * 60e3)) };
 }
@@ -17,7 +17,7 @@ const paymentOf = (id, value, status = 'succeeded') => ({ id, status, amount: { 
 
 test('ЮKassa: демо-оплата закрыта, платёж подтверждается только проверенной суммой', () => {
   const { booking } = setup();
-  const held = booking.hold(1, [{ tableId: 'K24', seats: 2 }]);
+  const held = booking.hold(1, 2);
   assert.throws(() => booking.pay(held.secret, guest), (e) => e.status === 503);
   const start = booking.startPayment(held.secret, { ...guest, guests: { [held.tickets[1].code]: 'Борис' } });
   assert.equal(start.lines.length, 2);
@@ -40,30 +40,30 @@ test('ЮKassa: демо-оплата закрыта, платёж подтвер
 
 test('ЮKassa: отменённый платёж снимает бронь', () => {
   const { booking } = setup();
-  const held = booking.hold(1, [{ tableId: 'K25', seats: 1 }]);
+  const held = booking.hold(1, 1);
   booking.startPayment(held.secret, guest);
   booking.attachPayment(held.secret, 'pay-2', 'u');
   booking.applyPayment(paymentOf('pay-2', 1000, 'canceled'));
   assert.equal(booking.getOrder({ secret: held.secret }).status, 'cancelled');
-  assert.equal(booking.availability(1).tables.K25.sold + booking.availability(1).tables.K25.held, 0);
+  assert.equal(booking.availability(1).free, 3);
 });
 
-test('ЮKassa: оплата пришла после конца брони — места возвращаются или деньги уходят назад', () => {
+test('ЮKassa: оплата пришла после конца брони — билеты оформляются или деньги уходят назад', () => {
   const { booking, tick } = setup();
-  const a = booking.hold(1, [{ tableId: 'K26', seats: 1 }]);
+  const a = booking.hold(1, 1);
   booking.startPayment(a.secret, guest);
   booking.attachPayment(a.secret, 'pay-3', 'u');
-  const b = booking.hold(1, [{ tableId: 'K27', seats: 1 }]);
+  const b = booking.hold(1, 1);
   booking.startPayment(b.secret, guest);
   booking.attachPayment(b.secret, 'pay-4', 'u');
   tick(25); // бронь истекла
   booking.sweep();
-  // место за столом 27 за это время занял другой гость
-  booking.startPayment(booking.hold(1, [{ tableId: 'K27', seats: 6 }]).secret, guest);
-  assert.deepEqual(booking.applyPayment(paymentOf('pay-3', 1000)), { paid: true }, 'место свободно — заказ оплачен');
+  // пока брони не было, другой гость взял 2 билета из 3
+  booking.startPayment(booking.hold(1, 2).secret, guest);
+  assert.deepEqual(booking.applyPayment(paymentOf('pay-3', 1000)), { paid: true }, 'билет остался — заказ оплачен');
   assert.equal(booking.getOrder({ secret: a.secret }).status, 'paid');
   const r = booking.applyPayment(paymentOf('pay-4', 1000));
-  assert.ok(r.refund, 'место заняли — нужен возврат');
+  assert.ok(r.refund, 'билеты кончились — нужен возврат');
   assert.equal(r.refund.amount, 1000);
   assert.deepEqual(booking.pendingPayments(), ['pay-4'], 'пока возврат не прошёл, платёж проверяется снова');
   assert.ok(booking.applyPayment(paymentOf('pay-4', 1000)).refund, 'повторная проверка снова просит вернуть деньги');
@@ -74,7 +74,7 @@ test('ЮKassa: оплата пришла после конца брони — м
 
 test('ЮKassa: возвраты считаются по цене оплаты', () => {
   const { booking } = setup();
-  const held = booking.hold(1, [{ tableId: 'K21', seats: 2 }]);
+  const held = booking.hold(1, 2);
   booking.startPayment(held.secret, guest);
   booking.attachPayment(held.secret, 'pay-5', 'u');
   booking.applyPayment(paymentOf('pay-5', 2000));
@@ -90,8 +90,8 @@ test('ЮKassa: возвраты считаются по цене оплаты', 
 
 test('чек: билет и депозит отдельными строками, сумма сходится', () => {
   const lines = [
-    { table: '24', seat: 1, price: 1000, deposit: 500, event: { title: 'Караоке-вечер', startsAt: '2026-10-25T18:00:00Z' } },
-    { table: '24', seat: 2, price: 1000, deposit: 500, event: { title: 'К'.repeat(200), startsAt: '2026-10-25T18:00:00Z' } },
+    { price: 1000, deposit: 500, event: { title: 'Караоке-вечер', startsAt: '2026-10-25T18:00:00Z' } },
+    { price: 1000, deposit: 500, event: { title: 'К'.repeat(200), startsAt: '2026-10-25T18:00:00Z' } },
   ];
   const r = buildReceipt(lines, { name: 'Анна', phone: '9123456789', email: 'a@b.ru' }, { vatCode: 1, taxSystem: 2, depositAsAdvance: true });
   assert.deepEqual(r.customer, { email: 'a@b.ru', full_name: 'Анна' });

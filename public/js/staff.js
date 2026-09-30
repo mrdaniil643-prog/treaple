@@ -80,7 +80,7 @@ async function check(code, source) {
   const overlay = $('#overlay');
   overlay.className = 'gate-overlay';
   showGateResult(overlay, r, { next: () => { overlay.innerHTML = ''; overlay.className = ''; busy = false; } });
-  history.unshift({ title: overlay.querySelector('h1').textContent, who: r.ticket ? `${r.ticket.guestName || 'Гость'}, стол ${r.ticket.table}` : code, at: new Date().toISOString() });
+  history.unshift({ title: overlay.querySelector('h1').textContent, who: r.ticket ? r.ticket.guestName || 'Гость' : code, at: new Date().toISOString() });
   history.length = Math.min(history.length, 8);
   drawHistory();
 }
