@@ -1,0 +1,4 @@
+out/raw_*.png
+out/*.blend
+out/*.blend1
+out/render_log.txt
