@@ -42,7 +42,7 @@ async function main() {
     <div class="wrap">
       <div>
         <div class="hero-mark"><i class="corner tr"></i>${LOGO}<i class="corner bl"></i></div>
-        <h1 class="hero-sub">Музыкальный бар и караоке</h1>
+        <h1 class="hero-sub">Музыкальный бар и караоке в Хабаровске</h1>
         <p class="hero-lead">Билеты на концерты онлайн. Стол можно забронировать заявкой, администратор перезвонит.</p>
       </div>
       <div id="hero-stub"></div>

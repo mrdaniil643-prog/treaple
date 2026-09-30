@@ -4,12 +4,13 @@ process.env.TZ ||= process.env.VENUE_TZ || 'Asia/Vladivostok';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import { join, extname, normalize, dirname, sep } from 'node:path';
+import { join, extname, normalize, dirname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb, seedEvents } from './db.js';
 import { resolveAdminToken, makeTokenCheck, clientIp, createLimiter, securityHeaders, sameOrigin, isProd } from './security.js';
 import { createBooking, BookingError, HOLD_MINUTES, MAX_TICKETS_PER_ORDER, CANCEL_BEFORE_HOURS, QR_WINDOW_SECONDS } from './booking.js';
 import { createStaff, readCookie, STAFF_COOKIE } from './staff.js';
+import { createSeo } from './seo.js';
 import { createBackups } from './backup.js';
 import { createYooKassa, buildReceipt, receiptSettings } from './yookassa.js';
 
@@ -72,6 +73,7 @@ const booking = createBooking(db, {
     for (const sub of touched) pushTickets(sub);
   },
 });
+const seo = createSeo({ booking });
 const staff = createStaff(db);
 setInterval(() => booking.sweep(), 15e3).unref();
 // На смене 30-секундного интервала раздаём гостям новые живые QR
@@ -351,13 +353,19 @@ function openTicketStream(req, res, url, ip) {
   });
 }
 
+function sendText(res, type, text) {
+  res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=3600' });
+  res.end(text);
+}
+
 async function notFound(res) {
   const page = await readFile(join(PUBLIC, '404.html')).catch(() => 'Страница не найдена');
   res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
   res.end(page);
 }
 
-async function serveStatic(res, pathname) {
+async function serveStatic(req, res, url) {
+  const pathname = url.pathname;
   let decoded;
   try {
     decoded = decodeURIComponent(pathname);
@@ -380,9 +388,11 @@ async function serveStatic(res, pathname) {
   const ext = extname(file);
   if (!MIME[ext]) return notFound(res);
   try {
-    const data = await readFile(file);
+    let data = await readFile(file);
+    // в HTML сервер дописывает canonical, Open Graph, разметку schema.org и текст для поисковиков
+    if (ext === '.html') data = seo.render(basename(file), data.toString(), url, origin(req));
     res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600' });
-    res.end(data);
+    res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
     return notFound(res);
   }
@@ -401,7 +411,9 @@ const server = createServer(async (req, res) => {
     if (!['GET', 'HEAD', 'POST'].includes(req.method)) return send(res, 405, { error: 'Метод не поддерживается' }, { Allow: 'GET, HEAD, POST' });
     if (!url.pathname.startsWith('/api/')) {
       if (req.method === 'POST') return send(res, 405, { error: 'Метод не поддерживается' });
-      return await serveStatic(res, url.pathname);
+      if (url.pathname === '/robots.txt') return sendText(res, 'text/plain; charset=utf-8', seo.robots(origin(req)));
+      if (url.pathname === '/sitemap.xml') return sendText(res, 'application/xml; charset=utf-8', seo.sitemap(origin(req)));
+      return await serveStatic(req, res, url);
     }
     if (!LIMITS.api.take(ip)) return tooMany(res, LIMITS.api, ip);
     // уведомления ЮKassa приходят с её серверов, поэтому без проверки Origin

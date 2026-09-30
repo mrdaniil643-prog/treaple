@@ -204,7 +204,7 @@ async function main() {
   try {
     const [config, event, av] = await Promise.all([api('/api/config'), api(`/api/events/${eventId}`), api(`/api/events/${eventId}/availability`)]);
     Object.assign(state, { config, event, availability: av });
-    document.title = `${event.title} — билеты — МТ`;
+    document.title = `${event.title} — ${fmt.date(event.starts_at)}, билеты | Бар МТ, Хабаровск`;
     if (event.status !== 'on_sale' || !config.paymentsEnabled) {
       state.blocked = !config.paymentsEnabled ? 'Онлайн-продажа пока закрыта.'
         : event.status === 'cancelled' ? 'Событие отменено.' : 'Продажа билетов закрыта.';
