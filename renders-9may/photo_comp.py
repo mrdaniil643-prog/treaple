@@ -78,9 +78,9 @@ def main():
     try: sc.view_settings.view_transform = 'Standard'
     except Exception: pass
     out = os.path.join(S.OUT, f'comp_raw_{shot}.png'); sc.render.filepath = out
-    bpy.ops.render.render(write_still=True)
+    if '--norender' not in argv: bpy.ops.render.render(write_still=True)
     ann = {k: (S.project(cam, v) if isinstance(v, tuple) else [S.project(cam, x) for x in v])
-           for k, v in t.items() if k in ('badge', 'footprint', 'top_back', 'ground_front', 'ground_side_l', 'ground_side_r')}
+           for k, v in t.items() if k in ('badge', 'footprint', 'block', 'stairfp', 'block_front', 'top_back', 'ground_front', 'ground_side_l', 'ground_side_r')}
     ann.update({k: t[k] for k in ('L', 'D', 'rows', 'seats')})
     ann['res'] = [W*2, H*2]
     json.dump(ann, open(os.path.join(S.OUT, f'comp_ann_{shot}.json'), 'w'), indent=1)

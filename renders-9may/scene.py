@@ -250,6 +250,9 @@ def tribune(tid, x0, y_front, rows, per_side, h0, aisle=1.95, facing=-1, row_col
         ground_side_r=[W((L, -sd, 0)), W((L, D, 0))],
         top_row=[W((per_side*SEAT_W/2, D-ROW_D/2, top+0.7)), W((ax1 + per_side*SEAT_W/2, D-ROW_D/2, top+0.7))],
         footprint=[W((0, -sd, 0)), W((L, -sd, 0)), W((L, D, 0)), W((0, D, 0))],
+        block=[W((0, 0, 0)), W((L, 0, 0)), W((L, D, 0)), W((0, D, 0))],
+        stairfp=[W((ax0, -sd, 0)), W((ax1, -sd, 0)), W((ax1, 0, 0)), W((ax0, 0, 0))],
+        block_front=[W((0, 0, 0)), W((L, 0, 0))],
         height=top + rh,
     )
     return L

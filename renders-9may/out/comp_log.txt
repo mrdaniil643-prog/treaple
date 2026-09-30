@@ -1,2 +1,4 @@
 photo_comp.py:64: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
   w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
+03:32.326  render           | Saved: '/home/user/treaple/renders-9may/out/comp_raw_t9_b.png'
+comp done t9_b L 12.38625 D 6.643800000000001
