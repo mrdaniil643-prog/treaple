@@ -1,0 +1,22 @@
+{
+  "name": "shader-noise",
+  "description": "Procedural noise functions in GLSL—Perlin, simplex, Worley/cellular, value noise, FBM (Fractal Brownian Motion), turbulence, and domain warping. Use when creating organic textures, terrain, clouds, water, fire, or any natural-looking procedural patterns.",
+  "tags": [
+    "shaders",
+    "glsl",
+    "code-generation"
+  ],
+  "sub_skills": [],
+  "source": "claude-user",
+  "type": "template",
+  "depends_on": [
+    "shader-fundamentals"
+  ],
+  "enhances": [
+    "particles-physics",
+    "terrain-integration"
+  ],
+  "last_reviewed_at": "2026-07-18",
+  "review_score": 66,
+  "relevance_tier": "A"
+}

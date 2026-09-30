@@ -1,0 +1,23 @@
+{
+  "name": "postfx-effects",
+  "description": "Post-processing visual effects including chromatic aberration, vignette, depth of field, film grain, color grading, and LUT support. Use when adding cinematic polish, retro aesthetics, camera simulation, or atmospheric effects to 3D scenes. Essential for mood, style, and visual storytelling.",
+  "tags": [
+    "3d",
+    "shaders",
+    "three.js",
+    "code-generation"
+  ],
+  "sub_skills": [],
+  "source": "claude-user",
+  "type": "template",
+  "depends_on": [
+    "postfx-composer"
+  ],
+  "enhances": [
+    "r3f-fundamentals",
+    "particles-gpu"
+  ],
+  "last_reviewed_at": "2026-09-20",
+  "review_score": 60,
+  "relevance_tier": "A"
+}
