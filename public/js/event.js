@@ -30,7 +30,8 @@ function render() {
     <div class="buy-card" id="buy" aria-live="polite"></div>
     <div class="request-card">
       <h2>Бронь стола</h2>
-      <p class="muted">Оставьте заявку, администратор перезвонит и подтвердит стол. Билет на вход нужен каждому гостю, его покупают отдельно.</p>
+      <p class="table-deposit">Депозит на стол от ${money(VENUE.tableDeposit)}</p>
+      <p class="muted">Депозит тратите на еду и напитки в этот вечер. Оставьте заявку, администратор перезвонит и подтвердит стол. Билет на вход нужен каждому гостю, его покупают отдельно.</p>
       <div id="request"></div>
     </div>
   </section>
@@ -57,7 +58,6 @@ function renderBuy() {
   box.innerHTML = `
     <span class="buy-kicker">Входной билет</span>
     <div class="buy-price">${money(e.price)}</div>
-    ${e.deposit ? `<p class="buy-note">${money(e.deposit)} из цены идут в депозит: их тратите на еду и напитки в этот вечер.</p>` : ''}
     ${closed ? `<p class="form-error">${esc(state.blocked || 'Билеты закончились')}</p>` : `
     <div class="buy-row">
       <div class="stepper big" role="group" aria-label="Количество билетов">

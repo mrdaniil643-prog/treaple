@@ -1,4 +1,4 @@
-import { api, esc, fmt, money, ticketsWord, renderHeader, renderFooter, LOGO, $ } from './common.js';
+import { api, esc, fmt, money, ticketsWord, renderHeader, renderFooter, LOGO, VENUE, $ } from './common.js';
 import { mountTableRequest } from './table-request.js';
 
 renderHeader('afisha');
@@ -59,18 +59,8 @@ async function main() {
     <a class="menu-card" href="/menu" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Живые гребешки, тартары, роллы и баскский чизкейк.</p></a>
   </section>
 
-  <section class="section wrap">
-    <div class="section-head"><h2>Как купить билет</h2></div>
-    <ol class="steps">
-      <li><h3>Выберите вечер</h3><p>Откройте событие в афише и укажите, сколько нужно билетов. Пока вы оплачиваете, билеты держатся за вами 10 минут.</p></li>
-      <li><h3>Оплатите</h3><p>Часть цены билета идёт в депозит. Его вы тратите на еду и напитки в тот же вечер.</p></li>
-      <li><h3>Покажите билет на входе</h3><p>У каждого гостя свой билет, друзьям отправьте его ссылкой. QR меняется каждые 30 секунд, поэтому скриншот не подойдёт. Можно скачать PDF.</p></li>
-      <li><h3>Нужен стол?</h3><p>Оставьте заявку на странице события или ниже. Администратор перезвонит и подтвердит стол.</p></li>
-    </ol>
-  </section>
-
   <section class="section wrap" id="table">
-    <div class="section-head"><h2>Бронь стола</h2><p>Оставьте заявку, администратор перезвонит и подтвердит стол. На концерт каждому гостю нужен билет.</p></div>
+    <div class="section-head"><h2>Бронь стола</h2><p class="table-deposit">Депозит на стол от ${money(VENUE.tableDeposit)}</p><p>Депозит тратите на еду и напитки. Оставьте заявку, администратор перезвонит и подтвердит стол. На концерт каждому гостю нужен билет.</p></div>
     <div class="request-card home-request" id="request"></div>
   </section>`;
 

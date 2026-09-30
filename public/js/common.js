@@ -24,7 +24,7 @@ export async function api(path, { method = 'GET', body, admin } = {}) {
 }
 
 const rub = new Intl.NumberFormat('ru-RU');
-export const money = (n) => `${rub.format(n)} ₽`;
+export const money = (n) => `${rub.format(n)}\u00a0₽`;
 export const plural = (n, one, few, many) => {
   const m10 = n % 10, m100 = n % 100;
   if (m10 === 1 && m100 !== 11) return one;
@@ -131,6 +131,7 @@ export const VENUE = {
   phone: '+7 (4212) 94-44-22',
   email: 'mtbarkhv@yandex.ru',
   entry: 'Вход с 21 года, фейс-, дресс- и возрастной контроль',
+  tableDeposit: 5000, // депозит на стол, от; тратится на еду и напитки, принимает бар
 };
 
 export function renderFooter() {

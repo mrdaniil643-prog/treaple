@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS events (
   doors_at TEXT NOT NULL,           -- ISO, открытие дверей
   halls TEXT NOT NULL DEFAULT '[]', -- не используется: раньше билеты продавались на места в залах
   price INTEGER NOT NULL,           -- цена входного билета, ₽
-  deposit INTEGER NOT NULL DEFAULT 0, -- часть цены, которая уходит в депозит на меню
+  deposit INTEGER NOT NULL DEFAULT 0, -- часть цены билета в депозит на меню; сейчас 0: депозит берётся за стол в баре
   genre TEXT NOT NULL DEFAULT '',
   status TEXT NOT NULL DEFAULT 'on_sale' -- on_sale | closed | cancelled
 );
@@ -132,6 +132,8 @@ function migrate(db) {
   // событие по умолчанию 25 октября: если его ещё не меняли, подставляем данные с афиши
   db.prepare("UPDATE events SET title = ?, genre = ?, lineup = ?, description = ?, image = ? WHERE slug = 'karaoke-25-october' AND title = 'Караоке-вечер'")
     .run(DEFAULT_EVENT.title, DEFAULT_EVENT.genre, DEFAULT_EVENT.lineup, DEFAULT_EVENT.description, DEFAULT_EVENT.image);
+  // депозит больше не входит в цену билета: он берётся за стол (от 5000 ₽) в баре
+  db.prepare("UPDATE events SET deposit = 0 WHERE slug = 'karaoke-25-october' AND deposit = 500").run();
   // начало перенесли с 21:00 на 16:00 и сократили описание; правки из админки не трогаем
   db.prepare("UPDATE events SET starts_at = '2026-10-25T06:00:00.000Z', doors_at = '2026-10-25T05:00:00.000Z' WHERE slug = 'karaoke-25-october' AND starts_at = '2026-10-25T11:00:00.000Z'").run();
   db.prepare("UPDATE events SET description = ? WHERE slug = 'karaoke-25-october' AND description = ?").run(DEFAULT_EVENT.description, OLD_DESCRIPTION);
@@ -189,5 +191,5 @@ export function seedEvents(db) {
   db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image, capacity)
     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?)`)
     .run('karaoke-25-october', e.title, e.lineup, e.description,
-      at(d, 16, 0), at(d, 15, 0), 1000, 500, e.genre, e.image, DEFAULT_CAPACITY);
+      at(d, 16, 0), at(d, 15, 0), 1000, 0, e.genre, e.image, DEFAULT_CAPACITY);
 }

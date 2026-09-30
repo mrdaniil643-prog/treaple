@@ -114,7 +114,6 @@ function drawPage(ctx, t, event, qrData) {
   ctx.font = `700 40px ${FONT}`;
   text(ctx, wrap(ctx, t.guestName || 'Гость', 700, 1)[0], M, y, { size: 40, weight: 700 });
   text(ctx, money(t.price), W - M, y, { size: 40, weight: 700, align: 'right' });
-  if (event.deposit) text(ctx, `из них ${money(event.deposit)} в депозит на еду и напитки`, W - M, y + 42, { size: 24, weight: 500, color: C.muted, align: 'right' });
 
   // линия отрыва
   y += 110;

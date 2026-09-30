@@ -99,7 +99,6 @@ async function start() {
         </div>
         <div class="row">
           <label class="field"><span>Цена билета, ₽</span><input class="input" type="number" name="price" min="1" required value="1000"></label>
-          <label class="field"><span>Из них депозит, ₽</span><input class="input" type="number" name="deposit" min="0" value="500"></label>
           <label class="field"><span>Сколько билетов продавать</span><input class="input" type="number" name="capacity" min="1" max="5000" required value="136"></label>
         </div>
         <p class="form-error" id="new-error"></p>

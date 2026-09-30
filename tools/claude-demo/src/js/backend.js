@@ -41,7 +41,7 @@ function load() {
     if (e.starts_at === at(21, 0)) Object.assign(e, { starts_at: at(16, 0), doors_at: at(15, 0) });
   }
   // раньше билеты продавались на места за столами: теперь входные, у события вместимость
-  for (const e of memory.events) { e.capacity ||= DEFAULT_CAPACITY; delete e.halls; }
+  for (const e of memory.events) { e.capacity ||= DEFAULT_CAPACITY; delete e.halls; if (e.slug === 'e1' && e.deposit === 500) e.deposit = 0; }
   for (const t of Object.values(memory.tickets)) { delete t.table_id; delete t.seat; delete t.whole; }
   return memory;
 }
@@ -62,7 +62,7 @@ const POSTER = {
 };
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', ...POSTER,
-  price: 1000, deposit: 500, capacity: DEFAULT_CAPACITY, status: 'on_sale', starts_at: at(16, 0), doors_at: at(15, 0), sample: true,
+  price: 1000, deposit: 0, capacity: DEFAULT_CAPACITY, status: 'on_sale', starts_at: at(16, 0), doors_at: at(15, 0), sample: true,
 });
 window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); for (const fn of listeners) fn(); } });
 load();

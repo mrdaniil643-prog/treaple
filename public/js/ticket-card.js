@@ -23,7 +23,7 @@ export function ticketCard(t, event, { actions = true } = {}) {
       <div>
         <time class="t-clock" aria-hidden="true"></time>
         <div class="t-pin"><small>Код для входа</small><b>······</b></div>
-        <small>${money(t.price)}${event.deposit ? `, депозит ${money(event.deposit)}` : ''}</small>
+        <small>${money(t.price)}</small>
         <p class="t-offline">Нет интернета, QR устарел. Включите связь или назовите имя администратору.</p>
         ${actions && t.status === 'active' ? `<div class="ticket-actions">
           <button data-share="${t.code}">Отправить гостю</button>
