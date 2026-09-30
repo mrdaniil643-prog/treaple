@@ -11,3 +11,5 @@ scene.py:458: DeprecationWarning: 'World.use_nodes' is expected to be removed in
 Info: Saved as "scene.blend"
 02:15.267  render           | Saved: '/home/user/treaple/renders-9may/out/raw_1A.png'
 rendered 1A
+04:21.077  render           | Saved: '/home/user/treaple/renders-9may/out/raw_1B_detail.png'
+rendered 1B_detail
