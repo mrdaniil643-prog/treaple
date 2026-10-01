@@ -155,8 +155,9 @@ ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price
     if (PRIVATE.has(file)) return html;
     const info = describe(file, url, origin);
     if (info.noindex) return html.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
-    if (info.title) html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(info.title)}</title>`);
-    if (info.desc) html = html.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(info.desc)}">`);
+    // замена функцией: «$&», «$'» в тексте события иначе стали бы шаблонами подстановки
+    if (info.title) html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(info.title)}</title>`);
+    if (info.desc) html = html.replace(/<meta name="description" content="[^"]*">/, () => `<meta name="description" content="${esc(info.desc)}">`);
     const title = html.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
     const desc = html.match(/<meta name="description" content="([^"]*)">/)?.[1] ?? '';
     const link = info.canonical ? `${origin}${info.canonical}` : null;
@@ -175,10 +176,10 @@ ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price
       process.env.GOOGLE_VERIFICATION && `<meta name="google-site-verification" content="${esc(process.env.GOOGLE_VERIFICATION)}">`,
       ...(info.ld || []).map(ld),
     ].filter(Boolean).join('\n');
-    html = html.replace('</head>', `${head}\n</head>`);
+    html = html.replace('</head>', () => `${head}\n</head>`);
     // текст до загрузки скриптов: скрипт страницы потом заменит его своей вёрсткой
-    if (info.body) html = html.replace('<main id="app"></main>', `<main id="app">${info.body}</main>`);
-    if (info.list) html = html.replace('<div id="price-list"></div>', `<div id="price-list">${info.list}</div>`);
+    if (info.body) html = html.replace('<main id="app"></main>', () => `<main id="app">${info.body}</main>`);
+    if (info.list) html = html.replace('<div id="price-list"></div>', () => `<div id="price-list">${info.list}</div>`);
     return html;
   }
 

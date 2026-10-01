@@ -263,7 +263,7 @@ function renderEditor() {
     const body = {
       guestName: f.guestName.value, price: Number(f.price.value), status: f.status.value, newQr: f.newQr.checked,
     };
-    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm(`Аннулировать билет? Он вернётся в продажу, QR перестанет пускать. ${o.paidOnline ? `${money(t.price)} вернутся на карту гостя через ЮKassa, чек возврата уйдёт сам.` : 'Деньги верните на кассе.'}`)) return;
+    if (body.status === 'cancelled' && t.status !== 'cancelled' && !confirm(`Аннулировать билет? Он вернётся в продажу, QR перестанет пускать. ${t.status === 'used' ? 'Гость уже прошёл по этому билету: деньги автоматически не вернутся.' : o.paidOnline ? `${money(t.paidPrice)} вернутся на карту гостя через ЮKassa, чек возврата уйдёт сам.` : 'Деньги верните на кассе.'}`)) return;
     if (body.newQr && !confirm('Выдать новый QR? Гостю нужно открыть билет заново или скачать новый PDF.')) return;
     await saveEdit(`/api/admin/tickets/${encodeURIComponent(t.code)}`, body, 'Билет сохранён');
   }));

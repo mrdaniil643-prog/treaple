@@ -120,10 +120,10 @@ async function waitForPayment(secret) {
     }
     if (o && !o.paymentPending) {
       const text = o.status === 'refunded'
-        ? 'Пока шла оплата, билеты успели раскупить. Деньги уже возвращены на карту, чек возврата придёт на почту или по СМС.'
+        ? 'Билеты не выданы: пока шла оплата, их раскупили или событие отменили. Деньги возвращены на карту, чек возврата придёт на почту или по СМС.'
         : 'Оплата не прошла, деньги не списаны. Попробуйте купить билеты ещё раз.';
-      box.innerHTML = `<section class="order"><h2>${o.status === 'refunded' ? 'Места заняли' : 'Оплата не прошла'}</h2><p style="margin-top:8px">${text}</p>
-        <a class="btn" style="margin-top:16px" href="/event?id=${o.event.id}">К схеме зала</a></section>`;
+      box.innerHTML = `<section class="order"><h2>${o.status === 'refunded' ? 'Деньги возвращены' : 'Оплата не прошла'}</h2><p style="margin-top:8px">${text}</p>
+        <a class="btn" style="margin-top:16px" href="/event?id=${o.event.id}">Купить билеты</a></section>`;
       return;
     }
     await new Promise((r) => { setTimeout(r, 2000); });

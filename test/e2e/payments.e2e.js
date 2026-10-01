@@ -120,6 +120,16 @@ test('админ аннулирует один билет — деньги за 
   await admin.click('#login button');
   await admin.click('[data-edit]');
   const form = admin.locator('.edit-ticket').first();
+  // ЮKassa не провела возврат: билет остаётся действовать, админ видит причину
+  yk.refuseNextRefund();
+  await form.locator('[name=status]').selectOption('cancelled');
+  await form.locator('button').click();
+  await admin.waitForSelector('.toast');
+  assert.match(await admin.textContent('.toast'), /не провела возврат: на балансе магазина не хватает денег/);
+  const order = await (await fetch(`${B}/api/orders/${encodeURIComponent((await guest.evaluate(() => location.hash)).match(/order=([^&]+)/)[1])}`)).json();
+  assert.deepEqual(order.tickets.map((t) => t.status), ['active', 'active'], 'откат: билеты действуют');
+  assert.equal(order.refundedAmount, 0);
+  await admin.waitForSelector('.toast', { state: 'detached', timeout: 10000 });
   await form.locator('[name=status]').selectOption('cancelled');
   await form.locator('button').click();
   await admin.waitForSelector('.toast');

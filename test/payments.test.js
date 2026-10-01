@@ -114,3 +114,51 @@ test('чек: билет и депозит отдельными строками
   assert.equal(noDeposit.items[0].amount.value, '1000.00');
   assert.equal(noDeposit.items[0].vat_code, 4);
 });
+
+test('ЮKassa: оплата пришла, а событие уже отменили — билеты не выдаются, деньги к возврату', () => {
+  const { booking } = setup();
+  const held = booking.hold(1, 1);
+  booking.startPayment(held.secret, guest);
+  booking.attachPayment(held.secret, 'pay-c', 'u');
+  booking.setEventStatus(1, 'cancelled');
+  const r = booking.applyPayment(paymentOf('pay-c', 1000));
+  assert.equal(r.refund?.amount, 1000);
+  assert.notEqual(booking.getOrder({ secret: held.secret }).status, 'paid');
+  assert.equal(booking.getOrder({ secret: held.secret }).paymentPending, true, 'гость видит «проверяем оплату», а не «деньги не списаны»');
+});
+
+test('ЮKassa: возврат откатывается, если деньги не ушли; вернувшийся билет не включить даром', () => {
+  const { booking } = setup();
+  const held = booking.hold(1, 2);
+  booking.startPayment(held.secret, guest);
+  booking.attachPayment(held.secret, 'pay-r', 'u');
+  booking.applyPayment(paymentOf('pay-r', 2000));
+  const o = booking.getOrder({ secret: held.secret });
+  const before = booking.snapshotOrder(o.code);
+  booking.adminRefund(o.code, [o.tickets[0].code]);
+  booking.restoreSnapshot(before); // ЮKassa отказала
+  const back = booking.adminOrderView(o.code);
+  assert.deepEqual([back.status, back.total, ...back.tickets.map((t) => t.status)], ['paid', 2000, 'active', 'active']);
+  // настоящий возврат одного билета, потом попытка включить его снова
+  booking.adminEditTicket(o.tickets[0].code, { status: 'cancelled' });
+  booking.recordRefund(booking.snapshotOrder(o.code).order, 1000);
+  assert.throws(() => booking.adminEditTicket(o.tickets[0].code, { status: 'active' }), (e) => e.status === 409 && /уже вернули/.test(e.message));
+});
+
+test('ЮKassa: платёж закрывается по оплаченной сумме, а не по изменённой цене', () => {
+  const { booking } = setup();
+  const held = booking.hold(1, 3);
+  booking.startPayment(held.secret, guest);
+  booking.attachPayment(held.secret, 'pay-z', 'u');
+  booking.applyPayment(paymentOf('pay-z', 3000));
+  const o = booking.getOrder({ secret: held.secret });
+  const [a, b, c] = o.tickets.map((t) => t.code);
+  booking.adminEditTicket(a, { price: 0 }); // пригласительный: цена 0, но заплачено 1000
+  for (const code of [b, c]) {
+    const plan = booking.ticketRefundPlan(code, { status: 'cancelled' });
+    booking.adminEditTicket(code, { status: 'cancelled' });
+    booking.recordRefund(plan.order, plan.amount);
+  }
+  const plan = booking.adminRefundPlan(o.code, [a]);
+  assert.equal(plan?.amount, 1000, 'за третий билет деньги всё ещё можно вернуть');
+});

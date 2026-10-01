@@ -225,7 +225,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
         status: o.refund_request_status, at: o.refund_request_at, reason: o.refund_request_reason, note: o.refund_request_note,
       } : null,
       // онлайн-оплата: гость ушёл на страницу ЮKassa, ждём подтверждения
-      paymentPending: o.status === 'held' && o.payment_status === 'pending',
+      paymentPending: o.status !== 'paid' && o.status !== 'refunded' && (o.payment_status === 'pending' || o.payment_status === 'refund_due'),
       paidOnline: o.payment_status === 'succeeded' || o.payment_status === 'refunded',
       refundedAmount: o.refunded_amount || 0,
       // сколько можно вернуть: оплаченная цена действующих билетов
@@ -294,14 +294,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   function pay(secret, { name, phone, email, guests, consent } = {}) {
     if (mode !== 'demo') throw new BookingError(503, mode ? 'Оплата проходит через платёжную страницу' : 'Онлайн-продажа билетов пока закрыта.');
     const o = findOrder({ secret });
-    // Пока гость оформлял, событие могли закрыть, отменить или оно уже началось
-    if (o.status === 'held') {
-      const ev = getEvent(o.event_id);
-      if (ev.status !== 'on_sale' || new Date(ev.starts_at) < now()) {
-        release(secret);
-        throw new BookingError(409, ev.status === 'cancelled' ? 'Событие отменено, бронь снята.' : 'Продажа на это событие уже закрыта, бронь снята.');
-      }
-    }
+    if (o.status === 'held') checkStillOnSale(o, secret);
     if (o.status === 'paid') return orderView(o);
     if (o.status !== 'held') throw new BookingError(410, 'Бронь истекла. Оформите билеты заново.');
     const contacts = contactsOf({ name, phone, email, consent });
@@ -370,6 +363,12 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     }
     let refund = false;
     tx(db, () => {
+      if (o.status === 'held' && getEvent(o.event_id).status === 'cancelled') {
+        // пока гость платил, событие отменили: билеты не выдаём, деньги возвращаем
+        refund = true;
+        db.prepare("UPDATE orders SET payment_status = 'refund_due' WHERE id = ?").run(o.id);
+        return;
+      }
       if (o.status === 'held') {
         db.prepare("UPDATE orders SET payment_status = 'succeeded' WHERE id = ?").run(o.id);
         return markPaid(o);
@@ -437,7 +436,9 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   }
   function recordRefund(o, amount) {
     db.prepare('UPDATE orders SET refunded_amount = refunded_amount + ? WHERE id = ?').run(amount, o.id);
-    if (amount >= o.total) db.prepare("UPDATE orders SET payment_status = 'refunded' WHERE id = ?").run(o.id);
+    const { paid } = db.prepare('SELECT COALESCE(SUM(paid_price), 0) AS paid FROM tickets WHERE order_id = ?').get(o.id);
+    const { refunded } = db.prepare('SELECT refunded_amount AS refunded FROM orders WHERE id = ?').get(o.id);
+    if (refunded >= paid) db.prepare("UPDATE orders SET payment_status = 'refunded' WHERE id = ?").run(o.id);
   }
 
   function release(secret) {
@@ -463,6 +464,27 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     onTickets(q.orderTickets.all(o.id).map((t) => t.code));
     return orderView(q.orderByCode.get(o.code));
   }
+
+  // ---- Возврат: сначала база, потом деньги ----
+  // Билеты гасятся до запроса в ЮKassa (по QR уже не пройти), а если ЮKassa отказала, всё возвращается как было.
+  function snapshotOrder(orderCode) {
+    const o = q.orderByCode.get(String(orderCode ?? '').trim().toUpperCase());
+    if (!o) throw new BookingError(404, 'Заказ не найден');
+    return { order: o, tickets: q.orderTickets.all(o.id) };
+  }
+  function restoreSnapshot({ order: o, tickets }) {
+    tx(db, () => {
+      db.prepare('UPDATE orders SET status = ?, total = ?, cancelled_at = ?, refund_request_status = ? WHERE id = ?')
+        .run(o.status, o.total, o.cancelled_at, o.refund_request_status, o.id);
+      for (const t of tickets) {
+        db.prepare('UPDATE tickets SET status = ?, table_id = ?, seat_no = ?, checked_in_at = ? WHERE id = ?').run(t.status, t.table_id, t.seat_no, t.checked_in_at, t.id);
+      }
+      log(null, o.id, 'refund_rolled_back', 'ЮKassa не провела возврат');
+    });
+    onChange(o.event_id);
+    onTickets(tickets.map((t) => t.code));
+  }
+  const adminOrderView = (orderCode) => orderView(snapshotOrder(orderCode).order);
 
   // ---- Заявки на возврат ----
   // Гость не возвращает деньги сам: он отправляет заявку, администратор возвращает или отказывает.
@@ -683,6 +705,10 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
       // аннулированный билет снова в деле: нужен свободный билет из вместимости и свободный номер
       let tableId = t.table_id, seat = t.seat_no;
       if (status !== 'cancelled' && t.status === 'cancelled') {
+        // за аннулированный билет оплаченного онлайн заказа деньги уже вернули: включать его снова — значит отдать даром
+        if (o.payment_id && (o.payment_status === 'succeeded' || o.payment_status === 'refunded')) {
+          throw new BookingError(409, 'Деньги за этот билет уже вернули через ЮKassa. Продайте гостю новый билет.');
+        }
         if (computeAvailability(event).free < 1) throw new BookingError(409, 'Все билеты на событие уже проданы');
         tableId = GA;
         [seat] = freeNumbers(event.id, 1);
@@ -829,7 +855,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder, updateEvent,
     requestTable, listTableRequests, updateTableRequest,
-    requestRefund, listRefundRequests, declineRefund, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
+    requestRefund, listRefundRequests, declineRefund, snapshotOrder, restoreSnapshot, adminOrderView, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
     adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };

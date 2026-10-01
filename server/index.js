@@ -203,18 +203,39 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
 }, { staff: true });
 route('GET', '/api/admin/refund-requests', () => booking.listRefundRequests(), { admin: true });
 route('POST', '/api/admin/orders/:code/refund-decline', ({ code }, body) => booking.declineRefund(code, body), { admin: true });
-route('POST', '/api/admin/orders/:code/refund', async ({ code }, body) => {
+route('POST', '/api/admin/orders/:code/refund', ({ code }, body) => withRefundLock(code, async () => {
   const plan = booking.adminRefundPlan(code, body.tickets);
   // ключ повтора по набору билетов: тот же набор не вернётся дважды, другой — это новый возврат
   const key = createHash('sha256').update(plan ? plan.lines.map((l) => l.code).sort().join(',') : 'none').digest('hex').slice(0, 24);
-  await refundMoney(plan, 'Возврат билетов', key);
-  return booking.adminRefund(code, body.tickets);
-}, { admin: true });
+  // сначала гасим билеты (по QR уже не пройти), потом деньги; ЮKassa отказала — откатываем
+  const before = booking.snapshotOrder(code);
+  booking.adminRefund(code, body.tickets);
+  try {
+    await refundMoney(plan, 'Возврат билетов', key);
+  } catch (e) {
+    booking.restoreSnapshot(before);
+    throw e;
+  }
+  return booking.adminOrderView(code);
+}), { admin: true });
 route('POST', '/api/admin/orders/:code', ({ code }, body) => booking.adminEditOrder(code, body), { admin: true });
 route('POST', '/api/admin/tickets/:code', async ({ code }, body) => {
-  // аннулирование оплаченного онлайн билета: сначала возвращаем его цену через ЮKassa
-  await refundMoney(booking.ticketRefundPlan(code, body), 'Возврат билета', code);
-  return booking.adminEditTicket(code, body);
+  const first = booking.ticketRefundPlan(code, body);
+  if (!first) return booking.adminEditTicket(code, body);
+  // аннулирование оплаченного онлайн билета: билет гасим сразу, деньги возвращаем, при отказе ЮKassa откатываем
+  return withRefundLock(first.order.code, async () => {
+    const plan = booking.ticketRefundPlan(code, body);
+    if (!plan) return booking.adminEditTicket(code, body);
+    const before = booking.snapshotOrder(plan.order.code);
+    const view = booking.adminEditTicket(code, body);
+    try {
+      await refundMoney(plan, 'Возврат билета', code);
+    } catch (e) {
+      booking.restoreSnapshot(before);
+      throw e;
+    }
+    return view;
+  });
 }, { admin: true });
 
 // ---- ЮKassa ----
@@ -246,17 +267,39 @@ async function startPayment(secret, body, req) {
   }
 }
 
+// Один возврат по заказу за раз: двойное нажатие или две вкладки админки не вернут деньги дважды
+const refunding = new Set();
+async function withRefundLock(code, fn) {
+  const key = String(code ?? '').trim().toUpperCase();
+  if (refunding.has(key)) throw new BookingError(409, 'Возврат по этому заказу уже идёт, подождите пару секунд');
+  refunding.add(key);
+  try {
+    return await fn();
+  } finally {
+    refunding.delete(key);
+  }
+}
+
+const REFUND_REASONS = { insufficient_funds: 'на балансе магазина не хватает денег', rejected_by_payee: 'отклонён банком', rejected_by_timeout: 'банк не ответил вовремя' };
+// ЮKassa может принять запрос, но не провести возврат (status: canceled) — это ошибка, а не успех
+function checkRefund(r) {
+  if (r?.status !== 'canceled') return;
+  const why = REFUND_REASONS[r.cancellation_details?.reason] || r.cancellation_details?.reason || 'причина не указана';
+  throw new BookingError(502, `ЮKassa не провела возврат: ${why}. Деньги не ушли, билеты остались как были.`);
+}
+
 // Возврат денег: без онлайн-платежа (демо, оплата на кассе) plan пустой и ничего не делаем
 async function refundMoney(plan, what, key = 'all') {
   if (!plan || !yookassa) return;
   const o = plan.order;
-  await yookassa.createRefund({
+  const r = await yookassa.createRefund({
     paymentId: plan.paymentId,
     amount: plan.amount,
     description: `${what}, заказ ${o.code}`,
     receipt: buildReceipt(plan.lines, { name: o.name, phone: o.phone, email: o.email }, receiptSettings()),
     idempotenceKey: `refund-${o.code}-${key}`,
   });
+  checkRefund(r);
   booking.recordRefund(o, plan.amount);
 }
 
@@ -266,11 +309,13 @@ async function syncPayment(id) {
   const r = booking.applyPayment(payment);
   if (r.refund) {
     const o = r.refund.order;
-    await yookassa.createRefund({
-      paymentId: payment.id, amount: r.refund.amount, description: `Места заняли, пока шла оплата, заказ ${o.code}`,
+    const refund = await yookassa.createRefund({
+      paymentId: payment.id, amount: r.refund.amount, description: `Билеты не выданы: раскупили или событие отменено, заказ ${o.code}`,
       receipt: buildReceipt(r.refund.lines, { name: o.name, phone: o.phone, email: o.email }, receiptSettings()),
       idempotenceKey: `late-${o.code}`,
     });
+    // не прошёл — заказ остаётся «к возврату», проверка раз в минуту попробует снова
+    if (refund?.status === 'canceled') return console.error(`Возврат по заказу ${o.code} не прошёл: ${refund.cancellation_details?.reason}`);
     booking.markLateRefunded(o);
   }
   return r;

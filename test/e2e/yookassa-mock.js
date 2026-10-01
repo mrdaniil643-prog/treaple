@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 export function startYooKassaMock({ shopId, secretKey, port }) {
   const payments = new Map();
   const refunds = [];
+  const state = { refuseNext: false };
   const errors = [];
   const webhooks = [];
   let site = '';
@@ -74,6 +75,11 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
       const done = refunds.filter((r) => r.payment_id === b.payment_id).reduce((s, r) => s + cents(r.amount), 0);
       const bad = !p || p.status !== 'succeeded' ? 'платёж не оплачен' : done + cents(b.amount) > cents(p.amount) ? 'возврат больше платежа' : checkReceipt(b.receipt, b.amount);
       if (bad) { errors.push(bad); return json(res, 400, { type: 'error', code: 'invalid_request', description: bad }); }
+      // как настоящая ЮKassa: запрос принят, но возврат не проведён (например, на балансе магазина пусто)
+      if (state.refuseNext) {
+        state.refuseNext = false;
+        return json(res, 200, { id: randomUUID(), status: 'canceled', payment_id: b.payment_id, amount: b.amount, cancellation_details: { party: 'yoo_money', reason: 'insufficient_funds' } });
+      }
       const r = { id: randomUUID(), status: 'succeeded', payment_id: b.payment_id, amount: b.amount, receipt: b.receipt };
       refunds.push(r);
       return json(res, 200, r);
@@ -86,6 +92,7 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
       url: `http://localhost:${port}`,
       setSite: (s) => { site = s; },
       payments, refunds, errors, webhooks,
+      refuseNextRefund: () => { state.refuseNext = true; },
       close: () => server.close(),
     }));
   });
