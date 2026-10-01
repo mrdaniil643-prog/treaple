@@ -87,6 +87,23 @@ test('гость только просит вернуть деньги, возв
   assert.equal(booking.checkIn(held.tickets[0].code).result, 'invalid');
 });
 
+test('возврат выбранных билетов: остальные действуют, заявка закрыта', () => {
+  const { booking, event } = setup();
+  const paid = booking.pay(booking.hold(event.id, 3).secret, guest);
+  const [a, b, c] = paid.tickets.map((t) => t.code);
+  booking.requestRefund(paid.secret);
+  const after = booking.adminRefund(paid.code, [b, c]);
+  assert.equal(after.status, 'paid', 'заказ остаётся оплаченным');
+  assert.deepEqual(after.tickets.map((t) => t.status), ['active', 'cancelled', 'cancelled']);
+  assert.equal(after.total, 1000);
+  assert.equal(after.refundRequest.status, 'done');
+  assert.equal(booking.availability(event.id).sold, 1, 'возвращённые билеты снова в продаже');
+  // после прохода одного гостя вернуть остальные всё ещё можно, целиком заказ — нет
+  booking.checkIn(a, { eventId: event.id });
+  assert.throws(() => booking.adminRefund(paid.code), (e) => e.status === 409);
+  assert.throws(() => booking.adminRefund(paid.code, [a]), (e) => e.status === 400, 'прошедший билет не вернуть');
+});
+
 test('ссылка на билет не раскрывает заказ, контакты и чужие билеты', () => {
   const { booking, event } = setup();
   const held = booking.hold(event.id, 3);

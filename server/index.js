@@ -2,7 +2,7 @@
 process.env.TZ ||= process.env.VENUE_TZ || 'Asia/Vladivostok';
 
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, dirname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -204,10 +204,11 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
 route('GET', '/api/admin/refund-requests', () => booking.listRefundRequests(), { admin: true });
 route('POST', '/api/admin/orders/:code/refund-decline', ({ code }, body) => booking.declineRefund(code, body), { admin: true });
 route('POST', '/api/admin/orders/:code/refund', async ({ code }, body) => {
-  const plan = booking.adminRefundPlan(code, body.amount);
-  // в ключе повтора сумма: если первая попытка не прошла и админ поменял сумму, это новый возврат для ЮKassa
-  await refundMoney(plan, 'Возврат билетов', `all-${plan?.amount ?? 0}`);
-  return booking.adminRefund(code, plan ? plan.amount : null);
+  const plan = booking.adminRefundPlan(code, body.tickets);
+  // ключ повтора по набору билетов: тот же набор не вернётся дважды, другой — это новый возврат
+  const key = createHash('sha256').update(plan ? plan.lines.map((l) => l.code).sort().join(',') : 'none').digest('hex').slice(0, 24);
+  await refundMoney(plan, 'Возврат билетов', key);
+  return booking.adminRefund(code, body.tickets);
 }, { admin: true });
 route('POST', '/api/admin/orders/:code', ({ code }, body) => booking.adminEditOrder(code, body), { admin: true });
 route('POST', '/api/admin/tickets/:code', async ({ code }, body) => {

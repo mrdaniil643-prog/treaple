@@ -69,7 +69,7 @@ async function start() {
     </div>
     <div class="card" style="margin-top:20px">
       <h3>Заявки на возврат <span class="req-count" id="refund-count" hidden></span></h3>
-      <p class="muted">Гости не могут вернуть деньги сами: они отправляют заявку. «Вернуть деньги» возвращает всю сумму заказа на карту гостя через ЮKassa, чек возврата уходит сам. Вернуть часть билетов можно в «Изменить» у заказа: аннулируйте лишние.</p>
+      <p class="muted">Гости не могут вернуть деньги сами: они отправляют заявку. В «Вернуть деньги» отметьте, какие билеты вернуть: деньги за них уйдут на карту гостя через ЮKassa, чек возврата отправится сам.</p>
       <div class="table-wrap" id="refunds"></div>
     </div>
     <div class="card" style="margin-top:20px">
@@ -196,7 +196,7 @@ function drawOrders() {
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
         <td>${ticketsWord(o.tickets.length)}<br><span class="muted">пришли ${came}</span></td>
         <td>${money(o.total)}${o.paidOnline ? '<br><span class="muted">ЮKassa</span>' : ''}${o.refundedAmount ? `<br><span class="muted">возвращено ${money(o.refundedAmount)}</span>` : ''}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span>${o.status === 'paid' && o.refundRequest?.status === 'pending' ? '<br><span class="status held" style="margin-top:6px">просит возврат</span>' : ''}</td>
-        <td>${o.status === 'paid' ? `<button class="link-btn" data-edit="${esc(o.code)}">Изменить</button><br>${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
+        <td>${o.status === 'paid' ? `<button class="link-btn" data-edit="${esc(o.code)}">Изменить</button><br>${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>` : ''}` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
   // Запасной путь, если у гостя сел телефон: находим заказ по имени и впускаем по одному.
   $$('[data-admit]').forEach((b) => b.addEventListener('click', async () => {
@@ -446,9 +446,9 @@ function drawRequests() {
     } catch (err) { toast(err.message, { error: true }); }
   }));
 }
-// ---- Возврат: окно с суммой ----
-// По умолчанию вся сумма за действующие билеты; меньше — если удерживаются расходы (возврат меньше чем за сутки).
-// Билеты заказа перестают действовать при любой сумме.
+// ---- Возврат: окно с выбором билетов ----
+// По умолчанию отмечены все действующие билеты заказа; снимите галочки с тех, что остаются у гостя.
+// Возвращается оплаченная цена отмеченных билетов, они перестают действовать.
 function refundDialog(o) {
   let dlg = $('#refund-dlg');
   if (!dlg) {
@@ -457,35 +457,45 @@ function refundDialog(o) {
     dlg.setAttribute('aria-labelledby', 'refund-title');
     document.body.append(dlg);
   }
-  const max = o.refundable || o.total;
+  const active = o.tickets.filter((t) => t.status === 'active');
   dlg.innerHTML = `<div class="dlg-head"><h2 id="refund-title">Возврат по заказу <span style="white-space:nowrap">${esc(o.code)}</span></h2>
       <button class="icon-close" data-close aria-label="Закрыть">×</button></div>
-    <form class="dlg-body" id="refund-amount-form">
-      <p>${esc(o.name || 'Гость')}, ${ticketsWord(o.tickets.filter((t) => t.status === 'active').length)}, оплачено ${money(max)}.</p>
+    <form class="dlg-body" id="refund-pick-form">
+      <p>${esc(o.name || 'Гость')}${o.phone ? `, +7 ${esc(o.phone)}` : ''}</p>
       ${o.refundRequest?.reason ? `<p class="muted">Причина: ${esc(o.refundRequest.reason)}</p>` : ''}
-      <label class="field"><span>Сумма возврата, ₽</span><input class="input" name="amount" type="number" inputmode="numeric" min="1" max="${max}" step="1" value="${max}" required></label>
-      <p class="muted">Все билеты заказа перестанут действовать. ${o.paidOnline ? 'Деньги уйдут на карту гостя через ЮKassa, чек возврата отправится сам.' : 'Деньги верните на кассе.'}</p>
+      <fieldset class="refund-pick"><legend>Какие билеты вернуть</legend>
+        ${active.map((t, i) => `<label class="check"><input type="checkbox" name="t" value="${esc(t.code)}" checked> <span>Билет ${i + 1}, ${esc(t.guestName || 'Гость')} <span class="muted">${prettyCode(t.code)}</span></span><b>${money(t.paidPrice)}</b></label>`).join('')}
+      </fieldset>
+      ${active.length > 1 ? '<div class="row"><button class="link-btn" type="button" data-all="1">Отметить все</button><button class="link-btn" type="button" data-all="0">Снять все</button></div>' : ''}
+      <p class="muted">Отмеченные билеты перестанут действовать. ${o.paidOnline ? 'Деньги за них уйдут на карту гостя через ЮKassa, чек возврата отправится сам.' : 'Деньги за них верните на кассе.'}</p>
       <p class="form-error" id="refund-error"></p>
       <div class="dlg-actions"><button class="btn block" type="submit">Вернуть</button><button class="btn ghost block" type="button" data-close>Отмена</button></div>
     </form>`;
   dlg.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => dlg.close()));
   const form = dlg.querySelector('form');
   const btn = form.querySelector('[type=submit]');
-  const label = () => { const v = Number(form.amount.value); btn.textContent = v > 0 ? `Вернуть ${money(v)}${v < max ? ` из ${money(max)}` : ''}` : 'Вернуть'; };
-  form.amount.addEventListener('input', label);
+  const picked = () => $$('[name=t]:checked', form).map((i) => i.value);
+  const label = () => {
+    const codes = picked();
+    const sum = active.filter((t) => codes.includes(t.code)).reduce((s, t) => s + t.paidPrice, 0);
+    btn.textContent = codes.length ? `Вернуть ${ticketsWord(codes.length)} из ${active.length}, ${money(sum)}` : 'Отметьте билеты';
+    btn.disabled = !codes.length;
+  };
+  form.addEventListener('change', label);
+  dlg.querySelectorAll('[data-all]').forEach((x) => x.addEventListener('click', () => {
+    $$('[name=t]', form).forEach((i) => { i.checked = x.dataset.all === '1'; });
+    label();
+  }));
   label();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const amount = Number(form.amount.value);
-    if (!Number.isInteger(amount) || amount < 1 || amount > max) {
-      $('#refund-error').textContent = `Укажите целое число рублей от 1 до ${max}`;
-      return;
-    }
+    const tickets = picked();
+    if (!tickets.length) return;
     btn.disabled = true;
     try {
-      await adm(`/api/admin/orders/${encodeURIComponent(o.code)}/refund`, { method: 'POST', body: { amount } });
+      await adm(`/api/admin/orders/${encodeURIComponent(o.code)}/refund`, { method: 'POST', body: { tickets } });
       dlg.close();
-      toast(amount < max ? `Возвращено ${money(amount)} из ${money(max)}` : 'Деньги возвращены');
+      toast(tickets.length < active.length ? `Возвращено ${ticketsWord(tickets.length)} из ${active.length}` : 'Деньги возвращены');
       loadRefunds();
       if (currentId) loadReport();
     } catch (err) {

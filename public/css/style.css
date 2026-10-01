@@ -696,3 +696,9 @@ dialog, .menu-nav { overscroll-behavior: contain; }
 .refund-form .muted a { color: var(--orange-2); }
 .refund-state { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: rgba(240, 122, 43, .12); color: var(--orange-2); font-weight: 600; max-width: 560px; }
 .refund-state.declined { background: rgba(255, 122, 107, .12); color: var(--bad); }
+/* окно возврата: список билетов с галочками */
+.refund-pick { border: 0; padding: 0; margin: 0; display: grid; gap: 4px; }
+.refund-pick legend { font-weight: 700; margin-bottom: 6px; color: var(--cream); }
+.refund-pick .check { justify-content: space-between; padding: 6px 12px; border-radius: 10px; background: var(--night-2); font-weight: 500; }
+.refund-pick .check > span { flex: 1; min-width: 0; }
+.refund-pick .check .muted { display: block; font-size: 12px; }

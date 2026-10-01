@@ -87,14 +87,12 @@ test('ЮKassa: возвраты считаются по цене оплаты', 
   const all = booking.adminRefundPlan(booking.getOrder({ secret: held.secret }).code);
   assert.equal(all.amount, 2000);
   assert.equal(all.paymentId, 'pay-5');
-  // вернуть меньше: строки чека дают ровно эту сумму
+  // вернуть выбранные билеты: сумма и чек — по ним
   const code = booking.getOrder({ secret: held.secret }).code;
-  const part = booking.adminRefundPlan(code, 1501);
-  assert.equal(part.amount, 1501);
-  assert.equal(part.lines.reduce((s, l) => s + l.price, 0), 1501);
-  assert.ok(part.lines.every((l) => l.price > 0));
-  for (const bad of [0, 2001, 1.5, 'много', -1]) assert.throws(() => booking.adminRefundPlan(code, bad), (e) => e.status === 400, String(bad));
-  assert.equal(booking.adminRefundPlan(code, 2000).partial, undefined, 'вся сумма — обычный возврат');
+  const [t1, t2] = booking.getOrder({ secret: held.secret }).tickets;
+  const part = booking.adminRefundPlan(code, [t2.code]);
+  assert.deepEqual([part.amount, part.lines.map((l) => l.code)], [1000, [t2.code]]);
+  for (const bad of [[], ['NOPE12345678'], 'все', [t1.code, 'NOPE12345678']]) assert.throws(() => booking.adminRefundPlan(code, bad), (e) => e.status === 400, String(bad));
   assert.equal(booking.getOrder({ secret: held.secret }).refundable, 2000);
 });
 

@@ -129,7 +129,7 @@ test('админ аннулирует один билет — деньги за 
   assert.equal(yk.refunds[0].receipt.items.length, 1);
 });
 
-test('гость отправляет заявку на возврат, администратор возвращает часть суммы', async () => {
+test('гость отправляет заявку на возврат, администратор отмечает билеты и возвращает деньги', async () => {
   await guest.reload();
   await guest.waitForSelector('#refund-ask');
   await guest.click('#refund-ask');
@@ -148,13 +148,17 @@ test('гость отправляет заявку на возврат, адми
   assert.match(await admin.textContent('#refunds'), /Не смогу прийти/);
   await admin.click('[data-refund-ok]');
   await admin.waitForSelector('#refund-dlg[open]');
-  assert.equal(await admin.inputValue('#refund-dlg [name=amount]'), '1000', 'по умолчанию вся сумма');
-  await admin.fill('#refund-dlg [name=amount]', '700'); // удержали расходы
-  assert.equal((await admin.textContent('#refund-dlg [type=submit]')).trim(), 'Вернуть 700\u00a0₽ из 1\u00a0000\u00a0₽');
+  // в заказе остался один действующий билет (второй аннулирован в прошлом шаге): он и отмечен
+  assert.equal(await admin.locator('#refund-dlg [name=t]').count(), 1);
+  assert.ok(await admin.isChecked('#refund-dlg [name=t]'));
+  await admin.uncheck('#refund-dlg [name=t]');
+  assert.ok(await admin.isDisabled('#refund-dlg [type=submit]'), 'без отмеченных билетов вернуть нечего');
+  await admin.check('#refund-dlg [name=t]');
+  assert.equal((await admin.textContent('#refund-dlg [type=submit]')).trim(), 'Вернуть 1 билет из 1, 1\u00a0000\u00a0₽');
   await admin.click('#refund-dlg [type=submit]');
   await admin.waitForSelector('#refunds >> text=Новых заявок на возврат нет');
-  assert.deepEqual(yk.refunds.map((r) => r.amount.value), ['1000.00', '700.00']);
-  assert.equal(yk.refunds[1].receipt.items.reduce((s, i) => s + Number(i.amount.value), 0), 700, 'чек возврата на ту же сумму');
+  assert.deepEqual(yk.refunds.map((r) => r.amount.value), ['1000.00', '1000.00']);
+  assert.equal(yk.refunds[1].receipt.items.length, 1, 'чек возврата — по возвращённому билету');
   await guest.reload();
   await guest.waitForSelector('.order .status.refunded');
   assert.deepEqual(yk.errors, [], 'копия ЮKassa не нашла ошибок в запросах');

@@ -211,7 +211,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     const event = getEvent(o.event_id);
     const rows = q.orderTickets.all(o.id);
     const tickets = rows.map((t) => ({
-      code: t.code, price: t.price, status: t.status, guestName: t.guest_name, checkedInAt: t.checked_in_at,
+      code: t.code, price: t.price, paidPrice: t.paid_price ?? t.price, status: t.status, guestName: t.guest_name, checkedInAt: t.checked_in_at,
     }));
     const hoursLeft = (new Date(event.starts_at) - now()) / 3600e3;
     return {
@@ -413,24 +413,20 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     const lines = receiptLines(o, tickets);
     return { paymentId: o.payment_id, amount: lines.reduce((s, l) => s + l.price, 0), lines, order: o };
   }
-  // amount — сколько вернуть, ₽ (целое). Меньше полной суммы — когда удерживаются расходы;
-  // билеты заказа в любом случае перестают действовать. Без суммы — всё, что заплачено за действующие билеты.
-  function adminRefundPlan(orderCode, amount) {
-    const plan = refundPlan(checkAdminRefund(orderCode));
-    if (!plan || amount === undefined || amount === null || amount === '') return plan;
-    const want = Number(amount);
-    if (!Number.isInteger(want) || want < 1 || want > plan.amount) {
-      throw new BookingError(400, `Сумма возврата — целое число рублей от 1 до ${plan.amount}`);
-    }
-    if (want === plan.amount) return plan;
-    // строки чека возврата должны дать ровно эту сумму: делим её по билетам пропорционально цене
-    let left = want;
-    const lines = plan.lines.map((l, i) => {
-      const part = i === plan.lines.length - 1 ? left : Math.floor((l.price * want) / plan.amount);
-      left -= part;
-      return { ...l, price: part, deposit: Math.min(l.deposit, part) };
-    }).filter((l) => l.price > 0);
-    return { ...plan, amount: want, lines, partial: true };
+  // Возврат по выбранным билетам: tickets — коды билетов заказа, которые возвращаем.
+  // Без списка — все действующие билеты (весь заказ).
+  function pickTickets(o, codes) {
+    const active = q.orderTickets.all(o.id).filter((t) => t.status === 'active');
+    if (codes === undefined || codes === null) return active;
+    if (!Array.isArray(codes) || !codes.length) throw new BookingError(400, 'Отметьте, какие билеты вернуть');
+    const want = new Set(codes.map((c) => String(c ?? '').toUpperCase()));
+    const pick = active.filter((t) => want.has(t.code));
+    if (pick.length !== want.size) throw new BookingError(400, 'Вернуть можно только действующие билеты этого заказа');
+    return pick;
+  }
+  function adminRefundPlan(orderCode, codes) {
+    const o = checkAdminRefund(orderCode, codes);
+    return refundPlan(o, pickTickets(o, codes));
   }
   // Аннулирование одного билета из админки: вернуть его цену
   function ticketRefundPlan(ticketCode, patch = {}) {
@@ -637,19 +633,34 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     return { event, stats, orders: list, availability: availability(event.id) };
   }
 
-  function checkAdminRefund(orderCode) {
+  // codes — возврат части билетов: прошедшие гости по другим билетам заказа не мешают
+  function checkAdminRefund(orderCode, codes) {
     const o = q.orderByCode.get(String(orderCode).trim().toUpperCase());
     if (!o) throw new BookingError(404, 'Заказ не найден');
     if (o.status !== 'paid') throw new BookingError(409, 'Вернуть можно только оплаченный заказ');
-    if (q.orderTickets.all(o.id).some((t) => t.status === 'used')) {
+    if (!codes && q.orderTickets.all(o.id).some((t) => t.status === 'used')) {
       throw new BookingError(409, 'Часть гостей уже прошла, весь заказ вернуть нельзя. Аннулируйте лишние билеты по одному в «Изменить».');
     }
     return o;
   }
 
-  function adminRefund(orderCode, amount = null) {
-    const o = checkAdminRefund(orderCode);
-    return refund(o, amount !== null && amount < o.total ? `admin: возвращено ${amount} из ${o.total}` : 'admin');
+  function adminRefund(orderCode, codes) {
+    const o = checkAdminRefund(orderCode, codes);
+    const pick = pickTickets(o, codes);
+    const all = q.orderTickets.all(o.id);
+    // все билеты заказа — обычный возврат заказа целиком
+    if (pick.length === all.filter((t) => t.status === 'active').length && !all.some((t) => t.status === 'used')) return refund(o, 'admin');
+    tx(db, () => {
+      for (const t of pick) {
+        db.prepare("UPDATE tickets SET status = 'cancelled' WHERE id = ?").run(t.id);
+        log(t.id, o.id, 'refunded', 'admin: часть заказа');
+      }
+      db.prepare("UPDATE orders SET total = (SELECT COALESCE(SUM(price), 0) FROM tickets WHERE order_id = ? AND status IN ('active', 'used')) WHERE id = ?").run(o.id, o.id);
+      if (o.refund_request_status === 'pending') db.prepare("UPDATE orders SET refund_request_status = 'done' WHERE id = ?").run(o.id);
+    });
+    onChange(o.event_id);
+    onTickets(pick.map((t) => t.code));
+    return orderView(q.orderByCode.get(o.code));
   }
 
   // ---- Правка билета и заказа из админки ----

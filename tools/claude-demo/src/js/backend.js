@@ -109,7 +109,7 @@ function orderView(o) {
   const event = getEvent(o.event_id);
   const tickets = o.tickets.map((c) => {
     const t = memory.tickets[c];
-    return { code: t.code, price: t.price, status: t.status, guestName: t.guest_name, checkedInAt: t.checked_in_at || null };
+    return { code: t.code, price: t.price, paidPrice: t.price, status: t.status, guestName: t.guest_name, checkedInAt: t.checked_in_at || null };
   });
   const hoursLeft = (new Date(event.starts_at) - Date.now()) / 3600e3;
   return {
@@ -444,12 +444,23 @@ async function adminCheckIn(input, eventId) {
   return { result: 'ok', ticket: view() };
 }
 
-function adminRefund(code) {
+// как на сайте: codes — какие билеты вернуть; без списка — весь заказ
+function adminRefund(code, codes) {
   const o = byOrderCode(code);
   if (!o) throw new DemoError(404, 'Заказ не найден');
   if (o.status !== 'paid') throw new DemoError(409, 'Вернуть можно только оплаченный заказ');
-  if (o.tickets.some((c) => memory.tickets[c].status === 'used')) throw new DemoError(409, 'Часть гостей уже прошла, весь заказ вернуть нельзя. Частичный возврат сделайте на кассе.');
-  refund(o);
+  const active = o.tickets.filter((c) => memory.tickets[c].status === 'active');
+  if (!codes && o.tickets.some((c) => memory.tickets[c].status === 'used')) throw new DemoError(409, 'Часть гостей уже прошла, весь заказ вернуть нельзя. Отметьте, какие билеты вернуть.');
+  const pick = codes ? codes.map((c) => String(c).toUpperCase()) : active;
+  if (!pick.length || pick.some((c) => !active.includes(c))) throw new DemoError(400, 'Вернуть можно только действующие билеты этого заказа');
+  if (pick.length === active.length && !o.tickets.some((c) => memory.tickets[c].status === 'used')) {
+    refund(o);
+    return orderView(o);
+  }
+  for (const c of pick) memory.tickets[c].status = 'cancelled';
+  o.total = o.tickets.map((c) => memory.tickets[c]).filter((x) => x.status === 'active' || x.status === 'used').reduce((sum, x) => sum + x.price, 0);
+  if (o.refund_request?.status === 'pending') o.refund_request.status = 'done';
+  save();
   return orderView(o);
 }
 
@@ -517,7 +528,7 @@ async function handleAdmin(p, method, body) {
   if (p === '/api/admin/checkin') return adminCheckIn(body.code, body.eventId);
   if (p === '/api/admin/staff') return [];
   if (p.startsWith('/api/admin/staff')) throw new DemoError(400, 'В демо-версии контролёров нет: у неё нет сервера. На настоящем сайте приглашение работает.');
-  if ((m = p.match(/^\/api\/admin\/orders\/([^/]+)\/refund$/))) return adminRefund(decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/api\/admin\/orders\/([^/]+)\/refund$/))) return adminRefund(decodeURIComponent(m[1]), body.tickets);
   if ((m = p.match(/^\/api\/admin\/orders\/([^/]+)$/))) return adminEditOrder(decodeURIComponent(m[1]), body);
   if ((m = p.match(/^\/api\/admin\/tickets\/([^/]+)$/))) return adminEditTicket(decodeURIComponent(m[1]), body);
   throw new DemoError(404, 'Не найдено');
