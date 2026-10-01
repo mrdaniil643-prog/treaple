@@ -209,7 +209,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
 
   function orderView(o) {
     const event = getEvent(o.event_id);
-    const tickets = q.orderTickets.all(o.id).map((t) => ({
+    const rows = q.orderTickets.all(o.id);
+    const tickets = rows.map((t) => ({
       code: t.code, price: t.price, status: t.status, guestName: t.guest_name, checkedInAt: t.checked_in_at,
     }));
     const hoursLeft = (new Date(event.starts_at) - now()) / 3600e3;
@@ -227,6 +228,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
       paymentPending: o.status === 'held' && o.payment_status === 'pending',
       paidOnline: o.payment_status === 'succeeded' || o.payment_status === 'refunded',
       refundedAmount: o.refunded_amount || 0,
+      // сколько можно вернуть: оплаченная цена действующих билетов
+      refundable: o.status === 'paid' ? rows.filter((t) => t.status === 'active').reduce((s, t) => s + (t.paid_price ?? t.price), 0) : 0,
       event: { id: event.id, title: event.title, startsAt: event.starts_at, doorsAt: event.doors_at, lineup: event.lineup, deposit: event.deposit },
       tickets,
     };
@@ -410,8 +413,24 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     const lines = receiptLines(o, tickets);
     return { paymentId: o.payment_id, amount: lines.reduce((s, l) => s + l.price, 0), lines, order: o };
   }
-  function adminRefundPlan(orderCode) {
-    return refundPlan(checkAdminRefund(orderCode));
+  // amount — сколько вернуть, ₽ (целое). Меньше полной суммы — когда удерживаются расходы;
+  // билеты заказа в любом случае перестают действовать. Без суммы — всё, что заплачено за действующие билеты.
+  function adminRefundPlan(orderCode, amount) {
+    const plan = refundPlan(checkAdminRefund(orderCode));
+    if (!plan || amount === undefined || amount === null || amount === '') return plan;
+    const want = Number(amount);
+    if (!Number.isInteger(want) || want < 1 || want > plan.amount) {
+      throw new BookingError(400, `Сумма возврата — целое число рублей от 1 до ${plan.amount}`);
+    }
+    if (want === plan.amount) return plan;
+    // строки чека возврата должны дать ровно эту сумму: делим её по билетам пропорционально цене
+    let left = want;
+    const lines = plan.lines.map((l, i) => {
+      const part = i === plan.lines.length - 1 ? left : Math.floor((l.price * want) / plan.amount);
+      left -= part;
+      return { ...l, price: part, deposit: Math.min(l.deposit, part) };
+    }).filter((l) => l.price > 0);
+    return { ...plan, amount: want, lines, partial: true };
   }
   // Аннулирование одного билета из админки: вернуть его цену
   function ticketRefundPlan(ticketCode, patch = {}) {
@@ -628,8 +647,9 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     return o;
   }
 
-  function adminRefund(orderCode) {
-    return refund(checkAdminRefund(orderCode), 'admin');
+  function adminRefund(orderCode, amount = null) {
+    const o = checkAdminRefund(orderCode);
+    return refund(o, amount !== null && amount < o.total ? `admin: возвращено ${amount} из ${o.total}` : 'admin');
   }
 
   // ---- Правка билета и заказа из админки ----

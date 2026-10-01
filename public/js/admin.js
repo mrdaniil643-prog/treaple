@@ -205,15 +205,7 @@ function drawOrders() {
     loadReport();
   }));
   $$('[data-edit]').forEach((b) => b.addEventListener('click', () => openEditor(b.dataset.edit)));
-  $$('[data-refund]').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm(`Оформить возврат по заказу ${b.dataset.refund}? Все билеты заказа перестанут действовать и вернутся в продажу.`)) return;
-    try {
-      await adm(`/api/admin/orders/${b.dataset.refund}/refund`, { method: 'POST' });
-      toast('Возврат оформлен');
-      loadReport();
-      loadRefunds();
-    } catch (err) { toast(err.message, { error: true }); }
-  }));
+  $$('[data-refund]').forEach((b) => b.addEventListener('click', () => refundDialog(report.orders.find((x) => x.code === b.dataset.refund))));
 }
 
 // ---- Правка заказа и билетов ----
@@ -454,6 +446,56 @@ function drawRequests() {
     } catch (err) { toast(err.message, { error: true }); }
   }));
 }
+// ---- Возврат: окно с суммой ----
+// По умолчанию вся сумма за действующие билеты; меньше — если удерживаются расходы (возврат меньше чем за сутки).
+// Билеты заказа перестают действовать при любой сумме.
+function refundDialog(o) {
+  let dlg = $('#refund-dlg');
+  if (!dlg) {
+    dlg = document.createElement('dialog');
+    dlg.id = 'refund-dlg';
+    dlg.setAttribute('aria-labelledby', 'refund-title');
+    document.body.append(dlg);
+  }
+  const max = o.refundable || o.total;
+  dlg.innerHTML = `<div class="dlg-head"><h2 id="refund-title">Возврат по заказу <span style="white-space:nowrap">${esc(o.code)}</span></h2>
+      <button class="icon-close" data-close aria-label="Закрыть">×</button></div>
+    <form class="dlg-body" id="refund-amount-form">
+      <p>${esc(o.name || 'Гость')}, ${ticketsWord(o.tickets.filter((t) => t.status === 'active').length)}, оплачено ${money(max)}.</p>
+      ${o.refundRequest?.reason ? `<p class="muted">Причина: ${esc(o.refundRequest.reason)}</p>` : ''}
+      <label class="field"><span>Сумма возврата, ₽</span><input class="input" name="amount" type="number" inputmode="numeric" min="1" max="${max}" step="1" value="${max}" required></label>
+      <p class="muted">Все билеты заказа перестанут действовать. ${o.paidOnline ? 'Деньги уйдут на карту гостя через ЮKassa, чек возврата отправится сам.' : 'Деньги верните на кассе.'}</p>
+      <p class="form-error" id="refund-error"></p>
+      <div class="dlg-actions"><button class="btn block" type="submit">Вернуть</button><button class="btn ghost block" type="button" data-close>Отмена</button></div>
+    </form>`;
+  dlg.querySelectorAll('[data-close]').forEach((x) => x.addEventListener('click', () => dlg.close()));
+  const form = dlg.querySelector('form');
+  const btn = form.querySelector('[type=submit]');
+  const label = () => { const v = Number(form.amount.value); btn.textContent = v > 0 ? `Вернуть ${money(v)}${v < max ? ` из ${money(max)}` : ''}` : 'Вернуть'; };
+  form.amount.addEventListener('input', label);
+  label();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = Number(form.amount.value);
+    if (!Number.isInteger(amount) || amount < 1 || amount > max) {
+      $('#refund-error').textContent = `Укажите целое число рублей от 1 до ${max}`;
+      return;
+    }
+    btn.disabled = true;
+    try {
+      await adm(`/api/admin/orders/${encodeURIComponent(o.code)}/refund`, { method: 'POST', body: { amount } });
+      dlg.close();
+      toast(amount < max ? `Возвращено ${money(amount)} из ${money(max)}` : 'Деньги возвращены');
+      loadRefunds();
+      if (currentId) loadReport();
+    } catch (err) {
+      $('#refund-error').textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+  dlg.showModal();
+}
+
 // ---- Заявки на возврат ----
 let refunds = [];
 async function loadRefunds() {
@@ -467,16 +509,7 @@ async function loadRefunds() {
       <td>${esc(o.refundRequest.reason || '—')}</td>
       <td><button class="link-btn" data-refund-ok="${esc(o.code)}">Вернуть деньги</button><br><button class="link-btn" data-refund-no="${esc(o.code)}">Отказать</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Новых заявок на возврат нет.</p>';
-  $$('[data-refund-ok]').forEach((b) => b.addEventListener('click', async () => {
-    const o = refunds.find((x) => x.code === b.dataset.refundOk);
-    if (!confirm(`Вернуть ${money(o.total)} по заказу ${o.code}? Билеты перестанут действовать${o.paidOnline ? ', деньги уйдут на карту гостя через ЮKassa' : ', деньги верните на кассе'}.`)) return;
-    try {
-      await adm(`/api/admin/orders/${encodeURIComponent(o.code)}/refund`, { method: 'POST' });
-      toast('Деньги возвращены');
-      loadRefunds();
-      if (currentId) loadReport();
-    } catch (err) { toast(err.message, { error: true }); }
-  }));
+  $$('[data-refund-ok]').forEach((b) => b.addEventListener('click', () => refundDialog(refunds.find((x) => x.code === b.dataset.refundOk))));
   $$('[data-refund-no]').forEach((b) => b.addEventListener('click', async () => {
     const note = prompt('Причина отказа, её увидит гость (можно оставить пустой)', '');
     if (note === null) return;

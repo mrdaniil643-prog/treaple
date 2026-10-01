@@ -203,9 +203,11 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
 }, { staff: true });
 route('GET', '/api/admin/refund-requests', () => booking.listRefundRequests(), { admin: true });
 route('POST', '/api/admin/orders/:code/refund-decline', ({ code }, body) => booking.declineRefund(code, body), { admin: true });
-route('POST', '/api/admin/orders/:code/refund', async ({ code }) => {
-  await refundMoney(booking.adminRefundPlan(code), 'Возврат билетов');
-  return booking.adminRefund(code);
+route('POST', '/api/admin/orders/:code/refund', async ({ code }, body) => {
+  const plan = booking.adminRefundPlan(code, body.amount);
+  // в ключе повтора сумма: если первая попытка не прошла и админ поменял сумму, это новый возврат для ЮKassa
+  await refundMoney(plan, 'Возврат билетов', `all-${plan?.amount ?? 0}`);
+  return booking.adminRefund(code, plan ? plan.amount : null);
 }, { admin: true });
 route('POST', '/api/admin/orders/:code', ({ code }, body) => booking.adminEditOrder(code, body), { admin: true });
 route('POST', '/api/admin/tickets/:code', async ({ code }, body) => {
