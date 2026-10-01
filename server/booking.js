@@ -218,7 +218,11 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
       createdAt: o.created_at, expiresAt: o.expires_at, paidAt: o.paid_at,
       // сколько секунд осталось держать билеты — таймер на клиенте не зависит от его часов
       expiresIn: o.status === 'held' && o.expires_at ? Math.max(0, Math.floor((new Date(o.expires_at) - now()) / 1000)) : null,
-      canCancel: o.status === 'paid' && hoursLeft >= CANCEL_BEFORE_HOURS && !tickets.some((t) => t.status === 'used'),
+      // вернуть деньги может только администратор; гость отправляет заявку, пока событие не началось
+      canRequestRefund: o.status === 'paid' && hoursLeft > 0 && !tickets.some((t) => t.status === 'used') && o.refund_request_status !== 'pending',
+      refundRequest: o.refund_request_status ? {
+        status: o.refund_request_status, at: o.refund_request_at, reason: o.refund_request_reason, note: o.refund_request_note,
+      } : null,
       // онлайн-оплата: гость ушёл на страницу ЮKassa, ждём подтверждения
       paymentPending: o.status === 'held' && o.payment_status === 'pending',
       paidOnline: o.payment_status === 'succeeded' || o.payment_status === 'refunded',
@@ -406,11 +410,6 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     const lines = receiptLines(o, tickets);
     return { paymentId: o.payment_id, amount: lines.reduce((s, l) => s + l.price, 0), lines, order: o };
   }
-  function guestRefundPlan(secret) {
-    const view = getOrder({ secret });
-    checkGuestCancel(view);
-    return refundPlan(q.orderBySecret.get(secret));
-  }
   function adminRefundPlan(orderCode) {
     return refundPlan(checkAdminRefund(orderCode));
   }
@@ -441,6 +440,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   function refund(o, note) {
     tx(db, () => {
       q.setOrderStatus.run('refunded', iso(), o.id);
+      if (o.refund_request_status === 'pending') db.prepare("UPDATE orders SET refund_request_status = 'done' WHERE id = ?").run(o.id);
       q.releaseTickets.run('cancelled', o.id);
       log(null, o.id, 'refunded', note);
     });
@@ -449,18 +449,36 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     return orderView(q.orderByCode.get(o.code));
   }
 
-  function cancelByGuest(secret) {
-    checkGuestCancel(getOrder({ secret }));
-    return refund(q.orderBySecret.get(secret), 'guest');
+  // ---- Заявки на возврат ----
+  // Гость не возвращает деньги сам: он отправляет заявку, администратор возвращает или отказывает.
+  function requestRefund(secret, { reason } = {}) {
+    const o = findOrder({ secret });
+    const view = orderView(o);
+    if (o.refund_request_status === 'pending') return view;
+    if (!view.canRequestRefund) {
+      if (o.status === 'refunded') throw new BookingError(409, 'Заказ уже возвращён');
+      if (o.status !== 'paid') throw new BookingError(409, 'Заказ не оплачен, возвращать нечего');
+      if (view.tickets.some((t) => t.status === 'used')) throw new BookingError(409, 'По этому заказу гости уже прошли. Позвоните администратору.');
+      throw new BookingError(409, 'Мероприятие уже началось. Позвоните администратору.');
+    }
+    db.prepare("UPDATE orders SET refund_request_status = 'pending', refund_request_at = ?, refund_request_reason = ?, refund_request_note = '' WHERE id = ?")
+      .run(iso(), cleanText(reason, 500), o.id);
+    log(null, o.id, 'refund_requested');
+    onRequest();
+    return orderView(q.orderBySecret.get(secret));
   }
 
-  function checkGuestCancel(view) {
-    if (!view.canCancel) {
-      if (view.status === 'refunded') throw new BookingError(409, 'Заказ уже возвращён');
-      if (view.status !== 'paid') throw new BookingError(409, 'Заказ не оплачен, возвращать нечего');
-      if (view.tickets.some((t) => t.status === 'used')) throw new BookingError(409, 'По этому заказу гости уже прошли. Позвоните администратору.');
-      throw new BookingError(409, `Онлайн вернуть билеты можно за ${CANCEL_BEFORE_HOURS} часа до начала. Позвоните администратору.`);
-    }
+  function listRefundRequests() {
+    return db.prepare("SELECT * FROM orders WHERE refund_request_status = 'pending' ORDER BY refund_request_at").all().map(orderView);
+  }
+
+  function declineRefund(orderCode, { note } = {}) {
+    const o = q.orderByCode.get(String(orderCode ?? '').trim().toUpperCase());
+    if (!o || o.refund_request_status !== 'pending') throw new BookingError(404, 'Заявки на возврат по этому заказу нет');
+    db.prepare("UPDATE orders SET refund_request_status = 'declined', refund_request_note = ? WHERE id = ?").run(cleanText(note, 300), o.id);
+    log(null, o.id, 'refund_declined');
+    onRequest();
+    return orderView(q.orderByCode.get(o.code));
   }
 
   function renameGuest(secret, ticketCode, guestName) {
@@ -780,8 +798,8 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder, updateEvent,
     requestTable, listTableRequests, updateTableRequest,
-    cancelByGuest, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
-    guestRefundPlan, adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
+    requestRefund, listRefundRequests, declineRefund, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
+    adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };
 }

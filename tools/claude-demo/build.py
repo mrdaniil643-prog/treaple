@@ -185,10 +185,8 @@ s = s[:start] + """    if (rename) {
     }
 """ + s[end:]
 start = s.index("    if (ev.target.id === 'share-all') {")
-end = s.index("    if (ev.target.id === 'cancel') {")
+end = s.index("    if (ev.target.id === 'refund-ask') {")
 s = s[:start] + s[end:]
-s = rep(s, "      if (!confirm(`Вернуть все билеты заказа ${o.code}? Деньги придут на карту, с которой вы платили.`)) return;",
-        "      if (!ev.target.dataset.armed) { ev.target.dataset.armed = '1'; ev.target.textContent = 'Нажмите ещё раз, чтобы вернуть все билеты'; return; }", 'tickets')
 s = s.replace("      history.replaceState(null, '', orderLink(o.secret));\n", "")
 s = s.replace("      history.replaceState(null, '', orderLink(secret));\n", "")
 s = rep(s, "window.addEventListener('hashchange', () => location.reload());\n", "", 'tickets')
@@ -213,7 +211,9 @@ s = rep(s, "let token = sessionStorage.getItem('mt.admin') || '';",
 s = s.replace("sessionStorage.setItem('mt.admin'", "store.setItem('mt.admin'").replace("sessionStorage.removeItem('mt.admin')", "store.removeItem('mt.admin')")
 assert s.count('sessionStorage') == 3, s.count('sessionStorage')
 # confirm() в просмотрщике не работает: все вызовы внутри async-обработчиков
-assert s.count('!confirm(') == 6, s.count('!confirm(')
+assert s.count('!confirm(') == 7, s.count('!confirm(')
+# prompt() тоже не работает: в демо отказ в возврате без причины
+s = rep(s, "const note = prompt('Причина отказа, её увидит гость (можно оставить пустой)', '');\n    if (note === null) return;", "const note = '';", 'admin')
 s = s.replace('!confirm(', '!await ask(')
 s = rep(s, '      <button class="btn" type="submit">Войти</button>',
         '      <p class="muted">В демо-версии пароль: <b>demo</b></p>\n      <button class="btn" type="submit">Войти</button>', 'admin')
@@ -221,7 +221,7 @@ s = rep(s, 'href="/event?id=${e.id}" target="_blank">Страница событ
 s = rep(s, "  es?.close();\n  es = new EventSource(`/api/events/${currentId}/stream`);\n  let t;\n  es.onmessage = () => {",
         "  es?.();\n  let t;\n  es = watchAvailability(currentId, () => {", 'admin')
 # заявки: обновление раз в минуту только пока админка открыта
-s = rep(s, "setInterval(() => { if (token && $('#requests')) loadRequests(); }, 60e3);", "const reqTimer = setInterval(() => { if (token && $('#requests')) loadRequests(); }, 60e3);\nonLeave(() => clearInterval(reqTimer));", 'admin')
+s = rep(s, "setInterval(() => { if (token && $('#requests')) { loadRequests(); loadRefunds(); } }, 60e3);", "const reqTimer = setInterval(() => { if (token && $('#requests')) { loadRequests(); loadRefunds(); } }, 60e3);\nonLeave(() => clearInterval(reqTimer));", 'admin')
 s = rep(s, "    }, 400);\n  };\n}", "    }, 400);\n  });\n  onLeave(() => es?.());\n}", 'admin')
 s = rep(s, "let stream = null;", "let stream = null;\nonLeave(() => { stream?.getTracks().forEach((x) => x.stop()); stream = null; });", 'admin')
 write('admin.js', wrap(s))

@@ -64,15 +64,23 @@ test('оплата, поиск заказа по телефону, проход 
   const code = paid.tickets[0].code;
   assert.equal(booking.checkIn(`https://mt.bar/ticket.html?t=${code}`, { eventId: event.id }).result, 'ok');
   assert.equal(booking.checkIn(code, { eventId: event.id }).result, 'already_used');
-  assert.equal(booking.getOrder({ secret: paid.secret }).canCancel, false, 'после прохода вернуть нельзя');
+  assert.equal(booking.getOrder({ secret: paid.secret }).canRequestRefund, false, 'после прохода вернуть нельзя');
 });
 
-test('возврат освобождает места', () => {
+test('гость только просит вернуть деньги, возвращает администратор; возврат освобождает билеты', () => {
   const { booking } = setup();
   const later = booking.listEvents().at(-1);
   const held = booking.hold(later.id, 4);
-  booking.pay(held.secret, guest);
-  const refunded = booking.cancelByGuest(held.secret);
+  const paid = booking.pay(held.secret, guest);
+  assert.equal(booking.cancelByGuest, undefined, 'вернуть деньги кнопкой гостю нельзя');
+  const asked = booking.requestRefund(held.secret, { reason: 'Заболел' });
+  assert.equal(asked.status, 'paid', 'после заявки билеты ещё действуют');
+  assert.deepEqual([asked.refundRequest.status, asked.refundRequest.reason, asked.canRequestRefund], ['pending', 'Заболел', false]);
+  assert.equal(booking.requestRefund(held.secret).refundRequest.status, 'pending', 'повторная заявка ничего не ломает');
+  assert.deepEqual(booking.listRefundRequests().map((o) => o.code), [paid.code]);
+  const refunded = booking.adminRefund(paid.code);
+  assert.equal(refunded.refundRequest.status, 'done');
+  assert.deepEqual(booking.listRefundRequests(), [], 'после возврата заявка закрыта');
   assert.equal(refunded.status, 'refunded');
   assert.ok(refunded.tickets.every((t) => t.status === 'cancelled'));
   assert.equal(booking.getTicket(held.tickets[0].code).status, 'cancelled');
@@ -239,8 +247,12 @@ test('понятные отказы: повторный возврат, закр
   const { booking, event } = setup();
   const later = booking.listEvents().at(-1);
   const paid = booking.pay(booking.hold(later.id, 2).secret, guest);
-  assert.equal(booking.cancelByGuest(paid.secret).status, 'refunded');
-  assert.throws(() => booking.cancelByGuest(paid.secret), (e) => e.status === 409 && /уже возвращён/.test(e.message));
+  booking.requestRefund(paid.secret);
+  const declined = booking.declineRefund(paid.code, { note: 'Меньше суток до начала' });
+  assert.deepEqual([declined.status, declined.refundRequest.status, declined.refundRequest.note, declined.canRequestRefund], ['paid', 'declined', 'Меньше суток до начала', true]);
+  assert.throws(() => booking.declineRefund(paid.code), (e) => e.status === 404, 'отказать можно только по открытой заявке');
+  assert.equal(booking.adminRefund(paid.code).status, 'refunded');
+  assert.throws(() => booking.requestRefund(paid.secret), (e) => e.status === 409 && /уже возвращён/.test(e.message));
   booking.setEventStatus(event.id, 'closed');
   assert.throws(() => booking.hold(event.id, 1), (e) => e.status === 409 && /закрыта/.test(e.message));
 });

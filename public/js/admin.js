@@ -68,6 +68,11 @@ async function start() {
       <div class="card"><h3>Продано билетов по дням</h3><div id="sales-chart"></div></div>
     </div>
     <div class="card" style="margin-top:20px">
+      <h3>Заявки на возврат <span class="req-count" id="refund-count" hidden></span></h3>
+      <p class="muted">Гости не могут вернуть деньги сами: они отправляют заявку. «Вернуть деньги» возвращает всю сумму заказа на карту гостя через ЮKassa, чек возврата уходит сам. Вернуть часть билетов можно в «Изменить» у заказа: аннулируйте лишние.</p>
+      <div class="table-wrap" id="refunds"></div>
+    </div>
+    <div class="card" style="margin-top:20px">
       <div class="row" style="justify-content:space-between;align-items:center"><h3>Заявки на бронь стола <span class="req-count" id="req-count" hidden></span></h3>
         <label class="check"><input type="checkbox" id="req-all"> Показать обработанные</label></div>
       <div class="table-wrap" id="requests"></div>
@@ -118,6 +123,7 @@ async function start() {
   loadReport();
   loadStaff();
   loadRequests();
+  loadRefunds();
 }
 
 let report;
@@ -189,7 +195,7 @@ function drawOrders() {
       return `<tr><td><b>${esc(o.code)}</b><br><span class="muted">${fmt.date(o.createdAt)}, ${fmt.time(o.createdAt)}</span></td>
         <td>${esc(o.name || '—')}<br><span class="muted">${o.phone ? `+7 ${esc(o.phone)}` : ''}</span></td>
         <td>${ticketsWord(o.tickets.length)}<br><span class="muted">пришли ${came}</span></td>
-        <td>${money(o.total)}${o.paidOnline ? '<br><span class="muted">ЮKassa</span>' : ''}${o.refundedAmount ? `<br><span class="muted">возвращено ${money(o.refundedAmount)}</span>` : ''}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span></td>
+        <td>${money(o.total)}${o.paidOnline ? '<br><span class="muted">ЮKassa</span>' : ''}${o.refundedAmount ? `<br><span class="muted">возвращено ${money(o.refundedAmount)}</span>` : ''}</td><td><span class="status ${o.status}">${STATUS_TEXT[o.status]}</span>${o.status === 'paid' && o.refundRequest?.status === 'pending' ? '<br><span class="status held" style="margin-top:6px">просит возврат</span>' : ''}</td>
         <td>${o.status === 'paid' ? `<button class="link-btn" data-edit="${esc(o.code)}">Изменить</button><br>${o.tickets.some((t) => t.status === 'active') ? `<button class="link-btn" data-admit="${esc(o.tickets.find((t) => t.status === 'active').code)}">Впустить гостя</button><br>` : ''}${o.tickets.some((t) => t.status === 'used') ? '' : `<button class="link-btn" data-refund="${esc(o.code)}">Возврат</button>`}` : ''}</td></tr>`;
     }).join('')}</tbody></table>` : `<p class="muted">${q ? 'Ничего не нашлось.' : 'Заказов пока нет.'}</p>`;
   // Запасной путь, если у гостя сел телефон: находим заказ по имени и впускаем по одному.
@@ -205,6 +211,7 @@ function drawOrders() {
       await adm(`/api/admin/orders/${b.dataset.refund}/refund`, { method: 'POST' });
       toast('Возврат оформлен');
       loadReport();
+      loadRefunds();
     } catch (err) { toast(err.message, { error: true }); }
   }));
 }
@@ -447,7 +454,41 @@ function drawRequests() {
     } catch (err) { toast(err.message, { error: true }); }
   }));
 }
+// ---- Заявки на возврат ----
+let refunds = [];
+async function loadRefunds() {
+  refunds = await adm('/api/admin/refund-requests').catch(() => refunds);
+  $('#refund-count').hidden = !refunds.length;
+  $('#refund-count').textContent = refunds.length;
+  $('#refunds').innerHTML = refunds.length ? `<table class="list"><thead><tr><th>Заказ</th><th>Гость</th><th>Сумма</th><th>Причина</th><th></th></tr></thead><tbody>
+    ${refunds.map((o) => `<tr><td><b>${esc(o.code)}</b><br><span class="muted">${esc(o.event.title)}, ${fmt.date(o.event.startsAt)}</span><br><span class="muted">заявка ${fmt.date(o.refundRequest.at)}, ${fmt.time(o.refundRequest.at)}</span></td>
+      <td>${esc(o.name || '—')}${o.phone ? `<br><a href="tel:+7${esc(o.phone)}">+7 ${esc(o.phone)}</a>` : ''}</td>
+      <td>${money(o.total)}<br><span class="muted">${ticketsWord(o.tickets.length)}</span></td>
+      <td>${esc(o.refundRequest.reason || '—')}</td>
+      <td><button class="link-btn" data-refund-ok="${esc(o.code)}">Вернуть деньги</button><br><button class="link-btn" data-refund-no="${esc(o.code)}">Отказать</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Новых заявок на возврат нет.</p>';
+  $$('[data-refund-ok]').forEach((b) => b.addEventListener('click', async () => {
+    const o = refunds.find((x) => x.code === b.dataset.refundOk);
+    if (!confirm(`Вернуть ${money(o.total)} по заказу ${o.code}? Билеты перестанут действовать${o.paidOnline ? ', деньги уйдут на карту гостя через ЮKassa' : ', деньги верните на кассе'}.`)) return;
+    try {
+      await adm(`/api/admin/orders/${encodeURIComponent(o.code)}/refund`, { method: 'POST' });
+      toast('Деньги возвращены');
+      loadRefunds();
+      if (currentId) loadReport();
+    } catch (err) { toast(err.message, { error: true }); }
+  }));
+  $$('[data-refund-no]').forEach((b) => b.addEventListener('click', async () => {
+    const note = prompt('Причина отказа, её увидит гость (можно оставить пустой)', '');
+    if (note === null) return;
+    try {
+      await adm(`/api/admin/orders/${encodeURIComponent(b.dataset.refundNo)}/refund-decline`, { method: 'POST', body: { note } });
+      toast('В возврате отказано');
+      loadRefunds();
+    } catch (err) { toast(err.message, { error: true }); }
+  }));
+}
+
 // новые заявки подтягиваем сами, пока админка открыта
-setInterval(() => { if (token && $('#requests')) loadRequests(); }, 60e3);
+setInterval(() => { if (token && $('#requests')) { loadRequests(); loadRefunds(); } }, 60e3);
 
 token ? start() : login();

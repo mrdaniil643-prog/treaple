@@ -10,6 +10,15 @@ const app = $('#app');
 // Старые ссылки вида ?order= переносим во фрагмент и убираем из адресной строки.
 const params = new URLSearchParams(location.hash.slice(1) || location.search);
 
+// Что с заявкой на возврат: ждёт администратора, отказ или ничего
+function refundNote(o) {
+  const r = o.refundRequest;
+  if (o.status !== 'paid' || !r) return '';
+  if (r.status === 'pending') return `<p class="refund-state">Заявка на возврат отправлена ${fmt.date(r.at)} в ${fmt.time(r.at)}. Администратор рассмотрит её и вернёт деньги на карту или счёт, с которых вы платили. Пока билеты действуют.</p>`;
+  if (r.status === 'declined') return `<p class="refund-state declined">В возврате отказано${r.note ? `: ${esc(r.note)}` : ''}. Билеты действуют. Вопросы — по телефону администратора.</p>`;
+  return '';
+}
+
 function renderOrder(o, { fresh = false } = {}) {
   const box = $('#order');
   const active = o.tickets.filter((t) => t.status === 'active').length;
@@ -27,9 +36,9 @@ function renderOrder(o, { fresh = false } = {}) {
     <div class="row" style="margin-top:24px">
       ${active > 1 ? '<button class="btn ghost small" id="pdf-all">Скачать все билеты в PDF</button>' : ''}
       ${active ? '<button class="btn ghost small" id="share-all">Скопировать ссылки на все билеты</button>' : ''}
-      ${o.canCancel ? '<button class="btn ghost small" id="cancel">Вернуть билеты</button>' : ''}
+      ${o.canRequestRefund ? '<button class="btn ghost small" id="refund-ask">Вернуть билеты</button>' : ''}
     </div>
-    ${o.status === 'paid' && !o.canCancel ? '<p class="cart-note" style="margin-top:12px">Онлайн вернуть билеты можно за сутки до начала. Позже звоните администратору.</p>' : ''}
+    <div id="refund-box">${refundNote(o)}</div>
   </section>`;
   if (fresh) box.querySelectorAll('.ticket').forEach((el) => el.classList.add('printing'));
   stopLive();
@@ -69,13 +78,27 @@ function renderOrder(o, { fresh = false } = {}) {
       if (await copyText(`${o.event.title}, ${fmt.full(o.event.startsAt)}\n${lines.join('\n')}`)) toast('Ссылки на все билеты скопированы');
       else toast('Не удалось скопировать. Отправьте билеты по одному кнопкой «Отправить гостю».', { error: true });
     }
-    if (ev.target.id === 'cancel') {
-      if (!confirm(`Вернуть все билеты заказа ${o.code}? Деньги придут на карту, с которой вы платили.`)) return;
+    if (ev.target.id === 'refund-ask') {
+      ev.target.hidden = true;
+      $('#refund-box').innerHTML = `<form class="refund-form" id="refund-form">
+        <h3>Заявка на возврат</h3>
+        <p class="muted">Администратор рассмотрит заявку и вернёт деньги на карту или счёт, с которых вы платили. Пока заявку не одобрили, билеты действуют. Условия — на странице <a href="/refund">«Возврат билетов»</a>.</p>
+        <label class="field"><span>Причина (необязательно)</span><textarea class="input" name="reason" maxlength="500" rows="2"></textarea></label>
+        <div class="row"><button class="btn small" type="submit">Отправить заявку</button><button class="btn ghost small" type="button" id="refund-cancel">Не нужно</button></div>
+      </form>`;
+    }
+    if (ev.target.id === 'refund-cancel') renderOrder(o);
+    if (ev.target.closest('#refund-form') && ev.target.type === 'submit') {
+      ev.preventDefault();
+      ev.target.disabled = true;
       try {
-        const updated = await api(`/api/orders/${o.secret}/cancel`, { method: 'POST' });
+        const updated = await api(`/api/orders/${o.secret}/refund-request`, { method: 'POST', body: { reason: $('#refund-form').reason.value } });
         renderOrder(updated);
-        toast('Билеты возвращены');
-      } catch (err) { toast(err.message, { error: true }); }
+        toast('Заявка на возврат отправлена');
+      } catch (err) {
+        ev.target.disabled = false;
+        toast(err.message, { error: true });
+      }
     }
   };
 }

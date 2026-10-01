@@ -14,7 +14,7 @@ npm run lint                        # проверка синтаксиса вс
 npx eslint .                        # ошибки в коде (eslint.config.mjs: только правила на баги, без стиля)
 npm run e2e                         # браузерные сценарии (Playwright): покупка, заявка на стол, вход по QR, мобильная вёрстка; сервер поднимается сам
 node --no-warnings --test --test-name-pattern="живой QR" test/booking.test.js   # один тест
-ADMIN_TOKEN=... TARGET=http://localhost:3000 python3 scripts/security-check.py   # 77 проверок OWASP против dev-копии (создаёт тестовые данные)
+ADMIN_TOKEN=... TARGET=http://localhost:3000 python3 scripts/security-check.py   # 81 проверка OWASP против dev-копии (создаёт тестовые данные)
 python3 tools/claude-demo/build.py  # демо без сервера для публикации на claude.ai → tools/claude-demo/build/
 ```
 
@@ -34,6 +34,8 @@ python3 tools/claude-demo/build.py  # демо без сервера для пу
 **Модель билетов.** Билет входной, без места: `hold(eventId, qty)` (до `MAX_TICKETS_PER_ORDER` = 10). У события `capacity` и одна `price`; `computeAvailability` отдаёт `{capacity, sold, held, free}`. У билета `table_id = 'GA'`, `seat_no` — порядковый номер из `freeNumbers()`; частичный уникальный индекс `tickets_seat_taken` по `(event_id, table_id, seat_no)` вместе с транзакцией `tx()` не даёт продать больше вместимости. Старые билеты из времён схемы зала хранят номер стола, считаются во вместимость, но нигде не показываются. Колонка `events.halls` осталась в схеме и не используется. Заказ живёт `held` (10 минут) → `paid` → `refunded`, либо `expired`/`cancelled`; билеты `held` → `active` → `used`. Просроченные брони снимает `sweep()` (перед операциями и по таймеру). Вместимость и цену админ меняет через `updateEvent` (не ниже проданного).
 
 **Заявки на стол.** Таблица `table_requests`: `requestTable` (публичный `POST /api/table-requests`, лимит 10 в час с IP, согласие обязательно, событие или дата `day` на полгода вперёд), `listTableRequests`/`updateTableRequest` для админки (статусы `new`/`confirmed`/`declined`, заметка). Денег и связи с билетами нет. Форма — `public/js/table-request.js`, на странице события и на главной.
+
+**Возвраты только через администратора.** Гость не возвращает деньги сам: `requestRefund` (`POST /api/orders/:secret/refund-request`, лимит `request`) ставит `orders.refund_request_status = 'pending'`, билеты при этом действуют. Админ видит `listRefundRequests` («Заявки на возврат») и либо возвращает всю сумму (`/api/admin/orders/:code/refund` → ЮKassa → `refund()`, заявка становится `done`), либо отказывает (`declineRefund`, `declined` + причина, её видит гость). Часть билетов админ возвращает аннулированием в «Изменить». Старого `/cancel` больше нет.
 
 **Доступ.** Заказом управляют по `secret` (передаётся во фрагменте URL `/tickets#order=…`, не в query) или по номеру заказа + телефону. Публичная ссылка на билет (`getTicket`) намеренно не отдаёт номер заказа, контакты и чужие билеты. Контролёр получает урезанный `gateView`, админ — полный `ticketView`. Админ правит билет через `adminEditTicket` (имя, цена, статус active/used/cancelled с проверкой вместимости при возврате из аннулированных, `newQr` — новый `gate_id`) и контакты через `adminEditOrder`; сумма заказа пересчитывается, правки пишутся в `ticket_log` как `admin_edit`. `liveTickets` отдаёт и имя, чтобы экран гостя обновлялся после правки.
 

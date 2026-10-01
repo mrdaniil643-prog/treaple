@@ -166,10 +166,8 @@ route('GET', '/api/orders/lookup', (_, __, url) => booking.getOrder({ code: url.
 route('GET', '/api/orders/:secret', ({ secret }) => booking.getOrder({ secret }), { limit: 'order' });
 route('POST', '/api/orders/:secret/pay', ({ secret }, body, __, ctx) => (yookassa ? startPayment(secret, body, ctx.req) : booking.pay(secret, body)), { limit: 'order' });
 route('POST', '/api/orders/:secret/release', ({ secret }) => booking.release(secret), { limit: 'order' });
-route('POST', '/api/orders/:secret/cancel', async ({ secret }) => {
-  await refundMoney(booking.guestRefundPlan(secret), 'Возврат билетов по просьбе гостя');
-  return booking.cancelByGuest(secret);
-}, { limit: 'order' });
+// гость только просит вернуть деньги, сам возврат делает администратор
+route('POST', '/api/orders/:secret/refund-request', ({ secret }, body) => booking.requestRefund(secret, body), { limit: 'request' });
 route('POST', '/api/orders/:secret/guest', ({ secret }, body) => booking.renameGuest(secret, body.ticket, body.name), { limit: 'order' });
 route('GET', '/api/tickets/:code', ({ code }) => booking.getTicket(code), { limit: 'ticket' });
 route('GET', '/api/tickets/:code/print', ({ code }) => booking.printQr(code), { limit: 'ticket' });
@@ -203,6 +201,8 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
   ctx.headers['Set-Cookie'] = staffCookie(ctx.req, '', 0);
   return { ok: true };
 }, { staff: true });
+route('GET', '/api/admin/refund-requests', () => booking.listRefundRequests(), { admin: true });
+route('POST', '/api/admin/orders/:code/refund-decline', ({ code }, body) => booking.declineRefund(code, body), { admin: true });
 route('POST', '/api/admin/orders/:code/refund', async ({ code }) => {
   await refundMoney(booking.adminRefundPlan(code), 'Возврат билетов');
   return booking.adminRefund(code);

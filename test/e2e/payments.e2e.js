@@ -129,13 +129,28 @@ test('админ аннулирует один билет — деньги за 
   assert.equal(yk.refunds[0].receipt.items.length, 1);
 });
 
-test('гость возвращает оставшийся билет сам — возврат на остаток суммы', async () => {
+test('гость отправляет заявку на возврат, деньги возвращает администратор — на остаток суммы', async () => {
   await guest.reload();
-  await guest.waitForSelector('#cancel');
-  await guest.click('#cancel');
-  await guest.waitForSelector('.toast');
-  assert.equal((await guest.textContent('.toast')).trim(), 'Билеты возвращены');
+  await guest.waitForSelector('#refund-ask');
+  await guest.click('#refund-ask');
+  await guest.fill('#refund-form [name=reason]', 'Не смогу прийти');
+  await guest.click('#refund-form [type=submit]');
+  await guest.waitForSelector('.refund-state');
+  assert.match(await guest.textContent('.refund-state'), /Заявка на возврат отправлена/);
+  assert.equal(yk.refunds.length, 1, 'сама заявка денег не возвращает');
+  assert.equal(await guest.locator('#refund-ask').count(), 0, 'вторую заявку не отправить');
+
+  const admin = await page();
+  await admin.goto(`${B}/admin`);
+  await admin.fill('[name=p]', TOKEN);
+  await admin.click('#login button');
+  await admin.waitForSelector('[data-refund-ok]');
+  assert.match(await admin.textContent('#refunds'), /Не смогу прийти/);
+  await admin.click('[data-refund-ok]');
+  await admin.waitForSelector('#refunds >> text=Новых заявок на возврат нет');
   assert.deepEqual(yk.refunds.map((r) => r.amount.value), ['1000.00', '1000.00']);
+  await guest.reload();
+  await guest.waitForSelector('.order .status.refunded');
   assert.deepEqual(yk.errors, [], 'копия ЮKassa не нашла ошибок в запросах');
 });
 

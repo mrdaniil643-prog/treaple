@@ -48,6 +48,9 @@ t = requests.get(f"{B}/api/tickets/{o1['tickets'][0]['code']}").json()
 check('A01 публичный билет без номера заказа/контактов/секрета', not any(k in json.dumps(t, ensure_ascii=False) for k in [o1['code'], o1['secret'], '9111111111']))
 for p in ['/api/admin/events', f'/api/admin/events/{EID}/report', '/api/admin/staff', '/api/admin/table-requests']:
     check(f'A01 админ-метод без пароля закрыт {p}', requests.get(B + p).status_code == 401)
+rq = post(f"/api/orders/{o2['secret']}/refund-request", {'reason': 'тест', 'status': 'refunded'}).json()
+check('A01 заявка гостя на возврат не возвращает деньги сама', rq.get('status') == 'paid' and rq.get('refundRequest', {}).get('status') == 'pending', str(rq)[:120])
+check('A01 старый возврат одной кнопкой закрыт', post(f"/api/orders/{o2['secret']}/cancel").status_code == 404)
 check('A01 без пароля заявку на стол не изменить', post('/api/admin/table-requests/1', {'status': 'declined'}).status_code == 401)
 check('A01 без пароля вместимость события не поменять', post(f'/api/admin/events/{EID}', {'capacity': 1}).status_code == 401)
 check('A01 гашение контролёра без cookie закрыто', post('/api/staff/checkin', {'code': 'X'}).status_code == 401)
@@ -157,6 +160,10 @@ check('Гашение: ответ контролёру без номера за�
 
 post('/api/staff/logout', {}, SC)
 check('A07 после выхода cookie контролёра недействительна', requests.get(B + '/api/staff/me', headers=SC).status_code == 401)
+
+# Запросы без пароля к админке считаются неудачными входами, поэтому эти проверки в конце
+check('A01 без пароля заявки на возврат не видны', requests.get(B + '/api/admin/refund-requests').status_code == 401)
+check('A01 без пароля в возврате не отказать', post(f"/api/admin/orders/{o2['code']}/refund-decline", {'note': 'x'}).status_code == 401)
 
 # ===== Перебор
 codes = [requests.get(f'{B}/api/orders/lookup', params={'code': 'MT-AAAAAAAA', 'phone': '9000000000'}).status_code for _ in range(35)]

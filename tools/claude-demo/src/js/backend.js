@@ -116,7 +116,8 @@ function orderView(o) {
     code: o.code, secret: o.secret, status: o.status, total: o.total, name: o.name, phone: o.phone, email: o.email || null,
     createdAt: o.created_at, expiresAt: o.expires_at, paidAt: o.paid_at || null,
     expiresIn: o.status === 'held' ? Math.max(0, Math.floor((new Date(o.expires_at) - Date.now()) / 1000)) : null,
-    canCancel: o.status === 'paid' && hoursLeft >= CANCEL_BEFORE_HOURS && !tickets.some((t) => t.status === 'used'),
+    canRequestRefund: o.status === 'paid' && hoursLeft > 0 && !tickets.some((t) => t.status === 'used') && o.refund_request?.status !== 'pending',
+    refundRequest: o.refund_request || null,
     event: { id: event.id, title: event.title, startsAt: event.starts_at, doorsAt: event.doors_at, lineup: event.lineup, deposit: event.deposit },
     tickets,
   };
@@ -188,15 +189,19 @@ function release(secret) {
   return orderView(o);
 }
 
-function cancel(secret) {
+// как на сайте: гость отправляет заявку, деньги возвращает администратор
+function requestRefund(secret, body = {}) {
   const o = findOrder(secret);
-  if (!orderView(o).canCancel) throw new DemoError(409, `Онлайн вернуть билеты можно за ${CANCEL_BEFORE_HOURS} часа до начала. Позвоните администратору.`);
-  refund(o);
+  if (o.refund_request?.status === 'pending') return orderView(o);
+  if (!orderView(o).canRequestRefund) throw new DemoError(409, o.status === 'refunded' ? 'Заказ уже возвращён' : 'Вернуть этот заказ нельзя. Позвоните администратору.');
+  o.refund_request = { status: 'pending', at: new Date().toISOString(), reason: clean(body.reason, 500), note: '' };
+  save();
   return orderView(o);
 }
 
 function refund(o) {
   o.status = 'refunded';
+  if (o.refund_request?.status === 'pending') o.refund_request.status = 'done';
   for (const c of o.tickets) memory.tickets[c].status = 'cancelled';
   save();
 }
@@ -499,6 +504,14 @@ async function handleAdmin(p, method, body) {
   if ((m = p.match(/^\/api\/admin\/events\/(\d+)\/status$/))) return setEventStatus(m[1], body.status);
   if ((m = p.match(/^\/api\/admin\/events\/(\d+)$/)) && method === 'POST') return updateEvent(m[1], body);
   if (p === '/api/admin/table-requests') return listRequests();
+  if (p === '/api/admin/refund-requests') return Object.values(memory.orders).filter((o) => o.refund_request?.status === 'pending').map(orderView);
+  if ((m = p.match(/^\/api\/admin\/orders\/([^/]+)\/refund-decline$/))) {
+    const o = byOrderCode(decodeURIComponent(m[1]));
+    if (!o || o.refund_request?.status !== 'pending') throw new DemoError(404, 'Заявки на возврат по этому заказу нет');
+    Object.assign(o.refund_request, { status: 'declined', note: clean(body.note, 300) });
+    save();
+    return orderView(o);
+  }
   if ((m = p.match(/^\/api\/admin\/table-requests\/(\d+)$/))) return updateRequest(m[1], body);
   if ((m = p.match(/^\/api\/admin\/events\/(\d+)\/report$/))) return eventReport(m[1]);
   if (p === '/api/admin/checkin') return adminCheckIn(body.code, body.eventId);
@@ -532,7 +545,7 @@ export async function handle(path, { method = 'GET', body = {}, admin } = {}) {
   if (p === '/api/orders/lookup') return lookup(url.searchParams.get('code'), url.searchParams.get('phone'));
   if ((m = p.match(/^\/api\/orders\/([^/]+)\/pay$/))) return pay(decodeURIComponent(m[1]), body);
   if ((m = p.match(/^\/api\/orders\/([^/]+)\/release$/))) return release(decodeURIComponent(m[1]));
-  if ((m = p.match(/^\/api\/orders\/([^/]+)\/cancel$/))) return cancel(decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/api\/orders\/([^/]+)\/refund-request$/))) return requestRefund(decodeURIComponent(m[1]), body);
   if ((m = p.match(/^\/api\/orders\/([^/]+)\/guest$/))) return rename(decodeURIComponent(m[1]), body.ticket, body.name);
   if ((m = p.match(/^\/api\/orders\/([^/]+)$/))) return orderView(findOrder(decodeURIComponent(m[1])));
   if ((m = p.match(/^\/api\/tickets\/([^/]+)\/print$/))) return printQr(decodeURIComponent(m[1]));
