@@ -213,7 +213,7 @@ route('POST', '/api/admin/orders/:code/refund', ({ code }, body) => withRefundLo
   try {
     await refundMoney(plan, 'Возврат билетов', key);
   } catch (e) {
-    booking.restoreSnapshot(before);
+    if (!e.pending) booking.restoreSnapshot(before);
     throw e;
   }
   return booking.adminOrderView(code);
@@ -231,7 +231,7 @@ route('POST', '/api/admin/tickets/:code', async ({ code }, body) => {
     try {
       await refundMoney(plan, 'Возврат билета', code);
     } catch (e) {
-      booking.restoreSnapshot(before);
+      if (!e.pending) booking.restoreSnapshot(before);
       throw e;
     }
     return view;
@@ -239,7 +239,9 @@ route('POST', '/api/admin/tickets/:code', async ({ code }, body) => {
 }, { admin: true });
 
 // ---- ЮKassa ----
-const origin = (req) => process.env.PUBLIC_ORIGIN || `http://${req.headers.host}`;
+// адрес сайта для ссылок (возврат с оплаты, canonical): первый из PUBLIC_ORIGIN, если их несколько через запятую
+const SITE_ORIGIN = String(process.env.PUBLIC_ORIGIN || '').split(',')[0].trim().replace(/\/$/, '');
+const origin = (req) => SITE_ORIGIN || `http://${req.headers.host}`;
 const paying = new Set(); // заказы, по которым прямо сейчас создаётся платёж (двойное нажатие)
 
 async function startPayment(secret, body, req) {
@@ -292,15 +294,39 @@ function checkRefund(r) {
 async function refundMoney(plan, what, key = 'all') {
   if (!plan || !yookassa) return;
   const o = plan.order;
-  const r = await yookassa.createRefund({
+  const request = {
     paymentId: plan.paymentId,
     amount: plan.amount,
     description: `${what}, заказ ${o.code}`,
     receipt: buildReceipt(plan.lines, { name: o.name, phone: o.phone, email: o.email }, receiptSettings()),
     idempotenceKey: `refund-${o.code}-${key}`,
-  });
+  };
+  let r;
+  try {
+    r = await yookassa.createRefund(request);
+  } catch (e) {
+    if (!e.uncertain) throw e;
+    // ответа нет: возврат мог пройти. Билеты не возвращаем в продажу заново, а повторяем запрос сами
+    booking.addRefundJob(o, request);
+    throw new BookingError(504, 'ЮKassa пока не ответила. Билеты уже аннулированы, возврат денег повторится автоматически в течение нескольких минут.', { pending: true });
+  }
   checkRefund(r);
   booking.recordRefund(o, plan.amount);
+}
+
+// Повтор возвратов, на которые ЮKassa не ответила: тот же запрос, тот же ключ повтора
+async function retryRefunds() {
+  for (const job of booking.refundJobs()) {
+    try {
+      const r = await yookassa.createRefund(job.request);
+      if (r?.status === 'canceled') {
+        console.error(`Возврат по заказу ${job.order.code} отклонён ЮKassa: ${r.cancellation_details?.reason}. Верните деньги вручную.`);
+        booking.abandonRefundJob(job, `canceled: ${r.cancellation_details?.reason}`);
+      } else booking.finishRefundJob(job);
+    } catch (e) {
+      booking.finishRefundJob(job, e.message);
+    }
+  }
 }
 
 // Состояние платежа всегда берём у самой ЮKassa: уведомление без подписи, ему одному не верим
@@ -338,7 +364,8 @@ async function yookassaWebhook(req, res) {
 if (yookassa) {
   setInterval(async () => {
     for (const id of booking.pendingPayments()) await syncPayment(id).catch((e) => console.error(`Проверка платежа ${id}: ${e.message}`));
-  }, 60e3).unref();
+    await retryRefunds().catch((e) => console.error(`Повтор возвратов: ${e.message}`));
+  }, Number(process.env.PAYMENT_POLL_MS) || 60e3).unref();
 }
 
 function openStream(req, res, eventId, ip) {

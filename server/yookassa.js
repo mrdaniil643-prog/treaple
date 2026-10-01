@@ -63,14 +63,16 @@ export function createYooKassa({ shopId, secretKey, apiUrl = 'https://api.yookas
       });
     } catch (e) {
       console.error(`ЮKassa ${method} ${path}: нет связи (${e.message})`);
-      throw new BookingError(502, 'Платёжный сервис не отвечает. Попробуйте через минуту.');
+      // uncertain: запрос мог дойти и выполниться, просто ответ потерялся
+      throw new BookingError(502, 'Платёжный сервис не отвечает. Попробуйте через минуту.', { uncertain: true });
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       // в лог — только код и описание ошибки от ЮKassa, без ключей и данных карты
       console.error(`ЮKassa ${method} ${path}: ${res.status} ${data.code || ''} ${data.description || ''} ${data.parameter || ''}`);
       if (res.status === 404) throw new BookingError(404, 'Платёж не найден');
-      throw new BookingError(502, 'Платёжный сервис отклонил запрос. Попробуйте ещё раз или позвоните нам.');
+      // 5xx и 429 — сбой на стороне ЮKassa, результат неизвестен; 4xx — запрос точно отклонён
+      throw new BookingError(502, 'Платёжный сервис отклонил запрос. Попробуйте ещё раз или позвоните нам.', { uncertain: res.status >= 500 || res.status === 429 });
     }
     return data;
   }

@@ -486,6 +486,26 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   }
   const adminOrderView = (orderCode) => orderView(snapshotOrder(orderCode).order);
 
+  // ЮKassa не ответила на возврат: билеты уже аннулированы, запрос повторяем с тем же ключом
+  // (ЮKassa по ключу повтора не проведёт его дважды), пока не придёт ответ
+  function addRefundJob(o, request) {
+    db.prepare('INSERT INTO refund_jobs (order_id, request, amount, created_at) VALUES (?, ?, ?, ?)').run(o.id, JSON.stringify(request), request.amount, iso());
+    log(null, o.id, 'refund_retry', `ЮKassa не ответила, повторим: ${request.amount} ₽`);
+  }
+  const refundJobs = () => db.prepare('SELECT * FROM refund_jobs WHERE done_at IS NULL ORDER BY id').all()
+    .map((j) => ({ ...j, request: JSON.parse(j.request), order: db.prepare('SELECT * FROM orders WHERE id = ?').get(j.order_id) }));
+  function finishRefundJob(job, error = null) {
+    if (error) return db.prepare('UPDATE refund_jobs SET last_error = ? WHERE id = ?').run(String(error).slice(0, 300), job.id);
+    db.prepare('UPDATE refund_jobs SET done_at = ? WHERE id = ?').run(iso(), job.id);
+    recordRefund(job.order, job.amount);
+    log(null, job.order_id, 'refund_retry_done', `${job.amount} ₽`);
+  }
+  // ЮKassa ответила отказом: больше не повторяем, деньги админ возвращает вручную
+  function abandonRefundJob(job, reason) {
+    db.prepare('UPDATE refund_jobs SET done_at = ?, last_error = ? WHERE id = ?').run(iso(), String(reason).slice(0, 300), job.id);
+    log(null, job.order_id, 'refund_retry_failed', reason);
+  }
+
   // ---- Заявки на возврат ----
   // Гость не возвращает деньги сам: он отправляет заявку, администратор возвращает или отказывает.
   function requestRefund(secret, { reason } = {}) {
@@ -855,7 +875,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder, updateEvent,
     requestTable, listTableRequests, updateTableRequest,
-    requestRefund, listRefundRequests, declineRefund, snapshotOrder, restoreSnapshot, adminOrderView, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
+    requestRefund, listRefundRequests, declineRefund, snapshotOrder, restoreSnapshot, adminOrderView, addRefundJob, refundJobs, finishRefundJob, abandonRefundJob, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
     adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };

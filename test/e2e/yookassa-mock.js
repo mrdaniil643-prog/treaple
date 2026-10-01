@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 export function startYooKassaMock({ shopId, secretKey, port }) {
   const payments = new Map();
   const refunds = [];
-  const state = { refuseNext: false };
+  const state = { refuseNext: false, loseNext: false, byKey: new Map() };
   const errors = [];
   const webhooks = [];
   let site = '';
@@ -71,6 +71,9 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
     }
     if (req.method === 'POST' && url.pathname === '/v3/refunds') {
       const b = await read(req);
+      // ключ повтора: тот же ключ — тот же возврат, второй раз деньги не уходят
+      const seen = state.byKey.get(req.headers['idempotence-key']);
+      if (seen) return json(res, 200, seen);
       const p = payments.get(b.payment_id);
       const done = refunds.filter((r) => r.payment_id === b.payment_id).reduce((s, r) => s + cents(r.amount), 0);
       const bad = !p || p.status !== 'succeeded' ? 'платёж не оплачен' : done + cents(b.amount) > cents(p.amount) ? 'возврат больше платежа' : checkReceipt(b.receipt, b.amount);
@@ -82,6 +85,12 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
       }
       const r = { id: randomUUID(), status: 'succeeded', payment_id: b.payment_id, amount: b.amount, receipt: b.receipt };
       refunds.push(r);
+      state.byKey.set(req.headers['idempotence-key'], r);
+      // возврат проведён, но ответ «потерялся»: магазин получает 500 и не знает, что деньги ушли
+      if (state.loseNext) {
+        state.loseNext = false;
+        return json(res, 500, { type: 'error', code: 'internal_server_error' });
+      }
       return json(res, 200, r);
     }
     json(res, 404, { type: 'error', code: 'not_found' });
@@ -93,6 +102,7 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
       setSite: (s) => { site = s; },
       payments, refunds, errors, webhooks,
       refuseNextRefund: () => { state.refuseNext = true; },
+      loseNextRefundAnswer: () => { state.loseNext = true; },
       close: () => server.close(),
     }));
   });

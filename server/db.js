@@ -70,6 +70,17 @@ CREATE TABLE IF NOT EXISTS table_requests (
 );
 CREATE INDEX IF NOT EXISTS table_requests_status ON table_requests(status, created_at);
 
+-- Возвраты, на которые ЮKassa не ответила: повторяются с тем же ключом, пока не пройдут
+CREATE TABLE IF NOT EXISTS refund_jobs (
+  id INTEGER PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id),
+  request TEXT NOT NULL,            -- JSON запроса createRefund: сумма, чек, ключ повтора
+  amount INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  done_at TEXT,
+  last_error TEXT
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

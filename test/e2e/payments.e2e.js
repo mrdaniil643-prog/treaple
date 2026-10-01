@@ -52,7 +52,7 @@ before(async () => {
     cwd: ROOT,
     env: {
       ...process.env, PORT: String(PORT), DB_FILE: join(dir, 'mt.db'), ADMIN_TOKEN: TOKEN, BACKUP_DIR: 'off', PUBLIC_ORIGIN: B,
-      YOOKASSA_SHOP_ID: SHOP.shopId, YOOKASSA_SECRET_KEY: SHOP.secretKey, YOOKASSA_API_URL: `${yk.url}/v3`,
+      PAYMENT_POLL_MS: '1500', YOOKASSA_SHOP_ID: SHOP.shopId, YOOKASSA_SECRET_KEY: SHOP.secretKey, YOOKASSA_API_URL: `${yk.url}/v3`,
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
@@ -172,6 +172,29 @@ test('гость отправляет заявку на возврат, адми
   await guest.reload();
   await guest.waitForSelector('.order .status.refunded');
   assert.deepEqual(yk.errors, [], 'копия ЮKassa не нашла ошибок в запросах');
+});
+
+test('ЮKassa провела возврат, но ответ потерялся: билет не оживает, возврат повторяется и проходит один раз', async () => {
+  const p = await page();
+  await buy(p);
+  await p.click('#pay');
+  await p.waitForURL(/\/tickets/);
+  await p.waitForSelector('.ticket .qr svg', { timeout: 10000 });
+  const secret = decodeURIComponent((await p.evaluate(() => location.hash)).match(/order=([^&]+)/)[1]);
+  const order = await (await fetch(`${B}/api/orders/${encodeURIComponent(secret)}`)).json();
+  const before = yk.refunds.length;
+  yk.loseNextRefundAnswer();
+  const res = await fetch(`${B}/api/admin/orders/${order.code}/refund`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: B, 'X-Admin-Token': TOKEN }, body: JSON.stringify({}),
+  });
+  assert.equal(res.status, 504);
+  assert.match((await res.json()).error, /повторится автоматически/);
+  const now = await (await fetch(`${B}/api/orders/${encodeURIComponent(secret)}`)).json();
+  assert.equal(now.status, 'refunded', 'билеты не вернулись в силу');
+  // проверка раз в 1,5 с повторяет запрос с тем же ключом: ЮKassa отвечает тем же возвратом
+  for (let i = 0; i < 40 && (await (await fetch(`${B}/api/orders/${encodeURIComponent(secret)}`)).json()).refundedAmount === 0; i++) await new Promise((r) => { setTimeout(r, 250); });
+  assert.equal((await (await fetch(`${B}/api/orders/${encodeURIComponent(secret)}`)).json()).refundedAmount, 2000);
+  assert.equal(yk.refunds.length, before + 1, 'деньги ушли один раз');
 });
 
 test('на страницах нет ошибок JavaScript', () => {
