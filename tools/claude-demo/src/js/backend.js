@@ -58,7 +58,7 @@ const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - VENUE_OFFSET).to
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const POSTER = {
   title: 'Отчётный концерт × Открытый микрофон', lineup: 'ROCK SOME! & Easy Vocal при поддержке Capital Show', genre: 'Концерт', image: 'img/events/otchetny-koncert-25-10.jpg',
-  description: 'Выступят те, кто готовил песни с Rock Some! и Easy Vocal, и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
+  description: 'Выступят те, кто готовил песни с Rock Some! и Easy Vocal, исполнители бара МТ и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
 };
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', ...POSTER,
