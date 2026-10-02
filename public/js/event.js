@@ -21,7 +21,7 @@ function render() {
   <section class="wrap event-hero${e.image ? ' has-poster' : ''}">
     <a class="back" href="/#afisha">← Вся афиша</a>
     <h1>${esc(e.title)}</h1>
-    ${e.image ? `<img class="poster" src="${esc(e.image)}" alt="Афиша: ${esc(e.title)}" width="1024" height="1536" decoding="async">` : ''}
+    ${e.image ? `<img class="poster" src="${esc(e.image)}" alt="Афиша: ${esc(e.title)}" width="720" height="1280" decoding="async">` : ''}
     <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}<span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
     ${e.description || e.lineup ? `<p class="desc">${esc(e.description || e.lineup)}</p>` : ''}
     <p class="desc muted">${esc(VENUE.address)}. ${esc(VENUE.entry)}, возьмите с собой паспорт.</p>

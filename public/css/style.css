@@ -648,7 +648,7 @@ dialog, .menu-nav { overscroll-behavior: contain; }
 .offer-note { margin: -6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
 
 /* постер события */
-.event-hero .poster { display: block; width: min(100%, 340px); height: auto; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 16px; margin: 0 0 20px; box-shadow: 0 24px 48px -20px rgba(0, 0, 0, .7); }
+.event-hero .poster { display: block; width: min(100%, 340px); height: auto; border-radius: 16px; margin: 0 0 20px; box-shadow: 0 24px 48px -20px rgba(0, 0, 0, .7); }
 @media (min-width: 900px) {
   .event-hero.has-poster { display: grid; grid-template-columns: minmax(0, 1fr) 300px; column-gap: 48px; align-items: start; }
   .event-hero.has-poster > * { grid-column: 1; }
