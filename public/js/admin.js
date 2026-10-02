@@ -148,7 +148,10 @@ async function loadReport() {
     <div><b>${money(s.revenue)}</b><span>выручка по билетам</span></div>`;
   $('#sale-controls').innerHTML = `<a class="btn ghost small" href="/event?id=${e.id}" target="_blank">Страница события</a>
     ${e.status === 'on_sale' ? '<button class="btn ghost small" data-status="closed">Закрыть продажу</button>' : '<button class="btn ghost small" data-status="on_sale">Открыть продажу</button>'}
-    ${e.status !== 'cancelled' ? '<button class="btn ghost small" data-status="cancelled">Отменить событие</button>' : ''}`;
+    ${e.status !== 'cancelled' ? '<button class="btn ghost small" data-status="cancelled">Отменить событие</button>' : ''}
+    <button class="btn ghost small" data-export="${e.id}">Скачать билеты в Excel</button>
+    <button class="btn ghost small" data-export="">Excel: все мероприятия</button>`;
+  $$('#sale-controls [data-export]').forEach((b) => b.addEventListener('click', () => downloadExcel(b)));
   $$('#sale-controls [data-status]').forEach((b) => b.addEventListener('click', async () => {
     if (b.dataset.status === 'cancelled' && !confirm('Отменить событие? Продажа остановится. Возвраты по оплаченным заказам оформите в списке заказов.')) return;
     try {
@@ -504,6 +507,23 @@ function refundDialog(o) {
     }
   });
   dlg.showModal();
+}
+
+// Список оплаченных билетов в Excel: ФИО, телефон, номер заказа и код билета. Файл остаётся только у вас на устройстве.
+async function downloadExcel(btn) {
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/admin/export.xlsx${btn.dataset.export ? `?event=${encodeURIComponent(btn.dataset.export)}` : ''}`, { headers: { 'X-Admin-Token': token } });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Не удалось скачать файл');
+    const name = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'MT-bilety.xlsx';
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30e3);
+  } catch (err) { toast(err.message, { error: true }); }
+  btn.disabled = false;
 }
 
 // ---- Заявки на возврат ----

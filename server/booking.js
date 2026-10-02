@@ -506,6 +506,23 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
     log(null, job.order_id, 'refund_retry_failed', reason);
   }
 
+  // ---- Выгрузка оплаченных билетов в Excel (на всякий случай: список гостей на руках) ----
+  // eventId — одно событие, без него — все. По строке на билет оплаченного или возвращённого заказа.
+  const TICKET_RU = { active: 'Действует', used: 'Прошёл', cancelled: 'Возвращён' };
+  function exportTickets(eventId = null) {
+    const rows = db.prepare(`SELECT t.code AS ticket, t.status, t.guest_name, COALESCE(t.paid_price, t.price) AS price, t.checked_in_at,
+        o.code AS order_code, o.name, o.phone, o.email, o.paid_at, e.title, e.starts_at
+      FROM tickets t JOIN orders o ON o.id = t.order_id JOIN events e ON e.id = t.event_id
+      WHERE o.status IN ('paid', 'refunded') AND t.status IN ('active', 'used', 'cancelled') ${eventId ? 'AND e.id = ?' : ''}
+      ORDER BY e.starts_at, o.paid_at, t.id`).all(...(eventId ? [getEvent(eventId).id] : []));
+    const when = (iso) => (iso ? new Intl.DateTimeFormat('ru-RU', { timeZone: process.env.TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)) : '');
+    return [
+      ['Мероприятие', 'Дата', 'Номер заказа', 'Код билета', 'Гость (ФИО на билете)', 'Покупатель', 'Телефон', 'Почта', 'Цена, ₽', 'Статус билета', 'Оплачен', 'Вход'],
+      ...rows.map((r) => [r.title, when(r.starts_at), r.order_code, r.ticket, r.guest_name || r.name || '', r.name || '',
+        r.phone ? `+7${r.phone}` : '', r.email || '', r.price, TICKET_RU[r.status] || r.status, when(r.paid_at), when(r.checked_in_at)]),
+    ];
+  }
+
   // ---- Заявки на возврат ----
   // Гость не возвращает деньги сам: он отправляет заявку, администратор возвращает или отказывает.
   function requestRefund(secret, { reason } = {}) {
@@ -875,7 +892,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
   return {
     sweep, availability, listEvents, getEvent: (id) => publicEvent(getEvent(id)), hold, pay, release, getOrder, updateEvent,
     requestTable, listTableRequests, updateTableRequest,
-    requestRefund, listRefundRequests, declineRefund, snapshotOrder, restoreSnapshot, adminOrderView, addRefundJob, refundJobs, finishRefundJob, abandonRefundJob, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
+    exportTickets, requestRefund, listRefundRequests, declineRefund, snapshotOrder, restoreSnapshot, adminOrderView, addRefundJob, refundJobs, finishRefundJob, abandonRefundJob, renameGuest, getTicket, printQr, startPayment, attachPayment, applyPayment, markLateRefunded, pendingPayments,
     adminRefundPlan, ticketRefundPlan, recordRefund, checkIn, liveTickets, qrToken, eventReport, adminRefund, adminEditTicket, adminEditOrder, createEvent, setEventStatus,
     allEvents: () => q.events.all().map(parseEvent),
   };

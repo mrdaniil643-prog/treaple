@@ -11,6 +11,7 @@ import { resolveAdminToken, makeTokenCheck, clientIp, createLimiter, securityHea
 import { createBooking, BookingError, HOLD_MINUTES, MAX_TICKETS_PER_ORDER, CANCEL_BEFORE_HOURS, QR_WINDOW_SECONDS } from './booking.js';
 import { createStaff, readCookie, STAFF_COOKIE } from './staff.js';
 import { createSeo } from './seo.js';
+import { buildXlsx } from './xlsx.js';
 import { createBackups } from './backup.js';
 import { createYooKassa, buildReceipt, receiptSettings } from './yookassa.js';
 
@@ -201,6 +202,13 @@ route('POST', '/api/staff/logout', (_, __, ___, ctx) => {
   ctx.headers['Set-Cookie'] = staffCookie(ctx.req, '', 0);
   return { ok: true };
 }, { staff: true });
+// Excel со списком оплаченных билетов: ?event=ID — одно событие, без него — все
+route('GET', '/api/admin/export.xlsx', (_, __, url) => {
+  const eventId = url.searchParams.get('event');
+  const rows = booking.exportTickets(eventId ? Number(eventId) : null);
+  const day = new Date().toISOString().slice(0, 10);
+  return { download: { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: `MT-bilety-${eventId ? `sobytie-${Number(eventId)}-` : ''}${day}.xlsx`, body: buildXlsx('Билеты', rows, [34, 18, 15, 15, 26, 22, 15, 26, 10, 14, 18, 18]) } };
+}, { admin: true });
 route('GET', '/api/admin/refund-requests', () => booking.listRefundRequests(), { admin: true });
 route('POST', '/api/admin/orders/:code/refund-decline', ({ code }, body) => booking.declineRefund(code, body), { admin: true });
 route('POST', '/api/admin/orders/:code/refund', ({ code }, body) => withRefundLock(code, async () => {
@@ -517,6 +525,11 @@ const server = createServer(async (req, res) => {
       const params = Object.fromEntries(r.keys.map((k, i) => [k, m[i + 1]]));
       const body = req.method === 'POST' ? await readJson(req) : {};
       const result = await r.handler(params, body, url, ctx);
+      if (result?.download) {
+        const d = result.download;
+        res.writeHead(200, { 'Content-Type': d.type, 'Content-Disposition': `attachment; filename="${d.name}"`, 'Cache-Control': 'no-store', 'Content-Length': d.body.length });
+        return res.end(d.body);
+      }
       return send(res, 200, result, ctx.headers);
     }
     send(res, 404, { error: 'Не найдено' });

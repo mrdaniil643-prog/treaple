@@ -211,6 +211,8 @@ s = rep(s, "let token = sessionStorage.getItem('mt.admin') || '';",
 s = s.replace("sessionStorage.setItem('mt.admin'", "store.setItem('mt.admin'").replace("sessionStorage.removeItem('mt.admin')", "store.removeItem('mt.admin')")
 assert s.count('sessionStorage') == 3, s.count('sessionStorage')
 # confirm() в просмотрщике не работает: все вызовы внутри async-обработчиков
+# выгрузка в Excel собирается на сервере, в демо её нет
+s = rep(s, '\n    <button class="btn ghost small" data-export="${e.id}">Скачать билеты в Excel</button>\n    <button class="btn ghost small" data-export="">Excel: все мероприятия</button>', '', 'admin')
 assert s.count('!confirm(') == 5, s.count('!confirm(')
 # prompt() тоже не работает: в демо отказ в возврате без причины
 s = rep(s, "const note = prompt('Причина отказа, её увидит гость (можно оставить пустой)', '');\n    if (note === null) return;", "const note = '';", 'admin')

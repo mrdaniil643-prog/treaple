@@ -176,6 +176,23 @@ test('админ меняет имя гостя, экран билета обн�
   await guest.waitForFunction((c) => document.querySelector(`.ticket[data-code="${c}"] .t-guest span`)?.textContent === 'Вера Смирнова', ticketCode, { timeout: 5000 });
 });
 
+test('админ скачивает оплаченные билеты в Excel', async () => {
+  const admin = await page();
+  await admin.goto(`${B}/admin`);
+  await admin.fill('[name=p]', TOKEN);
+  await admin.click('#login button');
+  await admin.waitForSelector(`[data-export="${eventId}"]`);
+  const [download] = await Promise.all([admin.waitForEvent('download'), admin.click(`[data-export="${eventId}"]`)]);
+  assert.match(download.suggestedFilename(), /^MT-bilety-sobytie-\d+-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  const { readFileSync } = await import('node:fs');
+  const file = readFileSync(await download.path());
+  assert.equal(file.subarray(0, 2).toString(), 'PK', 'это zip, то есть xlsx');
+  assert.ok(file.includes(Buffer.from(ticketCode)), 'в файле код билета');
+  assert.ok(file.includes(Buffer.from('Вера Смирнова')), 'и ФИО гостя');
+  const noToken = await fetch(`${B}/api/admin/export.xlsx`);
+  assert.equal(noToken.status, 401, 'без пароля файл не отдаётся');
+});
+
 // Мобильная вёрстка: нет горизонтальной прокрутки, зоны нажатия не меньше 44 px, поля не мельче 16 px
 async function mobileProblems(p) {
   return p.evaluate(() => {

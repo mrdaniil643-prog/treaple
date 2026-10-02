@@ -161,9 +161,11 @@ check('Гашение: ответ контролёру без номера за�
 post('/api/staff/logout', {}, SC)
 check('A07 после выхода cookie контролёра недействительна', requests.get(B + '/api/staff/me', headers=SC).status_code == 401)
 
-# Запросы без пароля к админке считаются неудачными входами, поэтому эти проверки в конце
-check('A01 без пароля заявки на возврат не видны', requests.get(B + '/api/admin/refund-requests').status_code == 401)
-check('A01 без пароля в возврате не отказать', post(f"/api/admin/orders/{o2['code']}/refund-decline", {'note': 'x'}).status_code == 401)
+# Запросы без пароля к админке считаются неудачными входами, поэтому эти проверки в конце;
+# после 10 таких попыток сервер отвечает 429 вместо 401 — это тоже отказ
+check('A01 без пароля заявки на возврат не видны', requests.get(B + '/api/admin/refund-requests').status_code in (401, 429))
+check('A01 без пароля список гостей в Excel не скачать', requests.get(B + '/api/admin/export.xlsx').status_code in (401, 429))
+check('A01 без пароля в возврате не отказать', post(f"/api/admin/orders/{o2['code']}/refund-decline", {'note': 'x'}).status_code in (401, 429))
 
 # ===== Перебор
 codes = [requests.get(f'{B}/api/orders/lookup', params={'code': 'MT-AAAAAAAA', 'phone': '9000000000'}).status_code for _ in range(35)]
