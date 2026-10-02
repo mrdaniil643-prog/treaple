@@ -57,7 +57,7 @@ const VENUE_OFFSET = 10 * 3600e3;
 const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - VENUE_OFFSET).toISOString();
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const POSTER = {
-  title: 'Отчётный концерт × Открытый микрофон', lineup: 'Rock Some! и приглашённые артисты', genre: 'Концерт', image: 'img/events/otchetny-koncert-25-10.jpg',
+  title: 'Отчётный концерт × Открытый микрофон', lineup: 'ROCK SOME! & Easy Vocal при поддержке capital show', genre: 'Концерт', image: 'img/events/otchetny-koncert-25-10.jpg',
   description: 'Выступят те, кто готовил песни с Rock Some!, и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
 };
 const DEFAULT_EVENT = () => ({

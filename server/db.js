@@ -153,6 +153,7 @@ function migrate(db) {
   // начало перенесли с 21:00 на 16:00 и сократили описание; правки из админки не трогаем
   db.prepare("UPDATE events SET starts_at = '2026-10-25T06:00:00.000Z', doors_at = '2026-10-25T05:00:00.000Z' WHERE slug = 'karaoke-25-october' AND starts_at = '2026-10-25T11:00:00.000Z'").run();
   db.prepare("UPDATE events SET description = ? WHERE slug = 'karaoke-25-october' AND description = ?").run(DEFAULT_EVENT.description, OLD_DESCRIPTION);
+  db.prepare("UPDATE events SET lineup = ? WHERE slug = 'karaoke-25-october' AND lineup = 'Rock Some! и приглашённые артисты'").run(DEFAULT_EVENT.lineup);
   const ticketCols = db.prepare('PRAGMA table_info(tickets)').all().map((c) => c.name);
   if (!ticketCols.includes('paid_price')) db.exec('ALTER TABLE tickets ADD COLUMN paid_price INTEGER');
 }
@@ -194,7 +195,7 @@ export const DEFAULT_CAPACITY = 136;
 export const DEFAULT_EVENT = {
   title: 'Отчётный концерт × Открытый микрофон',
   genre: 'Концерт',
-  lineup: 'Rock Some! и приглашённые артисты',
+  lineup: 'ROCK SOME! & Easy Vocal при поддержке capital show',
   description: 'Выступят те, кто готовил песни с Rock Some!, и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
   image: '/img/events/otchetny-koncert-25-10.jpg',
 };
