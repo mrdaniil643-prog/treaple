@@ -60,7 +60,7 @@ async function main() {
   </section>
 
   <section class="section wrap" id="table">
-    <div class="section-head"><h2>Бронь стола</h2><p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p><p>Депозит тратите на еду и напитки, оплачивается он в баре. Оставьте заявку, администратор перезвонит и подтвердит стол. На концерт каждому гостю нужен билет.</p></div>
+    <div class="section-head"><h2>Бронь стола</h2><p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p><p>Депозит тратите на еду и напитки. Оставьте заявку, администратор перезвонит и подтвердит стол. На концерт каждому гостю нужен билет.</p></div>
     <div class="request-card home-request" id="request"></div>
   </section>`;
 
