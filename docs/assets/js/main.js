@@ -3,6 +3,7 @@
 (function () {
   'use strict';
 
+  window.__siteReady = true;
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var $  = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -68,17 +69,24 @@
   $$('.qa').forEach(function (qa) {
     var summary = $('.qa__q', qa);
     var panel = $('.qa__a', qa);
+    var pending = null;          // отложенное закрытие, пока идёт анимация
+
+    var cancelPending = function () {
+      if (pending) { panel.removeEventListener('transitionend', pending); pending = null; }
+    };
+
     summary.addEventListener('click', function (e) {
       e.preventDefault();
-      if (qa.open) {
+      cancelPending();
+      if (qa.classList.contains('is-open')) {
         qa.classList.remove('is-open');
         if (reduced) { qa.open = false; return; }
-        var close = function (ev) {
-          if (ev.propertyName !== 'grid-template-rows') return;
+        pending = function (ev) {
+          if (ev.target !== panel || ev.propertyName !== 'grid-template-rows') return;
+          cancelPending();
           qa.open = false;
-          panel.removeEventListener('transitionend', close);
         };
-        panel.addEventListener('transitionend', close);
+        panel.addEventListener('transitionend', pending);
       } else {
         qa.open = true;
         requestAnimationFrame(function () { qa.classList.add('is-open'); });
@@ -135,23 +143,31 @@
     });
   }
 
-  function maskPhone(input) {
-    var digits = input.value.replace(/\D/g, '');
-    if (digits[0] === '8') digits = '7' + digits.slice(1);
-    if (digits[0] !== '7') digits = '7' + digits;
-    digits = digits.slice(0, 11);
-    var out = '+7';
-    if (digits.length > 1) out += ' (' + digits.slice(1, 4);
-    if (digits.length >= 5) out += ') ' + digits.slice(4, 7);
-    if (digits.length >= 8) out += '-' + digits.slice(7, 9);
-    if (digits.length >= 10) out += '-' + digits.slice(9, 11);
-    input.value = out;
+  /* Национальная часть номера: десять цифр после кода страны.
+     Поле при фокусе получает подсказку «+7 (»: эта семёрка — код страны, её отбрасываем.
+     Человек мог сам набрать 8 или 7 перед номером, в том числе поверх подсказки,
+     или вставить номер целиком. Лишняя ведущая цифра видна только когда цифр
+     одиннадцать: ведущую 8 нельзя срезать сразу, с неё начинаются коды 812, 843, 800. */
+  function nationalDigits(value) {
+    var d = String(value || '').replace(/\D/g, '');
+    if (/^\s*\+7/.test(value)) d = d.slice(1);
+    if (d.length === 11 && (d[0] === '8' || d[0] === '7')) d = d.slice(1);
+    return d.slice(0, 10);
+  }
+
+  function formatPhone(n) {
+    if (!n) return '';
+    var out = '+7 (' + n.slice(0, 3);
+    if (n.length > 3) out += ') ' + n.slice(3, 6);
+    if (n.length > 6) out += '-' + n.slice(6, 8);
+    if (n.length > 8) out += '-' + n.slice(8, 10);
+    return out;
   }
 
   $$('[data-mask="phone"]').forEach(function (input) {
     input.addEventListener('focus', function () { if (!input.value) input.value = '+7 ('; });
-    input.addEventListener('input', function () { maskPhone(input); });
-    input.addEventListener('blur', function () { if (input.value.replace(/\D/g, '').length < 2) input.value = ''; });
+    input.addEventListener('input', function () { input.value = formatPhone(nationalDigits(input.value)); });
+    input.addEventListener('blur', function () { if (!nationalDigits(input.value)) input.value = ''; });
   });
 
   function setError(field, message) {
@@ -172,7 +188,7 @@
     } else if (field.name === 'name') {
       if (v.length < 2) { setError(field, 'Напишите, как к вам обращаться'); return false; }
     } else if (field.name === 'phone') {
-      if (v.replace(/\D/g, '').length !== 11) { setError(field, 'Нужны все 11 цифр номера'); return false; }
+      if (nationalDigits(v).length !== 10) { setError(field, 'Нужны все 10 цифр номера после +7'); return false; }
     }
     setError(field, '');
     return true;

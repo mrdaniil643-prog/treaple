@@ -81,6 +81,15 @@ with sync_playwright() as p:
     if masked != "+7 (916) 123-45-67":
         problems.append(f"маска телефона даёт {masked!r}")
 
+    # номер с ведущей восьмёркой: маска не должна сдвигать цифры
+    page.fill("#m-phone", "")
+    page.click("#m-phone"); page.type("#m-phone", "89098548861", delay=8)
+    with8 = page.input_value("#m-phone")
+    notes.append(f"маска, набор с 8: {with8}")
+    if with8 != "+7 (909) 854-88-61":
+        problems.append(f"набор с 8 даёт {with8!r} вместо +7 (909) 854-88-61")
+    page.fill("#m-phone", "")
+
     # валидация: пустое имя
     page.fill("#q-name", "")
     page.click("#form-quick button[type=submit]")
@@ -130,6 +139,16 @@ with sync_playwright() as p:
     if not opened:
         problems.append("FAQ не раскрылся")
     page.locator("#faq").screenshot(path=f"{OUT}/faq.png")
+
+    # закрыть и сразу открыть снова, пока идёт анимация: вопрос должен остаться открытым
+    q2 = page.locator(".qa").nth(1)
+    q2.locator(".qa__q").click(); page.wait_for_timeout(600)
+    q2.locator(".qa__q").click(); page.wait_for_timeout(120)
+    q2.locator(".qa__q").click(); page.wait_for_timeout(900)
+    reopened = page.evaluate("(() => { const q = document.querySelectorAll('.qa')[1]; return q.open && q.classList.contains('is-open'); })()")
+    notes.append(f"FAQ: повторное открытие во время закрытия срабатывает: {reopened}")
+    if not reopened:
+        problems.append("FAQ: клик во время закрытия не открывает вопрос заново")
 
     # переход по пункту меню: заголовок секции не уходит под липкую шапку
     page.evaluate("document.documentElement.style.scrollBehavior='auto'")
@@ -208,6 +227,19 @@ with sync_playwright() as p:
     if h1_op != "1" or h1_tr not in ("none", "matrix(1, 0, 0, 1, 0, 0)"):
         problems.append("при reduced-motion заголовок остался анимированным")
     page.screenshot(path=f"{OUT}/reduced-motion.png")
+    ctx.close()
+
+    # main.js не загрузился (404, блокировщик, обрыв сети): первый экран открывается сам
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    page.route("**/assets/js/main.js", lambda r: r.abort())
+    page.goto(BASE, wait_until="load")
+    page.wait_for_timeout(3600)
+    h1_tr = page.evaluate("getComputedStyle(document.querySelector('.hero__title span span')).transform")
+    icon_op = page.evaluate("getComputedStyle(document.querySelector('.case__icon')).opacity")
+    notes.append(f"main.js не загрузился: заголовок transform={h1_tr}, иконки opacity={icon_op}")
+    if h1_tr not in ("none", "matrix(1, 0, 0, 1, 0, 0)") or icon_op != "1":
+        problems.append("без main.js первый экран или иконки остались скрытыми")
     ctx.close()
 
     # без JavaScript контент должен остаться читаемым

@@ -11,20 +11,46 @@
 
 const WINDOW_MS = 60000;
 const MAX_PER_WINDOW = 3;
+const MAX_TRACKED_IPS = 5000;
 const hits = new Map(); // IP -> метки времени. Живёт в пределах одного инстанса функции.
+
+function prune(now) {
+  for (const [ip, times] of hits) {
+    if (now - times[times.length - 1] >= WINDOW_MS) hits.delete(ip);
+  }
+  // Если и после чистки адресов слишком много, уходят самые давние: Map хранит порядок вставки
+  for (const ip of hits.keys()) {
+    if (hits.size <= MAX_TRACKED_IPS) break;
+    hits.delete(ip);
+  }
+}
 
 function rateLimited(ip) {
   const now = Date.now();
   const recent = (hits.get(ip) || []).filter((t) => now - t < WINDOW_MS);
   recent.push(now);
+  hits.delete(ip);          // переставить в конец, чтобы порядок отражал свежесть
   hits.set(ip, recent);
-  if (hits.size > 5000) hits.clear();
+  if (hits.size > MAX_TRACKED_IPS) prune(now);
   return recent.length > MAX_PER_WINDOW;
+}
+
+// Vercel перезаписывает x-real-ip и x-forwarded-for адресом клиента, подделать их снаружи нельзя.
+// На других хостингах проверьте, какой заголовок выставляет прокси, и поставьте его первым.
+function clientIp(req) {
+  const h = req.headers;
+  return (
+    String(h['x-real-ip'] || '').trim() ||
+    String(h['x-forwarded-for'] || '').split(',')[0].trim() ||
+    (req.socket && req.socket.remoteAddress) ||
+    'unknown'
+  );
 }
 
 const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
 const clean = (v, max) => String(v == null ? '' : v).replace(CONTROL_CHARS, ' ').trim().slice(0, max);
-const escapeHtml = (v) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escapeHtml = (v) =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 async function readBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -40,6 +66,7 @@ async function sendTelegram(text) {
   if (!token || !chatId) throw new Error('TG_BOT_TOKEN или TG_CHAT_ID не заданы');
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    signal: AbortSignal.timeout(6000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -62,8 +89,9 @@ async function sendEmail(text) {
   const from = process.env.LEAD_EMAIL_FROM;
   if (!key || !to || !from) return;
 
-  // Почта дублирует Telegram, её отказ не должен ронять заявку
+  // Почта дублирует Telegram: её отказ или зависание не должны ронять уже доставленную заявку
   await fetch('https://api.resend.com/emails', {
+    signal: AbortSignal.timeout(2500),
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -81,10 +109,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Только POST' });
   }
 
-  const ip =
-    String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-    (req.socket && req.socket.remoteAddress) ||
-    'unknown';
+  const ip = clientIp(req);
 
   if (rateLimited(ip)) {
     return res.status(429).json({ error: 'Слишком много заявок подряд. Попробуйте через минуту.' });
@@ -95,6 +120,9 @@ export default async function handler(req, res) {
     body = await readBody(req);
   } catch (e) {
     return res.status(400).json({ error: 'Тело запроса не разобрать' });
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ error: 'Ожидается JSON-объект заявки' });
   }
 
   // Ловушка для ботов: поле спрятано от людей, заполнить его может только скрипт.

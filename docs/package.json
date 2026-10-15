@@ -1,11 +1,13 @@
 {
-  "name": "saveliev-legal",
+  "name": "sazikov-legal",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Лендинг юридической практики",
+  "description": "Лендинг юриста Ярослава Сазикова",
   "scripts": {
     "dev": "python3 -m http.server 4173",
-    "lint:html": "node --check assets/js/main.js"
+    "check": "node --check assets/js/main.js && node --check api/lead.js",
+    "test:api": "node --test tests/api.test.mjs",
+    "test:e2e": "python3 tests/e2e.py"
   }
 }
