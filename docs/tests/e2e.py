@@ -131,28 +131,44 @@ with sync_playwright() as p:
         problems.append("FAQ не раскрылся")
     page.locator("#faq").screenshot(path=f"{OUT}/faq.png")
 
-    # слайдер
-    page.evaluate("document.querySelector('#reviews').scrollIntoView()"); page.wait_for_timeout(900)
-    before = page.evaluate("document.querySelector('.slider__track').style.transform")
-    page.click("[data-slide=next]"); page.wait_for_timeout(800)
-    after = page.evaluate("document.querySelector('.slider__track').style.transform")
-    notes.append(f"слайдер: {before} -> {after}")
-    if before == after:
-        problems.append("слайдер не переключается")
+    # переход по пункту меню: заголовок секции не уходит под липкую шапку
+    page.evaluate("document.documentElement.style.scrollBehavior='auto'")
+    page.click(".topnav a[href='#process']"); page.wait_for_timeout(500)
+    head_top = page.evaluate("document.querySelector('#process .band__title').getBoundingClientRect().top")
+    bar_bottom = page.evaluate("document.querySelector('#topbar').getBoundingClientRect().bottom")
+    notes.append(f"якорь #process: заголовок на {round(head_top)}px, шапка до {round(bar_bottom)}px")
+    if head_top < bar_bottom:
+        problems.append("заголовок секции после перехода по меню прячется под шапкой")
 
-    # sticky-кнопка: появляется после hero, прячется у основной формы
+    # панель вызова: появляется после hero, прячется у основной формы
     page.evaluate("document.querySelector('#cases').scrollIntoView()"); page.wait_for_timeout(900)
-    on_cases = page.evaluate("document.querySelector('#calltab').classList.contains('is-on')")
+    on_cases = page.evaluate("document.querySelector('#callbar').classList.contains('is-on')")
     page.evaluate("document.querySelector('#apply').scrollIntoView()"); page.wait_for_timeout(900)
-    on_apply = page.evaluate("document.querySelector('#calltab').classList.contains('is-on')")
-    notes.append(f"sticky-кнопка: у карточек={on_cases}, у формы={on_apply}")
+    on_apply = page.evaluate("document.querySelector('#callbar').classList.contains('is-on')")
+    notes.append(f"панель вызова: у карточек={on_cases}, у формы={on_apply}")
     if not on_cases or on_apply:
-        problems.append(f"sticky-кнопка ведёт себя неверно (cases={on_cases}, apply={on_apply})")
+        problems.append(f"панель вызова ведёт себя неверно (cases={on_cases}, apply={on_apply})")
 
     # клавиатура: доходим до кнопки быстрой формы
     if errors:
         problems.append(f"pageerror: {errors[:3]}")
 
+    ctx.close()
+
+    # мобильная панель вызова: кнопка звонка видна и ведёт на tel:
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(BASE, wait_until="networkidle")
+    page.evaluate("document.documentElement.style.scrollBehavior='auto'")
+    page.evaluate("document.querySelector('#process').scrollIntoView()"); page.wait_for_timeout(900)
+    call = page.locator(".callbar__btn--call")
+    href = call.get_attribute("href")
+    visible = call.is_visible()
+    box = call.bounding_box() or {"height": 0}
+    notes.append(f"мобильная панель: «Позвонить» видна={visible}, href={href}, высота={round(box['height'])}px")
+    if not visible or href != "tel:+79098548861" or box["height"] < 44:
+        problems.append("мобильная кнопка звонка не видна, ведёт не туда или меньше 44px")
+    page.screenshot(path=f"{OUT}/mobile-callbar.png")
     ctx.close()
 
     # контраст основного текста

@@ -16,7 +16,7 @@
   });
 
   /* ── 2. Появление секций по скроллу ──────────────────────── */
-  $$('.band__head, .case, .step, .slider, .lawyer__figure, .lawyer__body, .form--main, .qa, .footer__col')
+  $$('.band__head, .case, .step, .person, .form--main, .qa')
     .forEach(function (el) { el.setAttribute('data-anim', ''); });
 
   $$('[data-stagger]').forEach(function (group) {
@@ -34,16 +34,6 @@
   }, { rootMargin: '0px 0px -12% 0px', threshold: 0.15 });
 
   $$('[data-anim]').forEach(function (el) { appear.observe(el); });
-
-  var lawyer = $('.lawyer');
-  if (lawyer) {
-    $$('.lawyer__sign path').forEach(function (p) {
-      p.style.setProperty('--len', Math.ceil(p.getTotalLength()));
-    });
-    new IntersectionObserver(function (es, o) {
-      es.forEach(function (e) { if (e.isIntersecting) { lawyer.classList.add('is-in'); o.disconnect(); } });
-    }, { threshold: 0.3 }).observe(lawyer);
-  }
 
   /* ── 3. Таймлайн: линия заполняется по мере скролла ──────── */
   var steps = $('#steps');
@@ -74,75 +64,7 @@
     paint();
   }
 
-  /* ── 4. Слайдер отзывов ──────────────────────────────────── */
-  var slider = $('#slider');
-  if (slider) {
-    var track  = $('.slider__track', slider);
-    var slides = $$('.review', slider);
-    var dotsEl = $('.slider__dots', slider);
-    var index = 0, timer = null, paused = false;
-
-    slides.forEach(function (s, i) {
-      var dot = document.createElement('button');
-      dot.type = 'button';
-      dot.className = 'dot';
-      dot.setAttribute('role', 'tab');
-      dot.setAttribute('aria-label', 'Отзыв ' + (i + 1) + ' из ' + slides.length);
-      dot.addEventListener('click', function () { go(i); restart(); });
-      dotsEl.appendChild(dot);
-    });
-    var dots = $$('.dot', dotsEl);
-
-    function go(i) {
-      index = (i + slides.length) % slides.length;
-      track.style.transform = 'translateX(-' + (index * 100) + '%)';
-      slides.forEach(function (s, n) {
-        s.setAttribute('aria-hidden', n === index ? 'false' : 'true');
-        $$('a, button', s).forEach(function (el) {
-          if (n === index) el.removeAttribute('tabindex'); else el.setAttribute('tabindex', '-1');
-        });
-      });
-      dots.forEach(function (d, n) { d.setAttribute('aria-selected', n === index ? 'true' : 'false'); });
-    }
-    function restart() { stop(); if (!paused && !reduced) timer = setInterval(function () { go(index + 1); }, 6500); }
-    function stop() { if (timer) { clearInterval(timer); timer = null; } }
-
-    $$('[data-slide]', slider.closest('.band')).forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        go(index + (btn.dataset.slide === 'next' ? 1 : -1));
-        restart();
-      });
-    });
-
-    slider.addEventListener('mouseenter', function () { paused = true; stop(); });
-    slider.addEventListener('mouseleave', function () { paused = false; restart(); });
-    slider.addEventListener('focusin',  function () { paused = true; stop(); });
-    slider.addEventListener('focusout', function () { paused = false; restart(); });
-    document.addEventListener('visibilitychange', function () {
-      if (document.hidden) stop(); else restart();
-    });
-
-    slider.tabIndex = 0;
-    slider.setAttribute('aria-roledescription', 'карусель');
-    slider.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowRight') { go(index + 1); restart(); }
-      if (e.key === 'ArrowLeft')  { go(index - 1); restart(); }
-    });
-
-    var startX = null;
-    slider.addEventListener('pointerdown', function (e) { startX = e.clientX; });
-    slider.addEventListener('pointerup', function (e) {
-      if (startX === null) return;
-      var dx = e.clientX - startX;
-      if (Math.abs(dx) > 45) { go(index + (dx < 0 ? 1 : -1)); restart(); }
-      startX = null;
-    });
-
-    go(0);
-    restart();
-  }
-
-  /* ── 5. FAQ: раскрытие через grid-template-rows ──────────── */
+  /* ── 4. FAQ: раскрытие через grid-template-rows ──────────── */
   $$('.qa').forEach(function (qa) {
     var summary = $('.qa__q', qa);
     var panel = $('.qa__a', qa);
@@ -164,12 +86,12 @@
     });
   });
 
-  /* ── 6. Sticky-кнопка: после hero, но не поверх главной формы ── */
-  var tab = $('#calltab');
+  /* ── 5. Панель вызова: после первого экрана, но не поверх главной формы ── */
+  var bar = $('#callbar');
   var hero = $('#hero');
   var apply = $('#apply');
   var pastHero = false, formVisible = false;
-  var syncTab = function () { if (tab) tab.classList.toggle('is-on', pastHero && !formVisible); };
+  var syncTab = function () { if (bar) bar.classList.toggle('is-on', pastHero && !formVisible); };
 
   if (hero) new IntersectionObserver(function (es) {
     es.forEach(function (e) { pastHero = !e.isIntersecting; syncTab(); });
@@ -188,7 +110,7 @@
     }, { threshold: 1 }).observe(sentinel);
   }
 
-  /* ── 7. Формы ────────────────────────────────────────────── */
+  /* ── 6. Формы ────────────────────────────────────────────── */
   var ENDPOINT = (window.LEAD_ENDPOINT || '/api/lead');
 
   /* Режим превью. Нужен там, где сайт лежит статикой и serverless-функции нет:
@@ -314,8 +236,8 @@
       sendLead(payload)
         .then(function () {
           var card = form.dataset.form === 'quick'
-            ? stampNode('Заявка принята', 'Перезвоню в течение 15 минут с номера +7 909 854-88-61.')
-            : stampNode('Заявка принята', 'Прочитаю описание и перезвоню в течение 15 минут в рабочее время. Вечером и в выходные наберу утром.');
+            ? stampNode('Заявка принята', 'Я перезвоню с номера +7 909 854-88-61.')
+            : stampNode('Заявка принята', 'Я прочитаю описание и перезвоню с номера +7 909 854-88-61.');
           form.replaceWith(card);
           card.setAttribute('tabindex', '-1');
           card.focus();
@@ -324,7 +246,7 @@
           button.disabled = false;
           button.classList.remove('is-busy');
           status.classList.add('is-error');
-          status.textContent = 'Отправить не вышло. Позвоните на +7 909 854-88-61.';
+          status.textContent = 'Заявка не отправилась. Позвоните мне: +7 909 854-88-61.';
         });
     });
   });
