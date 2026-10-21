@@ -1,5 +1,7 @@
 import { Composition } from "remotion";
 import { Short } from "./Short";
+import voiceover from "./voiceover/vibecoding.json";
+import { TAIL_SECONDS, VibeShort } from "./vibe/VibeShort";
 
 // Вертикальный формат для Shorts / Reels / TikTok: 1080×1920, 30 fps.
 export const RemotionRoot: React.FC = () => {
@@ -16,6 +18,18 @@ export const RemotionRoot: React.FC = () => {
           accent: "#ff5c39",
           background: "#0e0e12",
           handle: "@treaple",
+        }}
+      />
+      <Composition
+        id="VibeCoding"
+        component={VibeShort}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={Math.ceil((voiceover.durationMs / 1000 + TAIL_SECONDS) * 30)}
+        defaultProps={{
+          handle: "@treaple",
+          musicVolume: 0.12,
         }}
       />
     </>

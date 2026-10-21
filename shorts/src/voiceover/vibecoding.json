@@ -1,0 +1,510 @@
+{
+  "audio": "voiceover/vibecoding.wav",
+  "durationMs": 30811,
+  "scenes": [
+    {
+      "id": "hook",
+      "startMs": 0,
+      "endMs": 2940
+    },
+    {
+      "id": "prompt",
+      "startMs": 3390,
+      "endMs": 7097
+    },
+    {
+      "id": "noread",
+      "startMs": 8447,
+      "endMs": 11544
+    },
+    {
+      "id": "errors",
+      "startMs": 11994,
+      "endMs": 16083
+    },
+    {
+      "id": "works",
+      "startMs": 16533,
+      "endMs": 20114
+    },
+    {
+      "id": "deploy",
+      "startMs": 20564,
+      "endMs": 23747
+    },
+    {
+      "id": "crash",
+      "startMs": 24197,
+      "endMs": 27193
+    },
+    {
+      "id": "cta",
+      "startMs": 27643,
+      "endMs": 30811
+    }
+  ],
+  "captions": [
+    {
+      "text": "Я",
+      "startMs": 0,
+      "endMs": 198,
+      "timestampMs": 99,
+      "confidence": null
+    },
+    {
+      "text": " стал",
+      "startMs": 198,
+      "endMs": 395,
+      "timestampMs": 296,
+      "confidence": null
+    },
+    {
+      "text": " сеньором",
+      "startMs": 395,
+      "endMs": 988,
+      "timestampMs": 691,
+      "confidence": null
+    },
+    {
+      "text": " за",
+      "startMs": 1108,
+      "endMs": 1248,
+      "timestampMs": 1178,
+      "confidence": null
+    },
+    {
+      "text": " один",
+      "startMs": 1248,
+      "endMs": 1530,
+      "timestampMs": 1389,
+      "confidence": null
+    },
+    {
+      "text": " вечер.",
+      "startMs": 1530,
+      "endMs": 1896,
+      "timestampMs": 1713,
+      "confidence": null
+    },
+    {
+      "text": " Рассказываю",
+      "startMs": 2016,
+      "endMs": 2716,
+      "timestampMs": 2366,
+      "confidence": null
+    },
+    {
+      "text": " как.",
+      "startMs": 2716,
+      "endMs": 2940,
+      "timestampMs": 2828,
+      "confidence": null
+    },
+    {
+      "text": " Шаг",
+      "startMs": 3390,
+      "endMs": 3562,
+      "timestampMs": 3476,
+      "confidence": null
+    },
+    {
+      "text": " первый.",
+      "startMs": 3562,
+      "endMs": 4007,
+      "timestampMs": 3785,
+      "confidence": null
+    },
+    {
+      "text": " Пишешь",
+      "startMs": 4127,
+      "endMs": 4396,
+      "timestampMs": 4262,
+      "confidence": null
+    },
+    {
+      "text": " нейросети:",
+      "startMs": 4396,
+      "endMs": 5012,
+      "timestampMs": 4704,
+      "confidence": null
+    },
+    {
+      "text": " сделай",
+      "startMs": 5132,
+      "endMs": 5505,
+      "timestampMs": 5318,
+      "confidence": null
+    },
+    {
+      "text": " мне",
+      "startMs": 5505,
+      "endMs": 5691,
+      "timestampMs": 5598,
+      "confidence": null
+    },
+    {
+      "text": " стартап.",
+      "startMs": 5691,
+      "endMs": 6175,
+      "timestampMs": 5933,
+      "confidence": null
+    },
+    {
+      "text": " Красиво.",
+      "startMs": 6645,
+      "endMs": 7097,
+      "timestampMs": 6871,
+      "confidence": null
+    },
+    {
+      "text": " Шаг",
+      "startMs": 8447,
+      "endMs": 8635,
+      "timestampMs": 8541,
+      "confidence": null
+    },
+    {
+      "text": " второй.",
+      "startMs": 8635,
+      "endMs": 9121,
+      "timestampMs": 8878,
+      "confidence": null
+    },
+    {
+      "text": " Код",
+      "startMs": 9241,
+      "endMs": 9379,
+      "timestampMs": 9310,
+      "confidence": null
+    },
+    {
+      "text": " не",
+      "startMs": 9379,
+      "endMs": 9516,
+      "timestampMs": 9447,
+      "confidence": null
+    },
+    {
+      "text": " читаешь.",
+      "startMs": 9516,
+      "endMs": 10010,
+      "timestampMs": 9763,
+      "confidence": null
+    },
+    {
+      "text": " Это",
+      "startMs": 10130,
+      "endMs": 10374,
+      "timestampMs": 10252,
+      "confidence": null
+    },
+    {
+      "text": " личное",
+      "startMs": 10374,
+      "endMs": 10740,
+      "timestampMs": 10557,
+      "confidence": null
+    },
+    {
+      "text": " дело",
+      "startMs": 10740,
+      "endMs": 10983,
+      "timestampMs": 10862,
+      "confidence": null
+    },
+    {
+      "text": " нейросети.",
+      "startMs": 10983,
+      "endMs": 11544,
+      "timestampMs": 11264,
+      "confidence": null
+    },
+    {
+      "text": " Ошибка?",
+      "startMs": 11994,
+      "endMs": 12485,
+      "timestampMs": 12240,
+      "confidence": null
+    },
+    {
+      "text": " Кидаешь",
+      "startMs": 12605,
+      "endMs": 13027,
+      "timestampMs": 12816,
+      "confidence": null
+    },
+    {
+      "text": " её",
+      "startMs": 13027,
+      "endMs": 13308,
+      "timestampMs": 13168,
+      "confidence": null
+    },
+    {
+      "text": " обратно",
+      "startMs": 13308,
+      "endMs": 13730,
+      "timestampMs": 13519,
+      "confidence": null
+    },
+    {
+      "text": " и",
+      "startMs": 13850,
+      "endMs": 14009,
+      "timestampMs": 13929,
+      "confidence": null
+    },
+    {
+      "text": " пишешь:",
+      "startMs": 14009,
+      "endMs": 14421,
+      "timestampMs": 14215,
+      "confidence": null
+    },
+    {
+      "text": " почини.",
+      "startMs": 14421,
+      "endMs": 14991,
+      "timestampMs": 14706,
+      "confidence": null
+    },
+    {
+      "text": " Сорок",
+      "startMs": 15111,
+      "endMs": 15458,
+      "timestampMs": 15285,
+      "confidence": null
+    },
+    {
+      "text": " раз",
+      "startMs": 15458,
+      "endMs": 15632,
+      "timestampMs": 15545,
+      "confidence": null
+    },
+    {
+      "text": " подряд.",
+      "startMs": 15632,
+      "endMs": 16083,
+      "timestampMs": 15857,
+      "confidence": null
+    },
+    {
+      "text": " Всё",
+      "startMs": 16533,
+      "endMs": 16657,
+      "timestampMs": 16595,
+      "confidence": null
+    },
+    {
+      "text": " заработало.",
+      "startMs": 16657,
+      "endMs": 17353,
+      "timestampMs": 17005,
+      "confidence": null
+    },
+    {
+      "text": " Почему,",
+      "startMs": 17473,
+      "endMs": 18031,
+      "timestampMs": 17752,
+      "confidence": null
+    },
+    {
+      "text": " не",
+      "startMs": 18031,
+      "endMs": 18186,
+      "timestampMs": 18108,
+      "confidence": null
+    },
+    {
+      "text": " знает",
+      "startMs": 18186,
+      "endMs": 18496,
+      "timestampMs": 18341,
+      "confidence": null
+    },
+    {
+      "text": " никто.",
+      "startMs": 18496,
+      "endMs": 18898,
+      "timestampMs": 18697,
+      "confidence": null
+    },
+    {
+      "text": " Даже",
+      "startMs": 19268,
+      "endMs": 19570,
+      "timestampMs": 19419,
+      "confidence": null
+    },
+    {
+      "text": " нейросеть.",
+      "startMs": 19570,
+      "endMs": 20114,
+      "timestampMs": 19842,
+      "confidence": null
+    },
+    {
+      "text": " Шаг",
+      "startMs": 20564,
+      "endMs": 20736,
+      "timestampMs": 20650,
+      "confidence": null
+    },
+    {
+      "text": " третий.",
+      "startMs": 20736,
+      "endMs": 21183,
+      "timestampMs": 20960,
+      "confidence": null
+    },
+    {
+      "text": " Деплой",
+      "startMs": 21303,
+      "endMs": 21586,
+      "timestampMs": 21445,
+      "confidence": null
+    },
+    {
+      "text": " в",
+      "startMs": 21586,
+      "endMs": 21728,
+      "timestampMs": 21657,
+      "confidence": null
+    },
+    {
+      "text": " пятницу",
+      "startMs": 21728,
+      "endMs": 22152,
+      "timestampMs": 21940,
+      "confidence": null
+    },
+    {
+      "text": " вечером.",
+      "startMs": 22152,
+      "endMs": 22661,
+      "timestampMs": 22407,
+      "confidence": null
+    },
+    {
+      "text": " Принять",
+      "startMs": 23131,
+      "endMs": 23473,
+      "timestampMs": 23302,
+      "confidence": null
+    },
+    {
+      "text": " всё.",
+      "startMs": 23473,
+      "endMs": 23747,
+      "timestampMs": 23610,
+      "confidence": null
+    },
+    {
+      "text": " Итог:",
+      "startMs": 24197,
+      "endMs": 24497,
+      "timestampMs": 24347,
+      "confidence": null
+    },
+    {
+      "text": " продакшен",
+      "startMs": 24617,
+      "endMs": 25053,
+      "timestampMs": 24835,
+      "confidence": null
+    },
+    {
+      "text": " упал,",
+      "startMs": 25053,
+      "endMs": 25430,
+      "timestampMs": 25241,
+      "confidence": null
+    },
+    {
+      "text": " но",
+      "startMs": 26050,
+      "endMs": 26223,
+      "timestampMs": 26137,
+      "confidence": null
+    },
+    {
+      "text": " вайб",
+      "startMs": 26223,
+      "endMs": 26396,
+      "timestampMs": 26310,
+      "confidence": null
+    },
+    {
+      "text": " был",
+      "startMs": 26396,
+      "endMs": 26569,
+      "timestampMs": 26483,
+      "confidence": null
+    },
+    {
+      "text": " отличный.",
+      "startMs": 26569,
+      "endMs": 27193,
+      "timestampMs": 26881,
+      "confidence": null
+    },
+    {
+      "text": " Подпишись,",
+      "startMs": 27643,
+      "endMs": 28183,
+      "timestampMs": 27913,
+      "confidence": null
+    },
+    {
+      "text": " пока",
+      "startMs": 28303,
+      "endMs": 28612,
+      "timestampMs": 28457,
+      "confidence": null
+    },
+    {
+      "text": " я",
+      "startMs": 28612,
+      "endMs": 28766,
+      "timestampMs": 28689,
+      "confidence": null
+    },
+    {
+      "text": " чиню",
+      "startMs": 28766,
+      "endMs": 29074,
+      "timestampMs": 28920,
+      "confidence": null
+    },
+    {
+      "text": " прод",
+      "startMs": 29074,
+      "endMs": 29228,
+      "timestampMs": 29151,
+      "confidence": null
+    },
+    {
+      "text": " промптом:",
+      "startMs": 29348,
+      "endMs": 29812,
+      "timestampMs": 29580,
+      "confidence": null
+    },
+    {
+      "text": " ну",
+      "startMs": 29812,
+      "endMs": 29991,
+      "timestampMs": 29901,
+      "confidence": null
+    },
+    {
+      "text": " пожалуйста.",
+      "startMs": 29991,
+      "endMs": 30811,
+      "timestampMs": 30401,
+      "confidence": null
+    }
+  ]
+}
