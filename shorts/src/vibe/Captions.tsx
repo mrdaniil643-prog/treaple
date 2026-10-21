@@ -1,50 +1,40 @@
-import { Caption } from "@remotion/captions";
 import { useMemo } from "react";
 import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from "remotion";
+import voiceover from "../voiceover/vibecoding.json";
 import { pop } from "./anim";
-import { C, DISPLAY, LAYOUT } from "./theme";
+import { BODY, C, DISPLAY, LAYOUT, Speaker, SPEAKERS } from "./theme";
 
-type Props = {
-  readonly captions: Caption[];
-};
+type Word = (typeof voiceover.words)[number];
+type Page = { speaker: Speaker; startMs: number; words: Word[] };
 
-type Page = {
-  text: string;
-  startMs: number;
-  tokens: { text: string; fromMs: number; toMs: number }[];
-};
+const MAX_WORDS = 4;
 
-// Слова одной фразы идут встык, между фразами есть пауза: по ней и режем
-// субтитры на страницы, чтобы страница не перескакивала через смену сцены.
-const toPages = (captions: Caption[]): Page[] => {
-  const pages: Page[] = [];
-  captions.forEach((c, i) => {
-    const token = { text: c.text, fromMs: c.startMs, toMs: c.endMs };
-    if (i === 0 || c.startMs - captions[i - 1].endMs > 50) {
-      pages.push({ text: c.text, startMs: c.startMs, tokens: [token] });
-    } else {
-      const page = pages[pages.length - 1];
-      page.text += c.text;
-      page.tokens.push(token);
+// Страница субтитров — фраза одного говорящего, длинные режутся по 4 слова.
+const toPages = (): Page[] =>
+  voiceover.phrases.flatMap((p) => {
+    const words = voiceover.words.slice(p.words[0], p.words[1]);
+    const pages: Page[] = [];
+    for (let i = 0; i < words.length; i += MAX_WORDS) {
+      const chunk = words.slice(i, i + MAX_WORDS);
+      pages.push({ speaker: p.speaker as Speaker, startMs: chunk[0].startMs, words: chunk });
     }
+    return pages;
   });
-  return pages;
-};
 
-// Субтитры в стиле TikTok: фраза целиком, текущее слово на плашке.
-export const Captions: React.FC<Props> = ({ captions }) => {
+export const Captions: React.FC = () => {
   const { fps } = useVideoConfig();
-  const pages = useMemo(() => toPages(captions), [captions]);
+  const pages = useMemo(toPages, []);
 
   return (
     <>
       {pages.map((page, i) => {
         const next = pages[i + 1];
         const from = Math.round((page.startMs / 1000) * fps);
-        const until = next ? Math.round((next.startMs / 1000) * fps) : from + 2 * fps;
+        const lastEnd = page.words[page.words.length - 1].endMs;
+        const until = Math.round((Math.min(next ? next.startMs : Infinity, lastEnd + 600) / 1000) * fps);
         return (
-          <Sequence key={i} name={`Caption ${page.text.trim()}`} from={from} durationInFrames={until - from} layout="none">
-            <CaptionPage tokens={page.tokens} startMs={page.startMs} />
+          <Sequence key={i} name={`Caption: ${page.words.map((w) => w.text).join(" ")}`} from={from} durationInFrames={until - from} layout="none">
+            <CaptionPage page={page} />
           </Sequence>
         );
       })}
@@ -52,57 +42,73 @@ export const Captions: React.FC<Props> = ({ captions }) => {
   );
 };
 
-const CaptionPage: React.FC<{
-  readonly tokens: { text: string; fromMs: number; toMs: number }[];
-  readonly startMs: number;
-}> = ({ tokens, startMs }) => {
+// Субтитры в стиле TikTok: текущее слово на плашке цвета говорящего,
+// у заказчика и нейросети сверху бейдж с именем.
+const CaptionPage: React.FC<{ readonly page: Page }> = ({ page }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const nowMs = startMs + (frame / fps) * 1000;
+  const nowMs = page.startMs + (frame / fps) * 1000;
   const enter = pop(frame, fps, 0, { damping: 14, stiffness: 260 });
+  const speaker = SPEAKERS[page.speaker];
 
   return (
     <AbsoluteFill
       style={{
         top: LAYOUT.captionsTop,
-        height: 260,
+        height: 300,
         padding: `0 ${LAYOUT.side}px`,
         display: "flex",
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "center",
-        alignContent: "center",
-        gap: "8px 18px",
-        scale: String(0.8 + 0.2 * enter),
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: 14,
+        scale: String(0.85 + 0.15 * enter),
       }}
     >
-      {tokens.map((t, i) => {
-        const active = nowMs >= t.fromMs && nowMs < t.toMs;
-        return (
-          <span
-            key={i}
-            style={{
-              fontFamily: DISPLAY,
-              fontWeight: 900,
-              fontSize: 68,
-              textTransform: "uppercase",
-              color: active ? C.bg : C.white,
-              backgroundColor: active ? C.lime : "transparent",
-              padding: "4px 16px",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-              borderRadius: 18,
-              rotate: active ? "-2deg" : "0deg",
-              scale: active ? "1.08" : "1",
-              WebkitTextStroke: active ? "0px" : "3px #000",
-              paintOrder: "stroke fill",
-              textShadow: active ? "none" : "0 6px 0 rgba(0,0,0,0.6)",
-            }}
-          >
-            {t.text.trim()}
-          </span>
-        );
-      })}
+      {speaker.label ? (
+        <div
+          style={{
+            padding: "6px 20px",
+            borderRadius: 999,
+            border: `3px solid ${speaker.color}`,
+            color: speaker.color,
+            background: "rgba(22,10,53,0.8)",
+            fontFamily: BODY,
+            fontWeight: 800,
+            fontSize: 30,
+          }}
+        >
+          {speaker.label}
+        </div>
+      ) : null}
+      <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: "6px 14px" }}>
+        {page.words.map((w, i) => {
+          const active = nowMs >= w.startMs && nowMs < w.endMs;
+          return (
+            <span
+              key={i}
+              style={{
+                fontFamily: DISPLAY,
+                fontWeight: 800,
+                fontSize: 64,
+                lineHeight: 1.2,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                color: active ? C.night : C.paper,
+                backgroundColor: active ? speaker.color : "transparent",
+                padding: "2px 14px",
+                borderRadius: 16,
+                rotate: active ? "-2deg" : "0deg",
+                scale: active ? "1.06" : "1",
+                WebkitTextStroke: active ? "0px" : `10px ${C.night}`,
+                paintOrder: "stroke fill",
+              }}
+            >
+              {w.text}
+            </span>
+          );
+        })}
+      </div>
     </AbsoluteFill>
   );
 };

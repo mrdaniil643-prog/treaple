@@ -1,23 +1,26 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { bob, pop } from "../anim";
-import { BODY, C, DISPLAY } from "../theme";
-import { FloatEmoji } from "../ui";
+import { BODY, C, DISPLAY, EMOJI } from "../theme";
+import { cue } from "../timing";
+import { Sparkle } from "../ui";
+import { VoiceBars } from "../VoiceBars";
 
 const MARKS = [
-  { x: 90, y: 260, s: 120, c: C.cyan }, { x: 860, y: 300, s: 150, c: C.pink },
-  { x: 60, y: 760, s: 100, c: C.violet }, { x: 900, y: 720, s: 110, c: C.cyan },
-  { x: 220, y: 1040, s: 90, c: C.pink }, { x: 760, y: 1060, s: 130, c: C.lime },
-  { x: 480, y: 220, s: 80, c: C.orange },
+  { x: 90, y: 230, s: 130, c: C.butter }, { x: 850, y: 260, s: 160, c: C.sunset },
+  { x: 50, y: 720, s: 110, c: C.violet }, { x: 900, y: 700, s: 120, c: C.butter },
+  { x: 160, y: 1000, s: 90, c: C.sunset }, { x: 820, y: 1000, s: 130, c: C.violet },
+  { x: 470, y: 170, s: 90, c: C.mint },
 ];
 
-// «Всё заработало. Почему — не знает никто. Даже нейросеть.»
+// «Всё заработало. Почему, не знает никто.» — «Я тоже не знаю.»
 export const Works: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const draw = interpolate(frame, [0.1 * fps, 0.7 * fps], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const check = pop(frame, fps, 0.1, { damping: 9 });
-  const why = pop(frame, fps, 1.1);
-  const bot = pop(frame, fps, 2.8);
+  const start = cue("works", 0);
+  const draw = interpolate(frame, [start * fps, (start + 0.5) * fps], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const check = pop(frame, fps, start - 0.1, { damping: 9 });
+  const why = cue("works", 1);
+  const bot = pop(frame, fps, cue("works", 2) - 0.1);
 
   return (
     <AbsoluteFill>
@@ -29,11 +32,11 @@ export const Works: React.FC = () => {
             left: m.x,
             top: m.y + bob(frame, fps, 0.8, i) * 30,
             fontFamily: DISPLAY,
-            fontWeight: 900,
+            fontWeight: 800,
             fontSize: m.s,
             color: m.c,
             rotate: `${bob(frame, fps, 0.5, i) * 25}deg`,
-            scale: String(pop(frame, fps, 1.1 + i * 0.08)),
+            scale: String(pop(frame, fps, why + i * 0.07)),
             textShadow: `0 0 40px ${m.c}`,
           }}
         >
@@ -41,42 +44,41 @@ export const Works: React.FC = () => {
         </div>
       ))}
 
-      <svg width="420" height="420" viewBox="0 0 120 120" style={{ position: "absolute", left: 330, top: 330, scale: String(check) }}>
-        <circle cx="60" cy="60" r="54" fill={`${C.lime}22`} stroke={C.lime} strokeWidth="6" />
-        <path d="M34 62 L52 80 L88 42" fill="none" stroke={C.lime} strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="100" strokeDashoffset={100 * draw} />
+      <svg width="440" height="440" viewBox="0 0 120 120" style={{ position: "absolute", left: 320, top: 300, scale: String(check) }}>
+        <circle cx="60" cy="60" r="54" fill={`${C.mint}26`} stroke={C.mint} strokeWidth="6" />
+        <path d="M34 62 L52 80 L88 42" fill="none" stroke={C.mint} strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="100" strokeDashoffset={100 * draw} />
       </svg>
+      <Sparkle x={300} y={330} size={120} color={C.butter} delay={start + 0.3} />
+      <Sparkle x={790} y={380} size={90} color={C.paper} delay={start + 0.45} />
+      <Sparkle x={760} y={720} size={110} color={C.mint} delay={start + 0.6} />
 
-      <div style={{ position: "absolute", top: 790, width: "100%", textAlign: "center", fontFamily: DISPLAY, fontWeight: 900, fontSize: 92, color: C.white }}>
-        ВСЁ <span style={{ color: C.lime }}>РАБОТАЕТ</span>
+      <div style={{ position: "absolute", top: 790, width: "100%", textAlign: "center", fontFamily: DISPLAY, fontWeight: 800, fontSize: 96, color: C.paper }}>
+        Работает
       </div>
-
-      <div style={{ position: "absolute", top: 930, width: "100%", display: "flex", justifyContent: "center", gap: 20, scale: String(why) }}>
-        {["тесты: 0/0 ✓", "почему: ¯\\_(ツ)_/¯"].map((t) => (
-          <div key={t} style={{ padding: "14px 26px", borderRadius: 999, background: C.glass, border: `2px solid ${C.glassBorder}`, fontFamily: BODY, fontWeight: 700, fontSize: 34, color: C.white }}>
-            {t}
-          </div>
-        ))}
+      <div style={{ position: "absolute", top: 920, width: "100%", textAlign: "center", fontFamily: BODY, fontWeight: 700, fontSize: 38, color: C.muted, opacity: pop(frame, fps, why) }}>
+        тесты: 0 из 0 прошли
       </div>
 
       <div
         style={{
           position: "absolute",
-          top: 1060,
-          left: 300,
+          top: 1030,
+          left: 170,
+          right: 170,
+          display: "flex",
+          alignItems: "center",
+          gap: 20,
           padding: "18px 30px",
-          borderRadius: "30px 30px 30px 6px",
-          background: C.white,
-          color: C.bg,
-          fontFamily: BODY,
-          fontWeight: 800,
-          fontSize: 36,
+          borderRadius: 999,
+          background: C.panel,
+          border: `3px solid ${C.mint}`,
           scale: String(bot),
-          transformOrigin: "left bottom",
         }}
       >
-        я тоже не знаю 🤷
+        <div style={{ fontFamily: EMOJI, fontSize: 60 }}>🤖</div>
+        <div style={{ fontFamily: BODY, fontWeight: 800, fontSize: 40, color: C.paper, flex: 1 }}>я тоже не знаю 🤷</div>
+        <VoiceBars speaker="ai" color={C.mint} bars={8} height={60} barWidth={9} />
       </div>
-      <FloatEmoji emoji="🤖" x={150} y={1050} size={120} delay={2.7} rotate={-8} />
     </AbsoluteFill>
   );
 };

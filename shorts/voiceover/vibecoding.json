@@ -1,24 +1,72 @@
 {
-  "voice": "aleksandr",
-  "rate": 0.35,
+  "speakers": {
+    "narrator": {
+      "voice": "aleksandr",
+      "rate": 0.35,
+      "pitch": 0.0
+    },
+    "client": {
+      "voice": "elena",
+      "rate": 0.5,
+      "pitch": 0.35,
+      "filter": "phone"
+    },
+    "ai": {
+      "voice": "anna",
+      "rate": 0.55,
+      "pitch": 0.15,
+      "filter": "robot"
+    }
+  },
   "scenes": [
     {
-      "id": "hook",
+      "id": "call",
       "phrases": [
-        "Я стал сеньором",
-        "за один вечер.",
-        "Рассказываю как."
-      ]
+        {
+          "speaker": "client",
+          "text": "Алло! Мне нужен сайт как у Амазона.",
+          "pause": 0.9
+        },
+        {
+          "speaker": "client",
+          "text": "Бюджет пять тысяч."
+        },
+        {
+          "speaker": "client",
+          "text": "К завтрашнему утру."
+        },
+        {
+          "speaker": "narrator",
+          "text": "Без проблем.",
+          "pause": 0.3
+        },
+        {
+          "speaker": "narrator",
+          "text": "Я же вайбкодер."
+        }
+      ],
+      "lead": 1.1
     },
     {
       "id": "prompt",
       "phrases": [
-        "Шаг первый.",
-        "Пишешь нейросети:",
-        "сделай мне стартап.",
         {
+          "speaker": "narrator",
+          "text": "Пишу нейросети:"
+        },
+        {
+          "speaker": "narrator",
+          "text": "сделай Амазон."
+        },
+        {
+          "speaker": "narrator",
           "text": "Красиво.",
-          "pause": 0.35
+          "pause": 0.3
+        },
+        {
+          "speaker": "ai",
+          "text": "Конечно! Вот четыре тысячи строк кода.",
+          "pause": 0.5
         }
       ]
     },
@@ -26,29 +74,51 @@
       "id": "noread",
       "phrases": [
         {
-          "text": "Шаг второй.",
-          "pause": 0.9
+          "speaker": "narrator",
+          "text": "Код я не читаю.",
+          "pause": 0.4
         },
-        "Код не читаешь.",
-        "Это личное дело нейросети."
+        {
+          "speaker": "narrator",
+          "text": "Это личное дело нейросети."
+        }
       ]
     },
     {
       "id": "errors",
       "phrases": [
-        "Ошибка?",
-        "Кидаешь её обратно",
-        "и пишешь: почини.",
-        "Сорок раз подряд."
+        {
+          "speaker": "narrator",
+          "text": "Ошибка?"
+        },
+        {
+          "speaker": "narrator",
+          "text": "Пишу: почини."
+        },
+        {
+          "speaker": "ai",
+          "text": "Исправил!"
+        },
+        {
+          "speaker": "narrator",
+          "text": "И так сорок раз подряд."
+        }
       ]
     },
     {
       "id": "works",
       "phrases": [
-        "Всё заработало.",
-        "Почему, не знает никто.",
         {
-          "text": "Даже нейросеть.",
+          "speaker": "narrator",
+          "text": "Всё заработало."
+        },
+        {
+          "speaker": "narrator",
+          "text": "Почему, не знает никто."
+        },
+        {
+          "speaker": "ai",
+          "text": "Я тоже не знаю.",
           "pause": 0.25
         }
       ]
@@ -56,31 +126,58 @@
     {
       "id": "deploy",
       "phrases": [
-        "Шаг третий.",
-        "Деплой в пятницу вечером.",
         {
+          "speaker": "narrator",
+          "text": "Деплой в пятницу вечером."
+        },
+        {
+          "speaker": "narrator",
           "text": "Принять всё.",
           "pause": 0.35
         }
       ]
     },
     {
-      "id": "crash",
+      "id": "call2",
       "phrases": [
-        "Итог:",
-        "продакшен упал,",
         {
-          "text": "но вайб был отличный.",
-          "pause": 0.5
+          "speaker": "client",
+          "text": "Алло!",
+          "pause": 1.0
+        },
+        {
+          "speaker": "client",
+          "text": "Почему на сайте написано андефайнед?!"
+        },
+        {
+          "speaker": "narrator",
+          "text": "Это не баг.",
+          "pause": 0.4
+        },
+        {
+          "speaker": "narrator",
+          "text": "Это вайб.",
+          "pause": 0.3
         }
-      ]
+      ],
+      "lead": 1.0
     },
     {
       "id": "cta",
       "phrases": [
-        "Подпишись,",
-        "пока я чиню прод",
-        "промптом: ну пожалуйста."
+        {
+          "speaker": "narrator",
+          "text": "Подпишись,"
+        },
+        {
+          "speaker": "narrator",
+          "text": "пока я чиню прод промптом:"
+        },
+        {
+          "speaker": "narrator",
+          "text": "ну пожалуйста.",
+          "pause": 0.2
+        }
       ]
     }
   ]

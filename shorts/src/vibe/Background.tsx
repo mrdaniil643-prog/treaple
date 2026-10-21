@@ -2,52 +2,69 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { bob } from "./anim";
 import { C } from "./theme";
 
-type Props = {
-  readonly colors: readonly [string, string, string];
-};
+const BEAT = 0.5455;
 
-// Живой фон: три размытых цветовых пятна, сетка и зерно.
-export const Background: React.FC<Props> = ({ colors }) => {
+// Ночное небо с закатным солнцем, которое дышит в такт биту.
+export const Background: React.FC<{ readonly alarm: boolean }> = ({ alarm }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-
-  const blob = (color: string, x: number, y: number, size: number, phase: number) => (
-    <div
-      style={{
-        position: "absolute",
-        left: x + bob(frame, fps, 0.23, phase) * 120,
-        top: y + bob(frame, fps, 0.17, phase + 1) * 160,
-        width: size,
-        height: size,
-        // Радиальный градиент вместо filter: blur — выглядит так же, рендерится в разы быстрее.
-        background: `radial-gradient(circle, ${color} 0%, ${color}00 70%)`,
-        opacity: 0.6,
-      }}
-    />
-  );
+  const t = frame / fps;
+  const pulse = Math.exp(-((t % BEAT) / BEAT) * 5);
+  const sun = alarm ? C.siren : C.sunset;
 
   return (
-    <AbsoluteFill style={{ backgroundColor: C.bg, overflow: "hidden" }}>
-      {blob(colors[0], -450, -100, 1200, 0)}
-      {blob(colors[1], 300, 500, 1150, 2)}
-      {blob(colors[2], -300, 1100, 1100, 4)}
-      <AbsoluteFill
+    <AbsoluteFill style={{ background: `linear-gradient(180deg, ${C.night} 0%, ${C.night} 35%, ${C.plum} 100%)`, overflow: "hidden" }}>
+      <div
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "90px 90px",
-          backgroundPosition: `0px ${(frame * 1.5) % 90}px`,
-          maskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
+          position: "absolute",
+          left: 540 - 650,
+          top: 1180 - 650 + bob(frame, fps, 0.15) * 40,
+          width: 1300,
+          height: 1300,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${alarm ? C.siren : C.butter}cc 0%, ${sun}88 28%, ${sun}00 68%)`,
+          scale: String(1 + 0.04 * pulse),
         }}
       />
-      <AbsoluteFill style={{ opacity: 0.12, mixBlendMode: "overlay" }}>
+      <div
+        style={{
+          position: "absolute",
+          left: -300 + bob(frame, fps, 0.1, 1) * 120,
+          top: -250,
+          width: 1000,
+          height: 1000,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${C.violet}77 0%, ${C.violet}00 65%)`,
+        }}
+      />
+      {Array.from({ length: 40 }, (_, i) => {
+        const x = (i * 263) % 1080;
+        const y = (i * 151) % 1100;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: x,
+              top: y,
+              width: i % 5 === 0 ? 5 : 3,
+              height: i % 5 === 0 ? 5 : 3,
+              borderRadius: 3,
+              background: C.paper,
+              opacity: 0.25 + 0.35 * (0.5 + 0.5 * bob(frame, fps, 0.6, i)),
+            }}
+          />
+        );
+      })}
+      <AbsoluteFill style={{ opacity: 0.1, mixBlendMode: "overlay" }}>
         <svg width="1080" height="1920">
           <filter id="grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed={3} />
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed={3} />
           </filter>
           <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
       </AbsoluteFill>
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(8,3,24,0.7) 100%)" }} />
     </AbsoluteFill>
   );
 };

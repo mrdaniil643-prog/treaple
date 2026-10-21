@@ -30,3 +30,18 @@ ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.3*(gt(sin(2*PI*(700+250*sin(2
 
 # Победный «динь».
 ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.4*(sin(2*PI*1046*t)+0.6*sin(2*PI*1568*t))*exp(-t*5)':s=44100:d=0.8" ding.wav
+
+# Рингтон: маримба-арпеджио (две фразы по четыре ноты).
+N="exp(-mod(t,0.13)*22)"
+ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.5*$N*sin(2*PI*if(lt(mod(t,0.52),0.13),784,if(lt(mod(t,0.52),0.26),988,if(lt(mod(t,0.52),0.39),1175,1568)))*t)*lt(mod(t,1.3),1.04)':s=44100:d=2.6" \
+  -af "afade=t=out:st=2.3:d=0.3" ring.wav
+
+# Гудки после разговора.
+ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.3*sin(2*PI*425*t)*lt(mod(t,0.4),0.2)':s=44100:d=1.2" hangup.wav
+
+# «Бум» для панчлайнов: низкая нота с перегрузом.
+ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.9*tanh(3*sin(2*PI*(38+70*exp(-t*9))*t))*exp(-t*2.6)':s=44100:d=1.4" boom.wav
+
+# Глитч: рваный цифровой шум.
+ffmpeg -loglevel error -y -f lavfi -i "aevalsrc='0.4*(random(0)*2-1)*gt(sin(2*PI*23*t),0.2)+0.3*(gt(sin(2*PI*180*t),0)*2-1)*lt(mod(t,0.11),0.04)':s=44100:d=0.6" \
+  -af "acrusher=bits=4:samples=12" glitch.wav

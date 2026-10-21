@@ -1,510 +1,757 @@
 {
   "audio": "voiceover/vibecoding.wav",
-  "durationMs": 30811,
+  "stems": {
+    "narrator": "voiceover/vibecoding-narrator.wav",
+    "client": "voiceover/vibecoding-client.wav",
+    "ai": "voiceover/vibecoding-ai.wav"
+  },
+  "durationMs": 35915,
   "scenes": [
     {
-      "id": "hook",
+      "id": "call",
       "startMs": 0,
-      "endMs": 2940
+      "endMs": 7278
     },
     {
       "id": "prompt",
-      "startMs": 3390,
-      "endMs": 7097
+      "startMs": 7728,
+      "endMs": 12432
     },
     {
       "id": "noread",
-      "startMs": 8447,
-      "endMs": 11544
+      "startMs": 12882,
+      "endMs": 15706
     },
     {
       "id": "errors",
-      "startMs": 11994,
-      "endMs": 16083
+      "startMs": 16156,
+      "endMs": 19561
     },
     {
       "id": "works",
-      "startMs": 16533,
-      "endMs": 20114
+      "startMs": 20011,
+      "endMs": 23359
     },
     {
       "id": "deploy",
-      "startMs": 20564,
-      "endMs": 23747
+      "startMs": 23809,
+      "endMs": 26252
     },
     {
-      "id": "crash",
-      "startMs": 24197,
-      "endMs": 27193
+      "id": "call2",
+      "startMs": 26702,
+      "endMs": 32473
     },
     {
       "id": "cta",
-      "startMs": 27643,
-      "endMs": 30811
+      "startMs": 32923,
+      "endMs": 36115
     }
   ],
-  "captions": [
+  "phrases": [
+    {
+      "scene": "call",
+      "speaker": "client",
+      "text": "Алло! Мне нужен сайт как у Амазона.",
+      "startMs": 1100,
+      "endMs": 2560,
+      "words": [
+        0,
+        7
+      ]
+    },
+    {
+      "scene": "call",
+      "speaker": "client",
+      "text": "Бюджет пять тысяч.",
+      "startMs": 3580,
+      "endMs": 4333,
+      "words": [
+        7,
+        10
+      ]
+    },
+    {
+      "scene": "call",
+      "speaker": "client",
+      "text": "К завтрашнему утру.",
+      "startMs": 4453,
+      "endMs": 5227,
+      "words": [
+        10,
+        13
+      ]
+    },
+    {
+      "scene": "call",
+      "speaker": "narrator",
+      "text": "Без проблем.",
+      "startMs": 5347,
+      "endMs": 5985,
+      "words": [
+        13,
+        15
+      ]
+    },
+    {
+      "scene": "call",
+      "speaker": "narrator",
+      "text": "Я же вайбкодер.",
+      "startMs": 6405,
+      "endMs": 7278,
+      "words": [
+        15,
+        18
+      ]
+    },
+    {
+      "scene": "prompt",
+      "speaker": "narrator",
+      "text": "Пишу нейросети:",
+      "startMs": 7728,
+      "endMs": 8525,
+      "words": [
+        18,
+        20
+      ]
+    },
+    {
+      "scene": "prompt",
+      "speaker": "narrator",
+      "text": "сделай Амазон.",
+      "startMs": 8645,
+      "endMs": 9397,
+      "words": [
+        20,
+        22
+      ]
+    },
+    {
+      "scene": "prompt",
+      "speaker": "narrator",
+      "text": "Красиво.",
+      "startMs": 9517,
+      "endMs": 9970,
+      "words": [
+        22,
+        23
+      ]
+    },
+    {
+      "scene": "prompt",
+      "speaker": "ai",
+      "text": "Конечно! Вот четыре тысячи строк кода.",
+      "startMs": 10390,
+      "endMs": 11932,
+      "words": [
+        23,
+        29
+      ]
+    },
+    {
+      "scene": "noread",
+      "speaker": "narrator",
+      "text": "Код я не читаю.",
+      "startMs": 12882,
+      "endMs": 13771,
+      "words": [
+        29,
+        33
+      ]
+    },
+    {
+      "scene": "noread",
+      "speaker": "narrator",
+      "text": "Это личное дело нейросети.",
+      "startMs": 14291,
+      "endMs": 15706,
+      "words": [
+        33,
+        37
+      ]
+    },
+    {
+      "scene": "errors",
+      "speaker": "narrator",
+      "text": "Ошибка?",
+      "startMs": 16156,
+      "endMs": 16646,
+      "words": [
+        37,
+        38
+      ]
+    },
+    {
+      "scene": "errors",
+      "speaker": "narrator",
+      "text": "Пишу: почини.",
+      "startMs": 16766,
+      "endMs": 17768,
+      "words": [
+        38,
+        40
+      ]
+    },
+    {
+      "scene": "errors",
+      "speaker": "ai",
+      "text": "Исправил!",
+      "startMs": 17888,
+      "endMs": 18233,
+      "words": [
+        40,
+        41
+      ]
+    },
+    {
+      "scene": "errors",
+      "speaker": "narrator",
+      "text": "И так сорок раз подряд.",
+      "startMs": 18353,
+      "endMs": 19561,
+      "words": [
+        41,
+        46
+      ]
+    },
+    {
+      "scene": "works",
+      "speaker": "narrator",
+      "text": "Всё заработало.",
+      "startMs": 20011,
+      "endMs": 20832,
+      "words": [
+        46,
+        48
+      ]
+    },
+    {
+      "scene": "works",
+      "speaker": "narrator",
+      "text": "Почему, не знает никто.",
+      "startMs": 20952,
+      "endMs": 22377,
+      "words": [
+        48,
+        52
+      ]
+    },
+    {
+      "scene": "works",
+      "speaker": "ai",
+      "text": "Я тоже не знаю.",
+      "startMs": 22497,
+      "endMs": 23109,
+      "words": [
+        52,
+        56
+      ]
+    },
+    {
+      "scene": "deploy",
+      "speaker": "narrator",
+      "text": "Деплой в пятницу вечером.",
+      "startMs": 23809,
+      "endMs": 25167,
+      "words": [
+        56,
+        60
+      ]
+    },
+    {
+      "scene": "deploy",
+      "speaker": "narrator",
+      "text": "Принять всё.",
+      "startMs": 25287,
+      "endMs": 25902,
+      "words": [
+        60,
+        62
+      ]
+    },
+    {
+      "scene": "call2",
+      "speaker": "client",
+      "text": "Алло!",
+      "startMs": 27702,
+      "endMs": 27963,
+      "words": [
+        62,
+        63
+      ]
+    },
+    {
+      "scene": "call2",
+      "speaker": "client",
+      "text": "Почему на сайте написано андефайнед?!",
+      "startMs": 29083,
+      "endMs": 30542,
+      "words": [
+        63,
+        68
+      ]
+    },
+    {
+      "scene": "call2",
+      "speaker": "narrator",
+      "text": "Это не баг.",
+      "startMs": 30662,
+      "endMs": 31175,
+      "words": [
+        68,
+        71
+      ]
+    },
+    {
+      "scene": "call2",
+      "speaker": "narrator",
+      "text": "Это вайб.",
+      "startMs": 31695,
+      "endMs": 32173,
+      "words": [
+        71,
+        73
+      ]
+    },
+    {
+      "scene": "cta",
+      "speaker": "narrator",
+      "text": "Подпишись,",
+      "startMs": 32923,
+      "endMs": 33463,
+      "words": [
+        73,
+        74
+      ]
+    },
+    {
+      "scene": "cta",
+      "speaker": "narrator",
+      "text": "пока я чиню прод промптом:",
+      "startMs": 33583,
+      "endMs": 35005,
+      "words": [
+        74,
+        79
+      ]
+    },
+    {
+      "scene": "cta",
+      "speaker": "narrator",
+      "text": "ну пожалуйста.",
+      "startMs": 35125,
+      "endMs": 35915,
+      "words": [
+        79,
+        81
+      ]
+    }
+  ],
+  "words": [
+    {
+      "text": "Алло!",
+      "startMs": 1100,
+      "endMs": 1388
+    },
+    {
+      "text": "Мне",
+      "startMs": 1388,
+      "endMs": 1498
+    },
+    {
+      "text": "нужен",
+      "startMs": 1498,
+      "endMs": 1719
+    },
+    {
+      "text": "сайт",
+      "startMs": 1719,
+      "endMs": 1830
+    },
+    {
+      "text": "как",
+      "startMs": 1830,
+      "endMs": 1941
+    },
+    {
+      "text": "у",
+      "startMs": 1941,
+      "endMs": 2051
+    },
+    {
+      "text": "Амазона.",
+      "startMs": 2051,
+      "endMs": 2560
+    },
+    {
+      "text": "Бюджет",
+      "startMs": 3580,
+      "endMs": 3849
+    },
+    {
+      "text": "пять",
+      "startMs": 3849,
+      "endMs": 3984
+    },
+    {
+      "text": "тысяч.",
+      "startMs": 3984,
+      "endMs": 4333
+    },
+    {
+      "text": "К",
+      "startMs": 4453,
+      "endMs": 4555
+    },
+    {
+      "text": "завтрашнему",
+      "startMs": 4555,
+      "endMs": 4962
+    },
+    {
+      "text": "утру.",
+      "startMs": 4962,
+      "endMs": 5227
+    },
+    {
+      "text": "Без",
+      "startMs": 5347,
+      "endMs": 5524
+    },
+    {
+      "text": "проблем.",
+      "startMs": 5524,
+      "endMs": 5985
+    },
     {
       "text": "Я",
-      "startMs": 0,
-      "endMs": 198,
-      "timestampMs": 99,
-      "confidence": null
+      "startMs": 6405,
+      "endMs": 6561
     },
     {
-      "text": " стал",
-      "startMs": 198,
-      "endMs": 395,
-      "timestampMs": 296,
-      "confidence": null
+      "text": "же",
+      "startMs": 6561,
+      "endMs": 6717
     },
     {
-      "text": " сеньором",
-      "startMs": 395,
-      "endMs": 988,
-      "timestampMs": 691,
-      "confidence": null
+      "text": "вайбкодер.",
+      "startMs": 6717,
+      "endMs": 7278
     },
     {
-      "text": " за",
-      "startMs": 1108,
-      "endMs": 1248,
-      "timestampMs": 1178,
-      "confidence": null
+      "text": "Пишу",
+      "startMs": 7728,
+      "endMs": 7970
     },
     {
-      "text": " один",
-      "startMs": 1248,
-      "endMs": 1530,
-      "timestampMs": 1389,
-      "confidence": null
+      "text": "нейросети:",
+      "startMs": 7970,
+      "endMs": 8525
     },
     {
-      "text": " вечер.",
-      "startMs": 1530,
-      "endMs": 1896,
-      "timestampMs": 1713,
-      "confidence": null
+      "text": "сделай",
+      "startMs": 8645,
+      "endMs": 8914
     },
     {
-      "text": " Рассказываю",
-      "startMs": 2016,
-      "endMs": 2716,
-      "timestampMs": 2366,
-      "confidence": null
+      "text": "Амазон.",
+      "startMs": 8914,
+      "endMs": 9397
     },
     {
-      "text": " как.",
-      "startMs": 2716,
-      "endMs": 2940,
-      "timestampMs": 2828,
-      "confidence": null
+      "text": "Красиво.",
+      "startMs": 9517,
+      "endMs": 9970
     },
     {
-      "text": " Шаг",
-      "startMs": 3390,
-      "endMs": 3562,
-      "timestampMs": 3476,
-      "confidence": null
+      "text": "Конечно!",
+      "startMs": 10390,
+      "endMs": 10781
     },
     {
-      "text": " первый.",
-      "startMs": 3562,
-      "endMs": 4007,
-      "timestampMs": 3785,
-      "confidence": null
+      "text": "Вот",
+      "startMs": 10781,
+      "endMs": 10890
     },
     {
-      "text": " Пишешь",
-      "startMs": 4127,
-      "endMs": 4396,
-      "timestampMs": 4262,
-      "confidence": null
+      "text": "четыре",
+      "startMs": 10890,
+      "endMs": 11215
     },
     {
-      "text": " нейросети:",
-      "startMs": 4396,
-      "endMs": 5012,
-      "timestampMs": 4704,
-      "confidence": null
+      "text": "тысячи",
+      "startMs": 11215,
+      "endMs": 11541
     },
     {
-      "text": " сделай",
-      "startMs": 5132,
-      "endMs": 5505,
-      "timestampMs": 5318,
-      "confidence": null
+      "text": "строк",
+      "startMs": 11541,
+      "endMs": 11650
     },
     {
-      "text": " мне",
-      "startMs": 5505,
-      "endMs": 5691,
-      "timestampMs": 5598,
-      "confidence": null
+      "text": "кода.",
+      "startMs": 11650,
+      "endMs": 11932
     },
     {
-      "text": " стартап.",
-      "startMs": 5691,
-      "endMs": 6175,
-      "timestampMs": 5933,
-      "confidence": null
+      "text": "Код",
+      "startMs": 12882,
+      "endMs": 13017
     },
     {
-      "text": " Красиво.",
-      "startMs": 6645,
-      "endMs": 7097,
-      "timestampMs": 6871,
-      "confidence": null
+      "text": "я",
+      "startMs": 13017,
+      "endMs": 13152
     },
     {
-      "text": " Шаг",
-      "startMs": 8447,
-      "endMs": 8635,
-      "timestampMs": 8541,
-      "confidence": null
+      "text": "не",
+      "startMs": 13152,
+      "endMs": 13286
     },
     {
-      "text": " второй.",
-      "startMs": 8635,
-      "endMs": 9121,
-      "timestampMs": 8878,
-      "confidence": null
+      "text": "читаю.",
+      "startMs": 13286,
+      "endMs": 13771
     },
     {
-      "text": " Код",
-      "startMs": 9241,
-      "endMs": 9379,
-      "timestampMs": 9310,
-      "confidence": null
+      "text": "Это",
+      "startMs": 14291,
+      "endMs": 14535
     },
     {
-      "text": " не",
-      "startMs": 9379,
-      "endMs": 9516,
-      "timestampMs": 9447,
-      "confidence": null
+      "text": "личное",
+      "startMs": 14535,
+      "endMs": 14901
     },
     {
-      "text": " читаешь.",
-      "startMs": 9516,
-      "endMs": 10010,
-      "timestampMs": 9763,
-      "confidence": null
+      "text": "дело",
+      "startMs": 14901,
+      "endMs": 15145
     },
     {
-      "text": " Это",
-      "startMs": 10130,
-      "endMs": 10374,
-      "timestampMs": 10252,
-      "confidence": null
+      "text": "нейросети.",
+      "startMs": 15145,
+      "endMs": 15706
     },
     {
-      "text": " личное",
-      "startMs": 10374,
-      "endMs": 10740,
-      "timestampMs": 10557,
-      "confidence": null
+      "text": "Ошибка?",
+      "startMs": 16156,
+      "endMs": 16646
     },
     {
-      "text": " дело",
-      "startMs": 10740,
-      "endMs": 10983,
-      "timestampMs": 10862,
-      "confidence": null
+      "text": "Пишу:",
+      "startMs": 16766,
+      "endMs": 17187
     },
     {
-      "text": " нейросети.",
-      "startMs": 10983,
-      "endMs": 11544,
-      "timestampMs": 11264,
-      "confidence": null
+      "text": "почини.",
+      "startMs": 17187,
+      "endMs": 17768
     },
     {
-      "text": " Ошибка?",
-      "startMs": 11994,
-      "endMs": 12485,
-      "timestampMs": 12240,
-      "confidence": null
+      "text": "Исправил!",
+      "startMs": 17888,
+      "endMs": 18233
     },
     {
-      "text": " Кидаешь",
-      "startMs": 12605,
-      "endMs": 13027,
-      "timestampMs": 12816,
-      "confidence": null
+      "text": "И",
+      "startMs": 18353,
+      "endMs": 18512
     },
     {
-      "text": " её",
-      "startMs": 13027,
-      "endMs": 13308,
-      "timestampMs": 13168,
-      "confidence": null
+      "text": "так",
+      "startMs": 18512,
+      "endMs": 18671
     },
     {
-      "text": " обратно",
-      "startMs": 13308,
-      "endMs": 13730,
-      "timestampMs": 13519,
-      "confidence": null
+      "text": "сорок",
+      "startMs": 18671,
+      "endMs": 18989
     },
     {
-      "text": " и",
-      "startMs": 13850,
-      "endMs": 14009,
-      "timestampMs": 13929,
-      "confidence": null
+      "text": "раз",
+      "startMs": 18989,
+      "endMs": 19148
     },
     {
-      "text": " пишешь:",
-      "startMs": 14009,
-      "endMs": 14421,
-      "timestampMs": 14215,
-      "confidence": null
+      "text": "подряд.",
+      "startMs": 19148,
+      "endMs": 19561
     },
     {
-      "text": " почини.",
-      "startMs": 14421,
-      "endMs": 14991,
-      "timestampMs": 14706,
-      "confidence": null
+      "text": "Всё",
+      "startMs": 20011,
+      "endMs": 20136
     },
     {
-      "text": " Сорок",
-      "startMs": 15111,
-      "endMs": 15458,
-      "timestampMs": 15285,
-      "confidence": null
+      "text": "заработало.",
+      "startMs": 20136,
+      "endMs": 20832
     },
     {
-      "text": " раз",
-      "startMs": 15458,
-      "endMs": 15632,
-      "timestampMs": 15545,
-      "confidence": null
+      "text": "Почему,",
+      "startMs": 20952,
+      "endMs": 21509
     },
     {
-      "text": " подряд.",
-      "startMs": 15632,
-      "endMs": 16083,
-      "timestampMs": 15857,
-      "confidence": null
+      "text": "не",
+      "startMs": 21509,
+      "endMs": 21664
     },
     {
-      "text": " Всё",
-      "startMs": 16533,
-      "endMs": 16657,
-      "timestampMs": 16595,
-      "confidence": null
+      "text": "знает",
+      "startMs": 21664,
+      "endMs": 21974
     },
     {
-      "text": " заработало.",
-      "startMs": 16657,
-      "endMs": 17353,
-      "timestampMs": 17005,
-      "confidence": null
+      "text": "никто.",
+      "startMs": 21974,
+      "endMs": 22377
     },
     {
-      "text": " Почему,",
-      "startMs": 17473,
-      "endMs": 18031,
-      "timestampMs": 17752,
-      "confidence": null
+      "text": "Я",
+      "startMs": 22497,
+      "endMs": 22589
     },
     {
-      "text": " не",
-      "startMs": 18031,
-      "endMs": 18186,
-      "timestampMs": 18108,
-      "confidence": null
+      "text": "тоже",
+      "startMs": 22589,
+      "endMs": 22775
     },
     {
-      "text": " знает",
-      "startMs": 18186,
-      "endMs": 18496,
-      "timestampMs": 18341,
-      "confidence": null
+      "text": "не",
+      "startMs": 22775,
+      "endMs": 22868
     },
     {
-      "text": " никто.",
-      "startMs": 18496,
-      "endMs": 18898,
-      "timestampMs": 18697,
-      "confidence": null
+      "text": "знаю.",
+      "startMs": 22868,
+      "endMs": 23109
     },
     {
-      "text": " Даже",
-      "startMs": 19268,
-      "endMs": 19570,
-      "timestampMs": 19419,
-      "confidence": null
+      "text": "Деплой",
+      "startMs": 23809,
+      "endMs": 24092
     },
     {
-      "text": " нейросеть.",
-      "startMs": 19570,
-      "endMs": 20114,
-      "timestampMs": 19842,
-      "confidence": null
+      "text": "в",
+      "startMs": 24092,
+      "endMs": 24233
     },
     {
-      "text": " Шаг",
-      "startMs": 20564,
-      "endMs": 20736,
-      "timestampMs": 20650,
-      "confidence": null
+      "text": "пятницу",
+      "startMs": 24233,
+      "endMs": 24657
     },
     {
-      "text": " третий.",
-      "startMs": 20736,
-      "endMs": 21183,
-      "timestampMs": 20960,
-      "confidence": null
+      "text": "вечером.",
+      "startMs": 24657,
+      "endMs": 25167
     },
     {
-      "text": " Деплой",
-      "startMs": 21303,
-      "endMs": 21586,
-      "timestampMs": 21445,
-      "confidence": null
+      "text": "Принять",
+      "startMs": 25287,
+      "endMs": 25629
     },
     {
-      "text": " в",
-      "startMs": 21586,
-      "endMs": 21728,
-      "timestampMs": 21657,
-      "confidence": null
+      "text": "всё.",
+      "startMs": 25629,
+      "endMs": 25902
     },
     {
-      "text": " пятницу",
-      "startMs": 21728,
-      "endMs": 22152,
-      "timestampMs": 21940,
-      "confidence": null
+      "text": "Алло!",
+      "startMs": 27702,
+      "endMs": 27963
     },
     {
-      "text": " вечером.",
-      "startMs": 22152,
-      "endMs": 22661,
-      "timestampMs": 22407,
-      "confidence": null
+      "text": "Почему",
+      "startMs": 29083,
+      "endMs": 29383
     },
     {
-      "text": " Принять",
-      "startMs": 23131,
-      "endMs": 23473,
-      "timestampMs": 23302,
-      "confidence": null
+      "text": "на",
+      "startMs": 29383,
+      "endMs": 29483
     },
     {
-      "text": " всё.",
-      "startMs": 23473,
-      "endMs": 23747,
-      "timestampMs": 23610,
-      "confidence": null
+      "text": "сайте",
+      "startMs": 29483,
+      "endMs": 29683
     },
     {
-      "text": " Итог:",
-      "startMs": 24197,
-      "endMs": 24497,
-      "timestampMs": 24347,
-      "confidence": null
+      "text": "написано",
+      "startMs": 29683,
+      "endMs": 30083
     },
     {
-      "text": " продакшен",
-      "startMs": 24617,
-      "endMs": 25053,
-      "timestampMs": 24835,
-      "confidence": null
+      "text": "андефайнед?!",
+      "startMs": 30083,
+      "endMs": 30542
     },
     {
-      "text": " упал,",
-      "startMs": 25053,
-      "endMs": 25430,
-      "timestampMs": 25241,
-      "confidence": null
+      "text": "Это",
+      "startMs": 30662,
+      "endMs": 30885
     },
     {
-      "text": " но",
-      "startMs": 26050,
-      "endMs": 26223,
-      "timestampMs": 26137,
-      "confidence": null
+      "text": "не",
+      "startMs": 30885,
+      "endMs": 30997
     },
     {
-      "text": " вайб",
-      "startMs": 26223,
-      "endMs": 26396,
-      "timestampMs": 26310,
-      "confidence": null
+      "text": "баг.",
+      "startMs": 30997,
+      "endMs": 31175
     },
     {
-      "text": " был",
-      "startMs": 26396,
-      "endMs": 26569,
-      "timestampMs": 26483,
-      "confidence": null
+      "text": "Это",
+      "startMs": 31695,
+      "endMs": 31960
     },
     {
-      "text": " отличный.",
-      "startMs": 26569,
-      "endMs": 27193,
-      "timestampMs": 26881,
-      "confidence": null
+      "text": "вайб.",
+      "startMs": 31960,
+      "endMs": 32173
     },
     {
-      "text": " Подпишись,",
-      "startMs": 27643,
-      "endMs": 28183,
-      "timestampMs": 27913,
-      "confidence": null
+      "text": "Подпишись,",
+      "startMs": 32923,
+      "endMs": 33463
     },
     {
-      "text": " пока",
-      "startMs": 28303,
-      "endMs": 28612,
-      "timestampMs": 28457,
-      "confidence": null
+      "text": "пока",
+      "startMs": 33583,
+      "endMs": 33914
     },
     {
-      "text": " я",
-      "startMs": 28612,
-      "endMs": 28766,
-      "timestampMs": 28689,
-      "confidence": null
+      "text": "я",
+      "startMs": 33914,
+      "endMs": 34080
     },
     {
-      "text": " чиню",
-      "startMs": 28766,
-      "endMs": 29074,
-      "timestampMs": 28920,
-      "confidence": null
+      "text": "чиню",
+      "startMs": 34080,
+      "endMs": 34410
     },
     {
-      "text": " прод",
-      "startMs": 29074,
-      "endMs": 29228,
-      "timestampMs": 29151,
-      "confidence": null
+      "text": "прод",
+      "startMs": 34410,
+      "endMs": 34576
     },
     {
-      "text": " промптом:",
-      "startMs": 29348,
-      "endMs": 29812,
-      "timestampMs": 29580,
-      "confidence": null
+      "text": "промптом:",
+      "startMs": 34576,
+      "endMs": 35005
     },
     {
-      "text": " ну",
-      "startMs": 29812,
-      "endMs": 29991,
-      "timestampMs": 29901,
-      "confidence": null
+      "text": "ну",
+      "startMs": 35125,
+      "endMs": 35266
     },
     {
-      "text": " пожалуйста.",
-      "startMs": 29991,
-      "endMs": 30811,
-      "timestampMs": 30401,
-      "confidence": null
+      "text": "пожалуйста.",
+      "startMs": 35266,
+      "endMs": 35915
     }
   ]
 }

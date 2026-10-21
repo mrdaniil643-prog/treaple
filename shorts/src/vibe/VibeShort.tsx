@@ -1,95 +1,100 @@
 import { Audio } from "@remotion/media";
-import { AbsoluteFill, interpolate, Sequence, staticFile, Track, useCurrentFrame, useVideoConfig } from "remotion";
+import { linearTiming, springTiming, TransitionSeries } from "@remotion/transitions";
+import { clockWipe } from "@remotion/transitions/clock-wipe";
+import { iris } from "@remotion/transitions/iris";
+import { pushCut } from "@remotion/transitions/push-cut";
+import { slide } from "@remotion/transitions/slide";
+import { wipe } from "@remotion/transitions/wipe";
+import { AbsoluteFill, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import voiceover from "../voiceover/vibecoding.json";
 import { Background } from "./Background";
 import { Captions } from "./Captions";
 import { useFonts } from "./fonts";
-import { Crash } from "./scenes/Crash";
-import { Cta } from "./scenes/Cta";
-import { Deploy } from "./scenes/Deploy";
-import { ERRORS, Errors } from "./scenes/Errors";
-import { Hook } from "./scenes/Hook";
+import { Call } from "./scenes/Call";
+import { Call2 } from "./scenes/Call2";
+import { Cta, subscribeClick } from "./scenes/Cta";
+import { Deploy, deployClick } from "./scenes/Deploy";
+import { Errors, errorTimes } from "./scenes/Errors";
 import { NoRead } from "./scenes/NoRead";
 import { Prompt } from "./scenes/Prompt";
 import { Works } from "./scenes/Works";
 import { C } from "./theme";
+import { LightLeak as LightLeakLayer } from "./ui";
+import { cue, FPS, SceneFrom, SceneId, sceneDuration, sceneStart, TRANSITION_FRAMES } from "./timing";
 
 type Props = {
   readonly handle: string;
   readonly musicVolume: number;
 };
 
-type SceneId = (typeof voiceover.scenes)[number]["id"];
+const T = TRANSITION_FRAMES;
 
-// Картинка появляется чуть раньше голоса, чтобы глаз успел зацепиться.
-const LEAD_SECONDS = 0.15;
-export const TAIL_SECONDS = 1.5;
-
-// Тайминги сцен берутся из озвучки (scripts/voiceover.py), поэтому при
-// изменении текста сцены сами подстраиваются под длину фраз.
-const useSceneTiming = () => {
-  const { fps, durationInFrames } = useVideoConfig();
-  const starts = voiceover.scenes.map((s, i) =>
-    i === 0 ? 0 : Math.round((s.startMs / 1000 - LEAD_SECONDS) * fps),
-  );
-  return (id: SceneId) => {
-    const i = voiceover.scenes.findIndex((s) => s.id === id);
-    const from = starts[i];
-    const until = i + 1 < starts.length ? starts[i + 1] : durationInFrames;
-    return { from, durationInFrames: until - from };
-  };
-};
-
-// Быстрый «наезд» камеры при смене сцены.
-const SceneIn: React.FC<{ readonly children: React.ReactNode }> = ({ children }) => {
-  const frame = useCurrentFrame();
-  return (
-    <AbsoluteFill
-      style={{
-        opacity: interpolate(frame, [0, 4], [0, 1], { extrapolateRight: "clamp" }),
-        scale: String(interpolate(frame, [0, 6], [1.08, 1], { extrapolateRight: "clamp" })),
-        filter: `blur(${interpolate(frame, [0, 5], [12, 0], { extrapolateRight: "clamp" })}px)`,
-      }}
-    >
-      {children}
-    </AbsoluteFill>
-  );
-};
-
-const Sfx: React.FC<{ readonly name: string; readonly at: number; readonly volume?: number }> = ({ name, at, volume = 0.5 }) => {
+const Sfx: React.FC<{ readonly name: string; readonly at: number; readonly volume?: number; readonly seconds?: number }> = ({ name, at, volume = 0.5, seconds }) => {
   const { fps } = useVideoConfig();
   return (
-    <Sequence name={`SFX ${name}`} from={Math.round(at * fps)} layout="none">
+    <Sequence name={`SFX ${name}`} from={Math.round(at * fps)} durationInFrames={seconds ? Math.round(seconds * fps) : undefined} layout="none">
       <Audio src={staticFile(`sfx/${name}.wav`)} volume={volume} />
     </Sequence>
   );
 };
 
+// Сцена в TransitionSeries: знает свой абсолютный старт для аудиобаров.
+const scene = (id: SceneId, node: React.ReactNode) => (
+  <TransitionSeries.Sequence name={id} durationInFrames={sceneDuration(id)}>
+    <SceneFrom.Provider value={sceneStart(id)}>{node}</SceneFrom.Provider>
+  </TransitionSeries.Sequence>
+);
+
+// Абсолютное время реплики в секундах: для звуков поверх всех сцен.
+const at = (id: SceneId, n: number, offset = 0) => sceneStart(id) / FPS + cue(id, n) + offset;
+const atScene = (id: SceneId, seconds: number) => sceneStart(id) / FPS + seconds;
+
+const LightLeakAt: React.FC<{ readonly second: number; readonly seed: number; readonly hueShift?: number }> = ({ second, seed, hueShift }) => {
+  const { fps } = useVideoConfig();
+  return (
+    <Sequence name={`Light leak ${seed}`} from={Math.round((second - 0.3) * fps)} durationInFrames={Math.round(1.4 * fps)}>
+      <LightLeakLayer seed={seed} hueShift={hueShift} />
+    </Sequence>
+  );
+};
+
+
 export const VibeShort: React.FC<Props> = ({ handle, musicVolume }) => {
   useFonts();
   const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
-  const at = useSceneTiming();
-  const sec = (id: SceneId, offset: number) => at(id).from / fps + offset;
-  const crash = at("crash");
-  const isCrash = frame >= crash.from && frame < crash.from + 2 * fps;
+  const { fps, durationInFrames, width, height } = useVideoConfig();
+  const alarm = frame >= sceneStart("call2") && frame < sceneStart("call2") + (cue("call2", 2) + 0.2) * fps;
+
+  // Бит приглушается, пока кто-то говорит.
+  const speaking = (f: number) => voiceover.phrases.some((p) => f >= (p.startMs / 1000 - 0.1) * fps && f <= (p.endMs / 1000 + 0.15) * fps);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: C.bg }}>
-      <Background colors={isCrash ? [C.red, "#7a0010", C.orange] : [C.violet, C.cyan, C.pink]} />
+    <AbsoluteFill style={{ backgroundColor: C.night }}>
+      <Background alarm={alarm} />
 
-      <Track name="Scenes">
-        <Sequence name="Hook" {...at("hook")}><SceneIn><Hook /></SceneIn></Sequence>
-        <Sequence name="Prompt" {...at("prompt")}><SceneIn><Prompt /></SceneIn></Sequence>
-        <Sequence name="No read" {...at("noread")}><SceneIn><NoRead /></SceneIn></Sequence>
-        <Sequence name="Errors" {...at("errors")}><SceneIn><Errors /></SceneIn></Sequence>
-        <Sequence name="Works" {...at("works")}><SceneIn><Works /></SceneIn></Sequence>
-        <Sequence name="Deploy" {...at("deploy")}><SceneIn><Deploy /></SceneIn></Sequence>
-        <Sequence name="Crash" {...crash}><SceneIn><Crash /></SceneIn></Sequence>
-        <Sequence name="CTA" {...at("cta")}><SceneIn><Cta handle={handle} /></SceneIn></Sequence>
-      </Track>
+      <TransitionSeries name="Scenes">
+        {scene("call", <Call />)}
+        <TransitionSeries.Transition presentation={pushCut({ flashColor: C.butter, flashOpacity: 0.8 })} timing={linearTiming({ durationInFrames: T })} />
+        {scene("prompt", <Prompt />)}
+        <TransitionSeries.Transition presentation={slide({ direction: "from-bottom" })} timing={springTiming({ durationInFrames: T, config: { damping: 200 } })} />
+        {scene("noread", <NoRead />)}
+        <TransitionSeries.Transition presentation={wipe({ direction: "from-top-left" })} timing={linearTiming({ durationInFrames: T })} />
+        {scene("errors", <Errors />)}
+        <TransitionSeries.Transition presentation={iris({ width, height })} timing={linearTiming({ durationInFrames: T })} />
+        {scene("works", <Works />)}
+        <TransitionSeries.Transition presentation={slide({ direction: "from-right" })} timing={springTiming({ durationInFrames: T, config: { damping: 200 } })} />
+        {scene("deploy", <Deploy />)}
+        <TransitionSeries.Transition presentation={pushCut({ flashColor: C.siren, flashOpacity: 0.9 })} timing={linearTiming({ durationInFrames: T })} />
+        {scene("call2", <Call2 />)}
+        <TransitionSeries.Transition presentation={clockWipe({ width, height })} timing={linearTiming({ durationInFrames: T })} />
+        {scene("cta", <Cta handle={handle} />)}
+      </TransitionSeries>
 
-      <Captions captions={voiceover.captions} />
+      <LightLeakAt second={at("call", 4)} seed={3} hueShift={20} />
+      <LightLeakAt second={at("works", 0)} seed={7} hueShift={120} />
+      <LightLeakAt second={at("call2", 3)} seed={11} />
+
+      <Captions />
 
       <div
         style={{
@@ -98,8 +103,8 @@ export const VibeShort: React.FC<Props> = ({ handle, musicVolume }) => {
           left: 0,
           height: 12,
           width: `${(frame / (durationInFrames - 1)) * 100}%`,
-          background: `linear-gradient(90deg, ${C.cyan}, ${C.lime}, ${C.pink})`,
-          boxShadow: `0 0 20px ${C.lime}`,
+          background: `linear-gradient(90deg, ${C.violet}, ${C.sunset}, ${C.butter})`,
+          boxShadow: `0 0 20px ${C.sunset}`,
         }}
       />
 
@@ -109,27 +114,36 @@ export const VibeShort: React.FC<Props> = ({ handle, musicVolume }) => {
         src={staticFile("sfx/beat.wav")}
         volume={(f) =>
           musicVolume *
+          (speaking(f) ? 0.5 : 1) *
           interpolate(f, [durationInFrames - fps, durationInFrames], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
         }
       />
 
       {voiceover.scenes.slice(1).map((s) => (
-        <Sfx key={s.id} name="whoosh" at={sec(s.id, 0)} volume={0.35} />
+        <Sfx key={s.id} name="whoosh" at={sceneStart(s.id as SceneId) / fps} volume={0.3} />
       ))}
-      <Sfx name="pop" at={sec("hook", 0.5)} />
-      <Sfx name="pop" at={sec("hook", 1.2)} />
-      <Sfx name="pop" at={sec("prompt", 3.9)} />
-      <Sfx name="error" at={sec("noread", 0.9)} volume={0.6} />
-      <Sfx name="click" at={sec("noread", 2.5)} />
-      {ERRORS.map((e) => (
-        <Sfx key={e.text} name="error" at={sec("errors", e.at)} volume={0.35} />
+      <Sfx name="ring" at={0} volume={0.55} seconds={cue("call", 0) - 0.2} />
+      <Sfx name="pop" at={at("call", 0, 0.6)} />
+      <Sfx name="pop" at={at("call", 1)} />
+      <Sfx name="pop" at={at("call", 2)} />
+      <Sfx name="hangup" at={at("call", 3, -0.15)} volume={0.2} seconds={0.8} />
+      <Sfx name="boom" at={at("call", 4)} volume={0.55} />
+      <Sfx name="pop" at={at("prompt", 3)} />
+      <Sfx name="error" at={at("noread", 0, 0.45)} volume={0.6} />
+      <Sfx name="click" at={at("noread", 1, 0.9)} />
+      {errorTimes().map((t, i) => (
+        <Sfx key={i} name="error" at={atScene("errors", t)} volume={0.3} />
       ))}
-      <Sfx name="ding" at={sec("works", 0.1)} />
-      <Sfx name="click" at={sec("deploy", 2.75)} />
-      <Sfx name="whoosh" at={sec("deploy", 2.85)} volume={0.6} />
-      <Sfx name="alarm" at={sec("crash", 0)} volume={0.3} />
-      <Sfx name="ding" at={sec("crash", 2.0)} volume={0.4} />
-      <Sfx name="pop" at={sec("cta", 3.3)} />
+      <Sfx name="ding" at={at("errors", 2)} volume={0.4} />
+      <Sfx name="ding" at={at("works", 0)} />
+      <Sfx name="click" at={atScene("deploy", deployClick())} />
+      <Sfx name="whoosh" at={atScene("deploy", deployClick() + 0.1)} volume={0.6} />
+      <Sfx name="ring" at={atScene("call2", 0.3)} volume={0.55} seconds={cue("call2", 0) - 0.5} />
+      <Sfx name="glitch" at={at("call2", 1)} volume={0.45} />
+      <Sfx name="hangup" at={at("call2", 2, -0.15)} volume={0.2} seconds={0.8} />
+      <Sfx name="boom" at={at("call2", 3)} volume={0.6} />
+      <Sfx name="click" at={atScene("cta", subscribeClick())} />
+      <Sfx name="ding" at={atScene("cta", subscribeClick() + 0.05)} volume={0.35} />
     </AbsoluteFill>
   );
 };
