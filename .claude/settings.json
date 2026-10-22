@@ -18,6 +18,15 @@
             "timeout": 120
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_CODE_REMOTE\" = \"true\" ] || exit 0; python3 -c \"import faster_whisper, av; assert 15 <= int(av.__version__.split('.')[0]) < 19\" 2>/dev/null || pip install -q faster-whisper \"av>=15,<19\" >/dev/null 2>&1 || true",
+            "timeout": 300
+          }
+        ]
       }
     ]
   }
