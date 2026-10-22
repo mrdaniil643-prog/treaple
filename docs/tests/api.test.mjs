@@ -43,7 +43,7 @@ async function call(body, headers = {}) {
   return res;
 }
 
-const lead = { name: 'Анна', phone: '+7 (909) 854-88-61', message: 'Иск', source: 'Сайт', page: 'https://x' };
+const lead = { name: 'Анна', phone: '+7 (909) 854-88-61', message: 'Иск', source: 'Сайт', page: 'https://x', consent: '2026-10-22' };
 
 test('корректная заявка уходит в Telegram и возвращает 200', async () => {
   mockFetch([['https://api.telegram.org', ok]]);
@@ -78,25 +78,44 @@ test('заполненная ловушка: ответ 200, в Telegram нич�
   assert.equal(calls.length, 0);
 });
 
+test('без согласия на обработку ПДн заявка не принимается', async () => {
+  for (const consent of [undefined, '', 'да', true]) {
+    mockFetch([]);
+    const res = await call({ ...lead, consent });
+    assert.equal(res.statusCode, 400, `consent=${JSON.stringify(consent)}`);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test('редакция согласия попадает в заявку', async () => {
+  mockFetch([['https://api.telegram.org', ok]]);
+  await call(lead);
+  assert.match(calls[0].body.text, /Согласие на обработку ПДн:<\/b> дано, редакция от 2026-10-22/);
+});
+
 test('неполный номер отклоняется', async () => {
   mockFetch([]);
   const res = await call({ ...lead, phone: '+7 (909) 854' });
   assert.equal(res.statusCode, 400);
 });
 
-test('зависшая почта не задерживает ответ после доставки в Telegram', async () => {
-  process.env.RESEND_KEY = 'k'; process.env.LEAD_EMAIL_TO = 'a@b.c'; process.env.LEAD_EMAIL_FROM = 'c@d.e';
-  mockFetch([['https://api.telegram.org', ok], ['https://api.resend.com', hang]]);
-  // Таймер AbortSignal.timeout в Node не держит процесс; в живой функции его держит открытый запрос.
-  // Здесь эту роль играет обычный таймер, иначе раннер завершится раньше, чем сработает таймаут.
-  const keepAlive = setInterval(() => {}, 1000);
+test('зависший Telegram: функция отвечает 502 по таймауту, а не висит до лимита платформы', async () => {
+  mockFetch([['https://api.telegram.org', hang]]);
+  const keepAlive = setInterval(() => {}, 1000);   // таймер AbortSignal.timeout сам процесс не держит
   const started = Date.now();
   const res = await call(lead);
   const took = Date.now() - started;
   clearInterval(keepAlive);
-  delete process.env.RESEND_KEY; delete process.env.LEAD_EMAIL_TO; delete process.env.LEAD_EMAIL_FROM;
-  assert.equal(res.statusCode, 200);
-  assert.ok(took < 4000, `ответ занял ${took} мс`);
+  assert.equal(res.statusCode, 502);
+  assert.ok(took < 7500, `ответ занял ${took} мс`);
+});
+
+test('заявка с чужой или устаревшей редакцией согласия не принимается', async () => {
+  for (const consent of ['0000-00-00', '2025-01-01']) {
+    mockFetch([]);
+    const res = await call({ ...lead, consent });
+    assert.equal(res.statusCode, 400, consent);
+  }
 });
 
 test('четвёртая заявка за минуту с одного адреса получает 429', async () => {

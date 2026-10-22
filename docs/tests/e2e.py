@@ -99,12 +99,23 @@ with sync_playwright() as p:
     else:
         notes.append(f"ошибка имени: {page.locator('#q-name-error').inner_text()}")
 
-    # успешная отправка быстрой формы
+    # быстрая форма без флажка согласия не уходит
     page.fill("#q-name", "Дмитрий")
+    page.click("#form-quick button[type=submit]")
+    page.wait_for_timeout(300)
+    if page.locator("#q-consent-error").is_hidden() or captured.get("body"):
+        problems.append("быстрая форма ушла без согласия на обработку ПДн")
+    else:
+        notes.append("быстрая форма без согласия не отправляется")
+
+    # успешная отправка быстрой формы
+    page.check("#q-consent")
     page.click("#form-quick button[type=submit]")
     page.wait_for_selector(".stamp", timeout=4000)
     page.wait_for_timeout(600)
     notes.append(f"payload быстрой формы: {captured.get('body')}")
+    if (captured.get("body") or {}).get("consent") != "2026-10-22":
+        problems.append("в заявку с быстрой формы не попала редакция согласия")
     page.locator(".quickform").screenshot(path=f"{OUT}/form-success.png")
 
     # honeypot: заполненное скрытое поле не должно доходить как обычная заявка
@@ -172,6 +183,45 @@ with sync_playwright() as p:
     if errors:
         problems.append(f"pageerror: {errors[:3]}")
 
+    ctx.close()
+
+    # документы: открываются, в новой вкладке из формы, ссылаются друг на друга
+    ctx = browser.new_context(viewport={"width": 390, "height": 844})
+    page = ctx.new_page()
+    page.goto(BASE, wait_until="networkidle")
+    doc_links = page.evaluate("""() => [...document.querySelectorAll('form a')].map(a => [a.getAttribute('href'), a.target])""")
+    if not doc_links or any(t != "_blank" for _, t in doc_links):
+        problems.append(f"ссылки на документы в формах открываются в той же вкладке: {doc_links}")
+    for path, must in [("privacy.html", "consent.html"), ("consent.html", "privacy.html")]:
+        r = page.goto(BASE + path, wait_until="load")
+        ok = r and r.status == 200 and page.locator(f"a[href='{must}']").count() > 0
+        overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
+        notes.append(f"{path}: HTTP {r.status if r else '—'}, ссылка на {must}: {ok}, overflow={overflow}px")
+        if not ok or overflow > 1:
+            problems.append(f"{path}: не открылась, нет ссылки на {must} или есть горизонтальный скролл")
+        page.screenshot(path=f"{OUT}/{path}.png", full_page=True)
+    ctx.close()
+
+    # Content-Security-Policy из vercel.json: сайт работает, браузер ничего не блокирует
+    vercel = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vercel.json")))
+    csp = next(x["value"] for h in vercel["headers"] for x in h["headers"] if x["key"] == "Content-Security-Policy")
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900})
+    def with_csp(route, _req):
+        resp = route.fetch()
+        route.fulfill(response=resp, headers={**resp.headers, "content-security-policy": csp})
+    ctx.route(BASE.rstrip("/") + "/**", with_csp)
+    page = ctx.new_page()
+    blocked = []
+    page.on("console", lambda m: blocked.append(m.text) if "Content Security Policy" in m.text else None)
+    page.goto(BASE, wait_until="networkidle")
+    page.wait_for_timeout(400)
+    ran = page.evaluate("document.documentElement.classList.contains('js') && window.__siteReady === true")
+    for path in ["privacy.html", "consent.html", "404.html"]:
+        page.goto(BASE + path, wait_until="load")
+    bg = page.evaluate("getComputedStyle(document.body).backgroundColor")
+    notes.append(f"CSP: нарушений {len(blocked)}, встроенный скрипт выполнился={ran}, стиль 404 применён={bg == 'rgb(241, 242, 239)'}")
+    if blocked or not ran or bg != "rgb(241, 242, 239)":
+        problems.append(f"CSP мешает сайту: {blocked[:2]}, скрипт={ran}, фон 404={bg}")
     ctx.close()
 
     # мобильная панель вызова: кнопка звонка видна и ведёт на tel:

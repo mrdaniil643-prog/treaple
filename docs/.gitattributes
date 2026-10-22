@@ -1,0 +1,5 @@
+# Встроенные скрипты и стили сайта разрешены в CSP по хешу: переводы строк должны быть LF
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf

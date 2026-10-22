@@ -9,11 +9,19 @@
 <meta property="og:title" content="Ярослав Сазиков, юрист по гражданским делам">
 <meta property="og:description" content="Оценю ваши шансы в суде за один звонок. Первая консультация бесплатная.">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:site_name" content="Ярослав Сазиков, юрист">
+<meta property="og:image" content="assets/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Оценю ваши шансы в суде за один звонок. Ярослав Сазиков, юрист по гражданским делам, +7 909 854-88-61">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="assets/fonts/eb-garamond-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <script>document.documentElement.className+=" js";setTimeout(function(){if(!window.__siteReady)document.documentElement.classList.remove("js")},3000)</script>
 <link rel="stylesheet" href="assets/css/styles.css">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
 <body>
 
@@ -77,13 +85,18 @@
 
         <input class="honeypot" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
 
+        <div class="check">
+          <input class="check__box" type="checkbox" id="q-consent" name="consent" value="2026-10-22" required>
+          <label class="check__label" for="q-consent">Даю <a href="consent.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a></label>
+          <p class="field__error" id="q-consent-error" role="alert" hidden></p>
+        </div>
+
         <button class="btn btn--primary" type="submit">
           <span class="btn__label">Позвоните мне</span>
           <span class="btn__spinner" aria-hidden="true"></span>
         </button>
 
-        <p class="form__legal">Нажимая кнопку, вы соглашаетесь на обработку персональных данных
-          по <a href="#privacy">политике конфиденциальности</a>.</p>
+        <p class="form__legal">Как я храню и использую данные, описано в <a href="privacy.html" target="_blank" rel="noopener">политике обработки персональных данных</a>.</p>
         <p class="form__status" role="status" aria-live="polite"></p>
       </form>
     </aside>
@@ -230,9 +243,8 @@
       <input class="honeypot" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
 
       <div class="check field--wide">
-        <input class="check__box" type="checkbox" id="m-consent" name="consent" required>
-        <label class="check__label" for="m-consent">Согласен на обработку персональных данных
-          по <a href="#privacy">политике конфиденциальности</a></label>
+        <input class="check__box" type="checkbox" id="m-consent" name="consent" value="2026-10-22" required>
+        <label class="check__label" for="m-consent">Даю <a href="consent.html" target="_blank" rel="noopener">согласие на обработку персональных данных</a></label>
         <p class="field__error" id="m-consent-error" role="alert" hidden></p>
       </div>
 
@@ -240,6 +252,8 @@
         <span class="btn__label">Отправить заявку</span>
         <span class="btn__spinner" aria-hidden="true"></span>
       </button>
+
+      <p class="form__legal field--wide">Как я храню и использую данные, описано в <a href="privacy.html" target="_blank" rel="noopener">политике обработки персональных данных</a>.</p>
 
       <p class="form__status field--wide" role="status" aria-live="polite"></p>
     </form>
@@ -302,7 +316,7 @@
 
   <div class="shell footer__bottom">
     <p>© <span id="year">2026</span> Ярослав Сазиков, юрист по гражданским делам</p>
-    <p><a href="#privacy" id="privacy">Политика обработки персональных данных</a></p>
+    <p class="footer__docs"><a href="privacy.html">Политика обработки персональных данных</a><a href="consent.html">Согласие на обработку</a></p>
     <p class="footer__legal">Материалы сайта не являются юридической консультацией и публичной офертой.</p>
   </div>
 </footer>

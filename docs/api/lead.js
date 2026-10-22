@@ -2,8 +2,9 @@
  * POST /api/lead — приём заявок с сайта.
  *
  * Куда уходит заявка:
- *   1. Telegram-бот (обязательно)  — TG_BOT_TOKEN, TG_CHAT_ID
- *   2. Письмо через Resend (опция) — RESEND_KEY, LEAD_EMAIL_TO, LEAD_EMAIL_FROM
+ *   Telegram-бот — TG_BOT_TOKEN, TG_CHAT_ID.
+ *   Других получателей нет: политика обработки ПДн и текст согласия называют только Telegram.
+ *   Добавляете канал — сначала поправьте privacy.html и consent.html.
  *
  * Токены живут только в переменных окружения. В клиентский код они не попадают.
  * Формат под Vercel Serverless Functions (Node 18+). Для Netlify смотрите README.
@@ -12,6 +13,10 @@
 const WINDOW_MS = 60000;
 const MAX_PER_WINDOW = 3;
 const MAX_TRACKED_IPS = 5000;
+
+// Редакция текста согласия (consent.html). Флажок в формах передаёт её значением;
+// заявка с другой редакцией не принимается. Меняете текст согласия — меняйте и дату.
+export const CONSENT_REVISION = '2026-10-22';
 const hits = new Map(); // IP -> метки времени. Живёт в пределах одного инстанса функции.
 
 function prune(now) {
@@ -83,26 +88,6 @@ async function sendTelegram(text) {
   }
 }
 
-async function sendEmail(text) {
-  const key = process.env.RESEND_KEY;
-  const to = process.env.LEAD_EMAIL_TO;
-  const from = process.env.LEAD_EMAIL_FROM;
-  if (!key || !to || !from) return;
-
-  // Почта дублирует Telegram: её отказ или зависание не должны ронять уже доставленную заявку
-  await fetch('https://api.resend.com/emails', {
-    signal: AbortSignal.timeout(2500),
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: 'Заявка с сайта',
-      html: text.replace(/\n/g, '<br>'),
-    }),
-  }).catch(() => {});
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -137,6 +122,13 @@ export default async function handler(req, res) {
   const source = clean(body.source, 40) || 'Сайт';
   const page = clean(body.page, 200);
 
+  // Оператор обязан доказать, что согласие получено (ч. 3 ст. 9 152-ФЗ):
+  // без отмеченного флажка заявка не принимается, а редакция согласия пишется в сообщение
+  const consent = clean(body.consent, 20);
+  if (consent !== CONSENT_REVISION) {
+    return res.status(400).json({ error: 'Нужно согласие на обработку персональных данных' });
+  }
+
   if (name.length < 2) return res.status(400).json({ error: 'Укажите имя' });
   if (phone.replace(/\D/g, '').length !== 11) {
     return res.status(400).json({ error: 'Проверьте номер телефона' });
@@ -150,11 +142,11 @@ export default async function handler(req, res) {
     (message ? `<b>Ситуация:</b> ${escapeHtml(message)}\n` : '') +
     `\n<b>Форма:</b> ${escapeHtml(source)}\n` +
     `<b>Время:</b> ${escapeHtml(when)} (МСК)\n` +
+    `<b>Согласие на обработку ПДн:</b> дано, редакция от ${escapeHtml(consent)}\n` +
     (page ? `<b>Страница:</b> ${escapeHtml(page)}` : '');
 
   try {
     await sendTelegram(text);
-    await sendEmail(text);
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('lead delivery failed:', err.message);

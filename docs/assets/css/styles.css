@@ -177,6 +177,7 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
   border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg)}
 .check__label{font-size:var(--t-sm);color:var(--ink-2)}
 .check.is-invalid .check__box{border-color:var(--danger)}
+.check .field__error{grid-column:1/-1;margin-top:0}
 .check__label a,.form__legal a{color:var(--seal)}
 
 .form__legal{color:var(--ink-3);font-size:var(--t-xs);line-height:1.5}
@@ -309,6 +310,25 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
 .footer__bottom a{color:var(--paper);text-decoration:none;border-bottom:1px solid rgba(241,242,239,.3)}
 .footer__bottom a:hover{border-bottom-color:var(--paper)}
 .footer__legal{flex-basis:100%}
+.footer__docs{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem}
+
+/* ─── Документы: политика и согласие ───────────────────── */
+.doc{padding-block:clamp(2rem,5vw,3.5rem) clamp(3.5rem,8vw,6rem)}
+.doc__in{max-width:46rem}
+.doc__back{display:inline-flex;align-items:center;min-height:44px;font-size:var(--t-sm);color:var(--seal);
+  text-decoration:none;border-bottom:1px solid var(--seal-soft)}
+.doc__back:hover{border-bottom-color:var(--seal)}
+.doc__title{font-size:var(--t-xl);margin-top:var(--space-4)}
+.doc__date{color:var(--ink-3);font-size:var(--t-sm);margin-top:var(--space-2)}
+.doc__lead{margin-top:var(--space-5);font-size:var(--t-md);color:var(--ink)}
+.doc__part{margin-top:var(--space-6);padding-top:var(--space-4);border-top:1px solid var(--line)}
+.doc__part h2{font-size:var(--t-lg)}
+.doc__part p,.doc__part li{color:var(--ink-2);max-width:65ch}
+.doc__part p{margin-top:var(--space-3)}
+.doc__part ul{margin-top:var(--space-2);display:grid;gap:.4rem}
+.doc__part li{position:relative;padding-left:1.4rem}
+.doc__part li::before{content:'';position:absolute;left:0;top:.8em;width:.7rem;height:1px;background:var(--seal)}
+.doc a:not(.doc__back){color:var(--seal);text-decoration-thickness:1px;text-underline-offset:.18em}
 
 /* ─── Панель вызова ─────────────────────────────────────── */
 /* На компьютере: одна кнопка в углу. На телефоне: полоса внизу, «Позвонить» и «Оставить заявку» */
@@ -328,12 +348,14 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
 /* ─── Моушен ────────────────────────────────────────────── */
 /* Появление заголовка из-под маски: один оркестрованный момент на странице */
 .reveal-line{display:block;overflow:hidden}
-.js .reveal-line>span{display:block;transform:translateY(105%);
-  transition:transform var(--dur-3) var(--ease);transition-delay:var(--d,0ms)}
-.is-ready .reveal-line>span{transform:none}
-
-.js .rule--draw{transform:scaleX(0);transform-origin:left;transition:transform .9s var(--ease) .5s}
-.is-ready .rule--draw{transform:scaleX(1)}
+/* Анимация стартует с первой отрисовкой и не ждёт main.js: заголовок появляется быстрее (LCP) */
+@keyframes rise{from{transform:translateY(105%)}to{transform:none}}
+@keyframes draw-x{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.js .reveal-line>span{display:block;animation:rise var(--dur-3) var(--ease) both;animation-delay:var(--d,0ms)}
+.hero__title .reveal-line:nth-child(1){--d:60ms}
+.hero__title .reveal-line:nth-child(2){--d:140ms}
+.hero__lead{--d:220ms}
+.js .rule--draw{transform-origin:left;animation:draw-x .9s var(--ease) .35s both}
 
 /* Сдержанный вход секций: 14px и одна ступень */
 .js [data-anim]{opacity:0;transform:translateY(14px);
@@ -346,7 +368,8 @@ ul,ol,dl,dd{margin:0;padding:0;list-style:none}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
     transition-duration:.001ms!important}
   .reveal-line>span,[data-anim],.case__icon{transform:none!important;opacity:1!important}
-  .rule--draw{transform:scaleX(1)!important}
+  .rule--draw{transform:scaleX(1)!important;animation:none!important}
+  .reveal-line>span{animation:none!important}
   .stamp__mark{opacity:1!important;transform:rotate(-8deg)!important}
 }
 

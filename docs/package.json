@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "python3 -m http.server 4173",
     "check": "node --check assets/js/main.js && node --check api/lead.js",
-    "test:api": "node --test tests/api.test.mjs",
-    "test:e2e": "python3 tests/e2e.py"
+    "test": "node --test tests/api.test.mjs tests/csp.test.mjs tests/consent.test.mjs",
+    "test:e2e": "python3 tests/e2e.py",
+    "csp:update": "node tests/csp.test.mjs --write",
+    "images": "python3 tools/render-images.py"
   }
 }

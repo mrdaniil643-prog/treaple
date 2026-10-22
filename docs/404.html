@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Страница не найдена — Ярослав Сазиков</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F1F2EF">
+<!-- Страница открывается по любому неверному адресу, в том числе вложенному.
+     Относительные ссылки на стили там ломаются, поэтому всё нужное лежит здесь. -->
+<style>
+  :root{--paper:#F1F2EF;--ink:#15202E;--ink-2:#4B5970;--seal:#7B2C31;--seal-dark:#5F2126;--line:#D3D6CE}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:17px/1.65 'Manrope','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;
+    display:grid;place-items:center;padding:2rem 1.25rem}
+  main{max-width:34rem}
+  .glyph{font:400 3rem/1 Georgia,'Times New Roman',serif;color:var(--seal)}
+  h1{font:500 clamp(2rem,1.4rem + 2.6vw,2.9rem)/1.1 'EB Garamond',Georgia,'Times New Roman',serif;
+    margin:1rem 0 0;text-wrap:balance}
+  p{color:var(--ink-2);margin:1rem 0 0;text-wrap:pretty}
+  .actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}
+  a{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:.85rem 1.4rem;
+    border-radius:2px;font-weight:600;text-decoration:none;transition:background .3s cubic-bezier(.22,1,.36,1)}
+  .call{background:var(--seal);color:#fff}
+  .call:hover{background:var(--seal-dark)}
+  .home{border:1px solid var(--line);color:var(--ink);background:#fff}
+  .home:hover{border-color:var(--ink)}
+  a:focus-visible{outline:2px solid var(--seal);outline-offset:3px}
+</style>
+</head>
+<body>
+<main>
+  <div class="glyph" aria-hidden="true">§</div>
+  <h1>Такой страницы на&nbsp;сайте нет</h1>
+  <p>Возможно, в&nbsp;адресе опечатка. Если вы&nbsp;искали, как со&nbsp;мной связаться, позвоните.</p>
+  <div class="actions">
+    <a class="call" href="tel:+79098548861">+7 909 854-88-61</a>
+    <a class="home" id="home" href="/">На главную</a>
+  </div>
+</main>
+<script>
+  // На GitHub Pages сайт проекта живёт в /имя-репозитория/, а не в корне домена
+  if (/\.github\.io$/.test(location.hostname)) {
+    document.getElementById('home').href = '/' + location.pathname.split('/')[1] + '/';
+  }
+</script>
+</body>
+</html>

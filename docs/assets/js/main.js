@@ -8,15 +8,7 @@
   var $  = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
-  /* ── 1. Оркестрованное открытие первого экрана ───────────── */
-  $$('.hero .reveal-line').forEach(function (el, i) {
-    el.style.setProperty('--d', (i * 90) + 'ms');
-  });
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () { document.body.classList.add('is-ready'); });
-  });
-
-  /* ── 2. Появление секций по скроллу ──────────────────────── */
+  /* ── 1. Появление секций по скроллу ──────────────────────── */
   $$('.band__head, .case, .step, .person, .form--main, .qa')
     .forEach(function (el) { el.setAttribute('data-anim', ''); });
 
@@ -36,7 +28,7 @@
 
   $$('[data-anim]').forEach(function (el) { appear.observe(el); });
 
-  /* ── 3. Таймлайн: линия заполняется по мере скролла ──────── */
+  /* ── 2. Таймлайн: линия заполняется по мере скролла ──────── */
   var steps = $('#steps');
   if (steps) {
     var fill = $('.steps__fill', steps);
@@ -62,10 +54,10 @@
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
-    paint();
+    requestAnimationFrame(paint);
   }
 
-  /* ── 4. FAQ: раскрытие через grid-template-rows ──────────── */
+  /* ── 3. FAQ: раскрытие через grid-template-rows ──────────── */
   $$('.qa').forEach(function (qa) {
     var summary = $('.qa__q', qa);
     var panel = $('.qa__a', qa);
@@ -94,7 +86,7 @@
     });
   });
 
-  /* ── 5. Панель вызова: после первого экрана, но не поверх главной формы ── */
+  /* ── 4. Панель вызова: после первого экрана, но не поверх главной формы ── */
   var bar = $('#callbar');
   var hero = $('#hero');
   var apply = $('#apply');
@@ -118,7 +110,7 @@
     }, { threshold: 1 }).observe(sentinel);
   }
 
-  /* ── 6. Формы ────────────────────────────────────────────── */
+  /* ── 5. Формы ────────────────────────────────────────────── */
   var ENDPOINT = (window.LEAD_ENDPOINT || '/api/lead');
 
   /* Режим превью. Нужен там, где сайт лежит статикой и serverless-функции нет:
@@ -245,6 +237,8 @@
         phone: (form.elements.phone.value || '').trim(),
         message: form.elements.message ? form.elements.message.value.trim() : '',
         company: form.elements.company ? form.elements.company.value : '',
+        // Значение флажка — редакция согласия: сервер записывает её в заявку
+        consent: form.elements.consent && form.elements.consent.checked ? form.elements.consent.value : '',
         source: form.dataset.form === 'quick' ? 'Первый экран' : 'Основная форма',
         page: location.href
       };

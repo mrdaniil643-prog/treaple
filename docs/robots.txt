@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
-Sitemap: https://example.ru/sitemap.xml
+Disallow: /api/
