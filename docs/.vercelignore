@@ -1,7 +1,6 @@
-# В публичную выкладку попадает только сам сайт и функция.
-# package.json оставлен: в нём "type": "module", без него api/lead.js не запустится.
+# В публичную выкладку попадает только сам сайт
 README.md
 tests/
-.env.example
-.gitignore
 tools/
+package.json
+.gitignore

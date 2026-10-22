@@ -2,7 +2,7 @@
 Пересобирает картинки сайта: превью ссылки assets/img/og.jpg (1200×630)
 и иконку iOS assets/img/apple-touch-icon.png (180×180).
 
-Запускать, когда меняется заголовок первого экрана, имя или телефон:
+Запускать, когда меняется имя, специализация, телефон или портрет:
     npm run dev &
     python3 tools/render-images.py
 
@@ -23,20 +23,20 @@ og = f"""<html><head><style>{faces}
 body{{width:1200px;height:630px;background:#F1F2EF;color:#15202E;font-family:M;position:relative;overflow:hidden}}
 .bar{{position:absolute;left:0;right:0;top:0;height:10px;background:#7B2C31}}
 .in{{position:absolute;top:10px;bottom:0;left:0;width:760px;padding:58px 64px 56px 80px;display:flex;flex-direction:column}}
-.mark{{display:flex;align-items:center;gap:14px;font-family:G;font-size:34px}}
+.mark{{display:flex;align-items:center;gap:14px;font-family:G;font-size:30px}}
 .mark b{{color:#7B2C31;font-weight:400;font-size:46px;line-height:1}}
 .mark small{{display:block;font-family:M;font-size:17px;color:#5A6675;letter-spacing:.02em;margin-top:2px}}
-h1{{font-family:G;font-weight:500;font-size:78px;line-height:1.06;letter-spacing:-.01em;margin-top:56px}}
+h1{{font-family:G;font-weight:500;font-size:92px;line-height:1.06;letter-spacing:-.01em;margin-top:56px}}
 .rule{{width:280px;height:2px;background:#7B2C31;margin-top:32px}}
 .foot{{margin-top:auto;font-size:26px;color:#4B5970}}
 .foot strong{{display:block;color:#15202E;font-weight:600;font-size:36px;letter-spacing:.01em;margin-top:6px}}
 .photo{{position:absolute;top:10px;right:0;bottom:0;width:440px;
   background:url(assets/img/photo/portrait-720.webp) 50% 38%/cover no-repeat}}
 </style></head><body><div class="bar"></div><div class="photo"></div><div class="in">
-<div class="mark"><b>§</b><div>Сазиков<small>адвокат по уголовным делам</small></div></div>
-<h1>Защищу вас<br>с&nbsp;первого допроса</h1>
+<div class="mark"><b>§</b><div>Адвокат по уголовным делам<small>защита с первого допроса</small></div></div>
+<h1>Ярослав<br>Сазиков</h1>
 <div class="rule"></div>
-<div class="foot">Ярослав Сазиков, адвокат<strong>+7 909 854-88-61</strong></div>
+<div class="foot">Первая консультация по телефону бесплатная<strong>+7 909 854-88-61</strong></div>
 </div></body></html>"""
 icon = f"""<html><head><style>{faces}
 *{{margin:0}}body{{width:180px;height:180px;background:#15202E;display:grid;place-items:center}}

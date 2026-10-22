@@ -1,13 +1,11 @@
 {
-  "name": "sazikov-legal",
+  "name": "sazikov-advocate",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
-  "description": "Сайт адвоката Ярослава Сазикова",
+  "description": "Сайт-визитка адвоката Ярослава Сазикова",
   "scripts": {
     "dev": "python3 -m http.server 4173",
-    "check": "node --check assets/js/main.js && node --check api/lead.js",
-    "test": "node --test tests/api.test.mjs tests/csp.test.mjs tests/consent.test.mjs",
+    "test": "node --test tests/csp.test.mjs",
     "test:e2e": "python3 tests/e2e.py",
     "csp:update": "node tests/csp.test.mjs --write",
     "images": "python3 tools/render-images.py"
