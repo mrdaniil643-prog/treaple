@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Лендинг юриста Ярослава Сазикова",
+  "description": "Сайт адвоката Ярослава Сазикова",
   "scripts": {
     "dev": "python3 -m http.server 4173",
     "check": "node --check assets/js/main.js && node --check api/lead.js",

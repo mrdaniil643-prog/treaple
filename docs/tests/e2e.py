@@ -127,7 +127,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(900)
     page.fill("#m-name", "Дмитрий")
     page.click("#m-phone"); page.type("#m-phone", "9161234567", delay=8)
-    page.fill("#m-message", "Иск от бывшего партнёра, заседание 14 октября")
+    page.fill("#m-message", "Вызывают свидетелем 14 ноября")
     page.click("#form-main button[type=submit]")
     page.wait_for_timeout(300)
     if page.locator("#m-consent-error").is_hidden():
@@ -222,6 +222,36 @@ with sync_playwright() as p:
     notes.append(f"CSP: нарушений {len(blocked)}, встроенный скрипт выполнился={ran}, стиль 404 применён={bg == 'rgb(241, 242, 239)'}")
     if blocked or not ran or bg != "rgb(241, 242, 239)":
         problems.append(f"CSP мешает сайту: {blocked[:2]}, скрипт={ran}, фон 404={bg}")
+    ctx.close()
+
+    # фотографии: загрузились, описаны, браузер выбрал WebP
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(BASE, wait_until="networkidle")
+    page.evaluate("document.documentElement.style.scrollBehavior='auto'")
+    page.evaluate("""async () => { for (let y=0; y<document.body.scrollHeight; y+=500) { scrollTo(0,y); await new Promise(r=>setTimeout(r,80)); } }""")
+    page.wait_for_timeout(800)
+    imgs = page.evaluate("""() => [...document.querySelectorAll('main img')].map(i => ({
+        alt: i.alt, ok: i.complete && i.naturalWidth > 0, src: (i.currentSrc || '').split('/').pop() }))""")
+    notes.append(f"фото: {[(i['src'], i['ok']) for i in imgs]}")
+    bad = [i for i in imgs if not i["ok"] or not i["alt"].strip() or not i["src"].endswith(".webp")]
+    if len(imgs) != 3 or bad:
+        problems.append(f"фото не загрузились, без alt или не WebP: {bad or imgs}")
+    ctx.close()
+
+    # на телефоне браузер должен взять отдельные кадры для узкого экрана
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(BASE, wait_until="networkidle")
+    page.evaluate("document.documentElement.style.scrollBehavior='auto'")
+    page.evaluate("""async () => { for (let y=0; y<document.body.scrollHeight; y+=400) { scrollTo(0,y); await new Promise(r=>setTimeout(r,80)); } }""")
+    page.wait_for_timeout(800)
+    mimgs = page.evaluate("""() => [...document.querySelectorAll('main img')].map(i => ({
+        ok: i.complete && i.naturalWidth > 0, src: (i.currentSrc || '').split('/').pop() }))""")
+    notes.append(f"фото на телефоне: {[(i['src'], i['ok']) for i in mimgs]}")
+    want = ["portrait-wide-", "codes-wide-", "desk-"]
+    if [not i["ok"] for i in mimgs].count(True) or not all(i["src"].startswith(w) for i, w in zip(mimgs, want)):
+        problems.append(f"на телефоне не загрузились узкие кадры: {mimgs}")
     ctx.close()
 
     # мобильная панель вызова: кнопка звонка видна и ведёт на tel:

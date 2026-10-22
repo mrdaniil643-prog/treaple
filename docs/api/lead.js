@@ -118,7 +118,8 @@ export default async function handler(req, res) {
 
   const name = clean(body.name, 80);
   const phone = clean(body.phone, 30);
-  const message = clean(body.message, 1500);
+  // Форма просит пару слов о деле и ограничивает поле 500 символами; сервер держит ту же границу
+  const message = clean(body.message, 500);
   const source = clean(body.source, 40) || 'Сайт';
   const page = clean(body.page, 200);
 
