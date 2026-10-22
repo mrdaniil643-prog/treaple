@@ -27,6 +27,15 @@
             "timeout": 300
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"$HOME/obsidian-vault\"; if [ -d \"$d/.git\" ]; then git -C \"$d\" pull -q --ff-only; else git clone -q https://github.com/mrdaniil643-prog/obsidian-vault \"$d\"; fi >/dev/null 2>&1 || true",
+            "timeout": 120
+          }
+        ]
       }
     ]
   }
