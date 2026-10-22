@@ -6,7 +6,8 @@
   --line: #3b4a61;
   --orange: #f07a2b;     /* кисточные заголовки */
   --orange-2: #ff9a4d;
-  --cream: #fbe5b5;      /* логотип */
+  --cream: #fbe5b5;
+  --logo: #ef7e25;       /* логотип */
   --copper: #b87a4c;     /* сепия-иллюстрации */
   --text: #eef0f3;
   --muted: #9aa7ba;
@@ -70,8 +71,8 @@ p { margin: 0; }
 }
 .site-header .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
 .logo { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
-.logo svg { width: 64px; height: auto; fill: var(--cream); }
-.logo span { font: 600 11px/1.2 var(--f-display); color: var(--cream); max-width: 11em; }
+.logo svg { width: 64px; height: auto; fill: var(--logo); }
+.logo span { font: 600 10px/1.25 var(--f-display); color: var(--logo); max-width: 15em; text-transform: uppercase; letter-spacing: .06em; }
 .nav { display: flex; gap: 4px; margin-left: auto; }
 .nav a {
   text-decoration: none; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 15px; color: var(--muted);
@@ -147,10 +148,9 @@ textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
 @keyframes hero-drift { to { transform: scale(1); } }
 .hero .wrap { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: end; }
 .hero-mark { position: relative; max-width: 560px; }
-.hero-mark svg.mt { width: 100%; height: auto; fill: var(--cream); filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .35)); }
+.hero-mark svg.mt { width: 100%; height: auto; fill: var(--logo); filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .35)); }
 .hero-mark svg.mt polygon { transform-box: fill-box; transform-origin: left bottom; animation: glyph-in .9s var(--ease) both; }
 .hero-mark svg.mt polygon:nth-child(2) { animation-delay: .12s; }
-.hero-mark svg.mt polygon:nth-child(3) { animation-delay: .24s; }
 @keyframes glyph-in { from { opacity: 0; transform: translateY(30%) skewX(-12deg); } }
 .hero-mark .corner { position: absolute; width: 90px; height: 90px; border: 0 solid var(--orange); pointer-events: none; animation: corner-in .8s .5s var(--ease) both; }
 .hero-mark .corner.tr { top: -28px; right: -34px; border-top-width: 5px; border-right-width: 5px; border-radius: 0 3px 0 0; }

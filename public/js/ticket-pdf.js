@@ -9,11 +9,10 @@ const M = 90;
 const C = { night: '#212b3a', cream: '#fbe5b5', orange: '#f07a2b', ink: '#1a2230', muted: '#5f6b7d', paper: '#ffffff', box: '#f6f0e4', line: '#d9cdb6' };
 const FONT = "Manrope, 'Segoe UI', Roboto, Arial, sans-serif";
 const DISPLAY = "Unbounded, Manrope, 'Segoe UI', Arial, sans-serif";
-// Логотип МТ — те же многоугольники, что в шапке сайта (viewBox 200×80)
+// Логотип МТ — те же многоугольники, что в шапке сайта (viewBox 224,5×80)
 const LOGO = [
-  [6, 0, 64, 0, 24, 80, 0, 80, 34, 16, 6, 16],
-  [40, 80, 78, 0, 98, 0, 98, 80, 80, 80, 80, 38, 60, 80],
-  [106, 0, 200, 0, 200, 16, 161, 16, 161, 80, 145, 80, 145, 16, 106, 16],
+  [16.3, 0, 89.5, 0, 89.5, 40.1, 129.5, 0, 145.2, 0, 145.2, 80, 126.6, 80, 126.6, 41.1, 87.7, 80, 73.6, 80, 73.6, 39, 32.7, 80, 0, 80, 62.4, 17.6, 16.3, 17.6],
+  [151.3, 0, 224.5, 0, 224.5, 17.6, 197.2, 17.6, 197.2, 80, 178.6, 80, 178.6, 17.6, 151.3, 17.6],
 ];
 
 function wrap(ctx, text, maxWidth, maxLines) {
@@ -66,7 +65,7 @@ function drawPage(ctx, t, event, qrData) {
   ctx.save();
   ctx.translate(M, 86);
   ctx.scale(1.6, 1.6);
-  ctx.fillStyle = C.cream;
+  ctx.fillStyle = C.orange;
   for (const p of LOGO) {
     ctx.beginPath();
     for (let i = 0; i < p.length; i += 2) (i ? ctx.lineTo : ctx.moveTo).call(ctx, p[i], p[i + 1]);
