@@ -45,10 +45,10 @@ function save() {
 }
 const listeners = new Set();
 
-// ---- событие по умолчанию, 5 декабря 2026 ----
+// ---- событие по умолчанию, 6 декабря 2026 ----
 // Время задаём по поясу заведения (Хабаровск, UTC+10), где бы ни находился посетитель.
 const VENUE_OFFSET = 10 * 3600e3;
-const at = (hh, mm) => new Date(Date.UTC(2026, 11, 5, hh, mm) - VENUE_OFFSET).toISOString();
+const at = (hh, mm) => new Date(Date.UTC(2026, 11, 6, hh, mm) - VENUE_OFFSET).toISOString();
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const POSTER = {
   title: 'Rock Some! × Easy Vocal', lineup: '', genre: 'Концерт', image: 'img/events/rock-some-easy-vocal.jpg',

@@ -8,11 +8,11 @@ import { BRAND } from '../public/js/brand.js';
 
 process.env.TZ ||= 'Asia/Vladivostok';
 const ORIGIN = 'https://bilety.example.ru';
-const NOW = new Date('2026-10-01T00:00:00Z'); // образец события встанет на 22 октября, 19:00
+const NOW = new Date('2026-10-01T00:00:00Z');
 
 function setup() {
   const db = openDb(':memory:');
-  seedEvents(db, NOW);
+  seedEvents(db);
   const booking = createBooking(db, { now: () => NOW });
   return { booking, seo: createSeo({ booking }) };
 }
@@ -22,15 +22,15 @@ const ldOf = (html) => [...html.matchAll(/<script type="application\/ld\+json">(
 test('страница события: заголовок, canonical, Open Graph, разметка Event и текст без JS', () => {
   const { seo } = setup();
   const html = seo.render('event.html', page('event.html'), new URL(`${ORIGIN}/event?id=1`), ORIGIN);
-  assert.equal(html.match(/<title>(.*)<\/title>/)[1], `${DEFAULT_EVENT.title} — 22 октября, билеты | ${BRAND.name}, ${BRAND.city}`);
+  assert.equal(html.match(/<title>(.*)<\/title>/)[1], `${DEFAULT_EVENT.title} — 6 декабря, билеты | ${BRAND.name}, ${BRAND.city}`);
   assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/event\?id=1">/);
   assert.ok(html.includes(`<meta property="og:image" content="${ORIGIN}${DEFAULT_EVENT.image || '/img/og.jpg'}">`));
   assert.ok(html.includes(`<h1>${DEFAULT_EVENT.title}</h1>`) && html.includes('<main id="app"><section'));
   const desc = html.match(/<meta name="description" content="([^"]*)">/)[1];
-  assert.ok(desc.length <= 200 && desc.startsWith('22 октября в 19:00'), desc);
+  assert.ok(desc.length <= 200 && desc.startsWith('6 декабря в 19:00'), desc);
   const [ev] = ldOf(html);
   assert.equal(ev['@type'], 'Event');
-  assert.equal(ev.startDate, '2026-10-22T19:00:00+10:00');
+  assert.equal(ev.startDate, '2026-12-06T19:00:00+10:00');
   assert.deepEqual([ev.offers.price, ev.offers.priceCurrency, ev.offers.availability], [1000, 'RUB', 'https://schema.org/InStock']);
   assert.equal(ev.location.address.addressLocality, BRAND.city);
 });
@@ -80,8 +80,8 @@ test('у каждой страницы есть значок для поиска
 test('«Цены и оплата»: фиксированная цена каждого события без «от», порядок оплаты через ЮKassa', () => {
   const { seo } = setup();
   const html = seo.render('prices.html', page('prices.html'), new URL(`${ORIGIN}/prices`), ORIGIN);
-  assert.ok(html.includes(`<a href="/event?id=1">${DEFAULT_EVENT.title}</a></td><td>22 октября, 19:00</td>`));
-  assert.match(html, /22 октября, 19:00<\/td><td><b>1\s000\s₽<\/b>/);
+  assert.ok(html.includes(`<a href="/event?id=1">${DEFAULT_EVENT.title}</a></td><td>6 декабря, 19:00</td>`));
+  assert.match(html, /6 декабря, 19:00<\/td><td><b>1\s000\s₽<\/b>/);
   assert.match(html, /ЮKassa/);
   assert.match(html, /54-ФЗ/);
   assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/prices">/);
