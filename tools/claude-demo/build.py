@@ -233,7 +233,7 @@ write('admin.js', wrap(s))
 # ---------- страница ----------
 open(f'{OUT}/index.html', 'w').write("""<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Сайт заведения</title>
+<title>Ресторан «Эхо» — демо</title>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 <style>
