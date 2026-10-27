@@ -184,7 +184,7 @@ export const DEFAULT_EVENT = {
   title: 'Rock Some! × Easy Vocal',
   genre: 'Концерт',
   lineup: '',
-  description: 'На сцену «Эхо» выходят вокалисты Rock Some! и Easy Vocal. Рок вживую, а кухня работает весь вечер.',
+  description: 'На сцену «Эхо» выходят вокалисты Rock Some! и Easy Vocal. Рок вживую, а кухня работает весь концерт.',
   image: '/img/events/rock-some-easy-vocal.jpg',
 };
 

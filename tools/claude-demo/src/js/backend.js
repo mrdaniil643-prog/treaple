@@ -52,7 +52,7 @@ const at = (hh, mm) => new Date(Date.UTC(2026, 11, 6, hh, mm) - VENUE_OFFSET).to
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const POSTER = {
   title: 'Rock Some! × Easy Vocal', lineup: '', genre: 'Концерт', image: 'img/events/rock-some-easy-vocal.jpg',
-  description: 'На сцену «Эхо» выходят вокалисты Rock Some! и Easy Vocal. Рок вживую, а кухня работает весь вечер.',
+  description: 'На сцену «Эхо» выходят вокалисты Rock Some! и Easy Vocal. Рок вживую, а кухня работает весь концерт.',
 };
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', ...POSTER,
