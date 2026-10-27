@@ -27,10 +27,10 @@ test('страница события: заголовок, canonical, Open Graph
   assert.ok(html.includes(`<meta property="og:image" content="${ORIGIN}${DEFAULT_EVENT.image || '/img/og.jpg'}">`));
   assert.ok(html.includes(`<h1>${DEFAULT_EVENT.title}</h1>`) && html.includes('<main id="app"><section'));
   const desc = html.match(/<meta name="description" content="([^"]*)">/)[1];
-  assert.ok(desc.length <= 200 && desc.startsWith('6 декабря в 19:00'), desc);
+  assert.ok(desc.length <= 200 && desc.startsWith('6 декабря в 15:00'), desc);
   const [ev] = ldOf(html);
   assert.equal(ev['@type'], 'Event');
-  assert.equal(ev.startDate, '2026-12-06T19:00:00+10:00');
+  assert.equal(ev.startDate, '2026-12-06T15:00:00+10:00');
   assert.deepEqual([ev.offers.price, ev.offers.priceCurrency, ev.offers.availability], [1000, 'RUB', 'https://schema.org/InStock']);
   assert.equal(ev.location.address.addressLocality, BRAND.city);
 });
@@ -80,8 +80,8 @@ test('у каждой страницы есть значок для поиска
 test('«Цены и оплата»: фиксированная цена каждого события без «от», порядок оплаты через ЮKassa', () => {
   const { seo } = setup();
   const html = seo.render('prices.html', page('prices.html'), new URL(`${ORIGIN}/prices`), ORIGIN);
-  assert.ok(html.includes(`<a href="/event?id=1">${DEFAULT_EVENT.title}</a></td><td>6 декабря, 19:00</td>`));
-  assert.match(html, /6 декабря, 19:00<\/td><td><b>1\s000\s₽<\/b>/);
+  assert.ok(html.includes(`<a href="/event?id=1">${DEFAULT_EVENT.title}</a></td><td>6 декабря, 15:00</td>`));
+  assert.match(html, /6 декабря, 15:00<\/td><td><b>1\s000\s₽<\/b>/);
   assert.match(html, /ЮKassa/);
   assert.match(html, /54-ФЗ/);
   assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/prices">/);

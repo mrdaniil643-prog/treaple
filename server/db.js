@@ -188,7 +188,7 @@ export const DEFAULT_EVENT = {
   image: '/img/events/rock-some-easy-vocal.jpg',
 };
 
-// концерт 6 декабря 2026, 19:00 по времени заведения (процесс работает в его поясе, см. index.js)
+// концерт 6 декабря 2026, начало в 15:00, двери в 14:00 по времени заведения (процесс работает в его поясе, см. index.js)
 export function seedEvents(db) {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM events').get();
   if (n > 0) return;
@@ -197,5 +197,5 @@ export function seedEvents(db) {
   db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image, capacity)
     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?)`)
     .run('rock-some-easy-vocal', e.title, e.lineup, e.description,
-      at(d, 19, 0), at(d, 18, 0), 1000, 0, e.genre, e.image, DEFAULT_CAPACITY);
+      at(d, 15, 0), at(d, 14, 0), 1000, 0, e.genre, e.image, DEFAULT_CAPACITY);
 }

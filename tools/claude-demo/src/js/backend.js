@@ -56,7 +56,7 @@ const POSTER = {
 };
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', ...POSTER,
-  price: 1000, deposit: 0, capacity: DEFAULT_CAPACITY, status: 'on_sale', starts_at: at(19, 0), doors_at: at(18, 0), sample: true,
+  price: 1000, deposit: 0, capacity: DEFAULT_CAPACITY, status: 'on_sale', starts_at: at(15, 0), doors_at: at(14, 0), sample: true,
 });
 window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); for (const fn of listeners) fn(); } });
 load();

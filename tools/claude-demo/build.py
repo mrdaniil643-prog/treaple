@@ -24,7 +24,7 @@ for f in ['offer', 'refund', 'privacy', 'consent', 'contacts']:
 # «Цены и оплата»: на сайте таблицу цен вписывает сервер, в демо — событие по умолчанию
 prices = open(f'{SITE}/public/prices.html').read()
 assert '<div id="price-list"></div>' in prices
-open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Rock Some! × Easy Vocal</td><td>6 декабря, 19:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
+open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Rock Some! × Easy Vocal</td><td>6 декабря, 15:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
 
 
 def rep(s, a, b, name, count=1):
