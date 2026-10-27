@@ -3,8 +3,10 @@ import { BRAND } from './brand.js';
 // Часовой пояс заведения задаётся на сервере (VENUE_TZ); все даты показываем в нём.
 export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Asia/Vladivostok');
 
-// Логотип из brand.js, а без него — название текстом
-export const LOGO = BRAND.logo || `<b class="wordmark">${BRAND.name.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</b>`;
+// Логотип из brand.js (SVG-файл, цвет — currentColor), а без него — название текстом
+export const LOGO = BRAND.logo
+  ? `<svg class="logo-mark" viewBox="${BRAND.logoViewBox}" aria-hidden="true"><use href="${BRAND.logo}#logo"/></svg>`
+  : `<b class="wordmark">${BRAND.name.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</b>`;
 
 export async function api(path, { method = 'GET', body, admin } = {}) {
   const headers = {};
@@ -144,7 +146,7 @@ export function renderFooter() {
   </div>
   <div class="wrap footer-legal">
     <nav aria-label="Документы">${LEGAL_LINKS.map(([href, text]) => `<a href="${href}">${text}</a>`).join('')}</nav>
-    <p>${esc(SELLER.short)}, ИНН ${SELLER.inn}, ОГРНИП ${SELLER.ogrnip}. Оплата картой и через СБП, платежи принимает ЮKassa.</p>
+    <p>${esc(SELLER.short)}, ИНН ${SELLER.inn}, ${SELLER.ogrnLabel} ${SELLER.ogrnip}. Оплата картой и через СБП, платежи принимает ЮKassa.</p>
   </div>`;
   document.body.append(footer);
 }

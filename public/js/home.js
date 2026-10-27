@@ -42,9 +42,9 @@ async function main() {
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="wrap">
       <div>
-        <div class="hero-mark"><i class="corner tr"></i>${LOGO}<i class="corner bl"></i></div>
+        <div class="hero-mark">${BRAND.logo ? `<span class="echo" role="img" aria-label="${esc(BRAND.name)}">${LOGO.repeat(3)}</span>` : LOGO}</div>
         <h1 class="hero-sub">${esc(BRAND.tagline)} ${esc(BRAND.cityIn)}</h1>
-        <p class="hero-lead">Билеты на концерты онлайн. Стол можно забронировать заявкой, администратор перезвонит.</p>
+        <p class="hero-lead">${BRAND.about ? `${esc(BRAND.about)}. ` : ''}Здесь можно купить билет на концерт и оставить заявку на стол.</p>
       </div>
       <div id="hero-stub"></div>
     </div>
@@ -57,7 +57,7 @@ async function main() {
 
   <section class="section wrap">
     <div class="section-head"><h2>Меню</h2></div>
-    <a class="menu-card" href="/menu" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>${esc(BRAND.menuTeaser)}</p></a>
+    <a class="menu-card" href="/menu" style="--img:url('/img/menu.jpg')"><span class="brush">Кухня</span><p>${esc(BRAND.menuTeaser)}</p></a>
   </section>
 
   <section class="section wrap" id="table">

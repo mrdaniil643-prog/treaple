@@ -148,7 +148,7 @@ test('PDF-билет скачивается, его QR пускает один �
     guest.waitForResponse((r) => r.url().includes(`/api/tickets/${code}/print`)),
     btn.click(),
   ]);
-  assert.match(download.suggestedFilename(), /^MT-bilet-\d{4}-\d{2}-\d{2}-[A-Z0-9]{4}\.pdf$/);
+  assert.match(download.suggestedFilename(), /^bilet-\d{4}-\d{2}-\d{2}-[A-Z0-9]{4}\.pdf$/);
   const file = await download.path();
   const { readFileSync } = await import('node:fs');
   const pdf = readFileSync(file);
@@ -184,7 +184,7 @@ test('админ скачивает оплаченные билеты в Excel',
   await admin.click('#login button');
   await admin.waitForSelector(`[data-export="${eventId}"]`);
   const [download] = await Promise.all([admin.waitForEvent('download'), admin.click(`[data-export="${eventId}"]`)]);
-  assert.match(download.suggestedFilename(), /^MT-bilety-sobytie-\d+-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  assert.match(download.suggestedFilename(), /^bilety-sobytie-\d+-\d{4}-\d{2}-\d{2}\.xlsx$/);
   const { readFileSync } = await import('node:fs');
   const file = readFileSync(await download.path());
   assert.equal(file.subarray(0, 2).toString(), 'PK', 'это zip, то есть xlsx');

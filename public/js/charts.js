@@ -1,6 +1,6 @@
 // Графики админки. Построены по правилам скилла dataviz: тонкие метки со скруглённым концом,
 // зазор 2px между сегментами, подписи — цветом текста, у каждого графика есть таблица.
-// Цвета — токены --chart-sold / --chart-held в style.css, проверены validate_palette.js на фоне #2a3648.
+// Цвета — токены --chart-sold / --chart-held в style.css, проверены validate_palette.js на фоне #1b3427 (--panel).
 import { esc, TZ } from './common.js';
 
 const DAY = 864e5;

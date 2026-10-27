@@ -9,7 +9,7 @@ shutil.rmtree(OUT, ignore_errors=True)
 for d in ['css', 'js', 'img', 'vendor']:
     os.makedirs(f'{OUT}/{d}')
 shutil.copy(f'{SITE}/public/css/style.css', f'{OUT}/css/style.css')
-for f in ['bar.jpg', 'kitchen.jpg']:
+for f in ['hero.jpg', 'menu.jpg', 'logo.svg']:
     shutil.copy(f'{SITE}/public/img/{f}', f'{OUT}/img/{f}')
 shutil.copytree(f'{SITE}/public/img/events', f'{OUT}/img/events')
 shutil.copy(f'{SITE}/public/vendor/qrcode.js', f'{OUT}/vendor/qrcode.js')
@@ -24,7 +24,7 @@ for f in ['offer', 'refund', 'privacy', 'consent', 'contacts']:
 # «Цены и оплата»: на сайте таблицу цен вписывает сервер, в демо — событие по умолчанию
 prices = open(f'{SITE}/public/prices.html').read()
 assert '<div id="price-list"></div>' in prices
-open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Первое мероприятие</td><td>5 декабря, 19:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
+open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Rock Some! × Easy Vocal</td><td>5 декабря, 19:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
 
 
 def rep(s, a, b, name, count=1):
@@ -98,8 +98,10 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['table-request.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'brand.js', 'menu-data.js']:
+for f in ['table-request.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'menu-data.js']:
     write(f, read(f))
+# демо открывается не из корня сайта: путь к знаку относительный
+write('brand.js', rep(read('brand.js'), "logo: '/img/logo.svg',", "logo: 'img/logo.svg',", 'brand'))
 
 s = read('ticket-card.js')
 s = rep(s, "          <button data-share=\"${t.code}\">Отправить гостю</button>\n", "", 'card')
@@ -236,9 +238,9 @@ open(f'{OUT}/index.html', 'w').write("""<meta charset="utf-8">
 <link rel="stylesheet" href="css/style.css">
 <style>
   :root { color-scheme: dark; }
-  html { background: #212b3a; }
+  html { background: #14291f; }
   .site-header { top: env(safe-area-inset-top, 0px); }
-  .demo-banner { background: #f07a2b; color: #1d1409; font: 700 14px/1.4 'Manrope', system-ui, sans-serif; text-align: center; padding: 8px 16px; }
+  .demo-banner { background: #f4bd4d; color: #14291f; font: 700 14px/1.4 'Manrope', system-ui, sans-serif; text-align: center; padding: 8px 16px; }
   .demo-banner a { color: inherit; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; display: inline-block; padding: 10px 4px; margin: -10px 0; }
   dialog.ask { width: min(420px, 100% - 24px); margin: auto; border-radius: 18px; }
   dialog.doc-dlg { width: min(760px, 100% - 16px); max-height: 90svh; margin: auto; border-radius: 18px; }

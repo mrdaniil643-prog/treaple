@@ -178,18 +178,17 @@ function at(date, hh, mm) {
   return d.toISOString();
 }
 
-// Событие-образец: сидится только в пустую базу, чтобы афиша не была пустой.
-// Настоящие события заводятся и правятся в админке.
+// Первое событие афиши: сидится только в пустую базу. Дату, цену и вместимость правят в админке.
 export const DEFAULT_CAPACITY = 100;
 export const DEFAULT_EVENT = {
-  title: 'Первое мероприятие',
+  title: 'Rock Some! × Easy Vocal',
   genre: 'Концерт',
   lineup: '',
-  description: 'Образец события. Поменяйте название, дату, цену и описание в админке или удалите его.',
-  image: null,
+  description: 'На сцену «Эхо» выходят вокалисты Rock Some! и Easy Vocal. Рок вживую, а кухня работает весь вечер.',
+  image: '/img/events/rock-some-easy-vocal.jpg',
 };
 
-// дата образца: через три недели от запуска, 19:00 по времени заведения
+// пока дата не известна: через три недели от запуска, 19:00 по времени заведения
 export function seedEvents(db, now = new Date()) {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM events').get();
   if (n > 0) return;
@@ -197,6 +196,6 @@ export function seedEvents(db, now = new Date()) {
   const e = DEFAULT_EVENT;
   db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image, capacity)
     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?)`)
-    .run('first-event', e.title, e.lineup, e.description,
+    .run('rock-some-easy-vocal', e.title, e.lineup, e.description,
       at(d, 19, 0), at(d, 18, 0), 1000, 0, e.genre, e.image, DEFAULT_CAPACITY);
 }

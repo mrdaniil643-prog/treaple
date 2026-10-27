@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { openDb, seedEvents } from '../server/db.js';
+import { openDb, seedEvents, DEFAULT_EVENT } from '../server/db.js';
 import { createBooking } from '../server/booking.js';
 import { createSeo, brandHtml } from '../server/seo.js';
 import { BRAND } from '../public/js/brand.js';
@@ -22,10 +22,10 @@ const ldOf = (html) => [...html.matchAll(/<script type="application\/ld\+json">(
 test('страница события: заголовок, canonical, Open Graph, разметка Event и текст без JS', () => {
   const { seo } = setup();
   const html = seo.render('event.html', page('event.html'), new URL(`${ORIGIN}/event?id=1`), ORIGIN);
-  assert.equal(html.match(/<title>(.*)<\/title>/)[1], `Первое мероприятие — 22 октября, билеты | ${BRAND.name}, ${BRAND.city}`);
+  assert.equal(html.match(/<title>(.*)<\/title>/)[1], `${DEFAULT_EVENT.title} — 22 октября, билеты | ${BRAND.name}, ${BRAND.city}`);
   assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/event\?id=1">/);
-  assert.match(html, /<meta property="og:image" content="https:\/\/bilety\.example\.ru\/img\/og\.jpg">/);
-  assert.match(html, /<main id="app"><section[^>]*><h1>Первое мероприятие<\/h1>/);
+  assert.ok(html.includes(`<meta property="og:image" content="${ORIGIN}${DEFAULT_EVENT.image || '/img/og.jpg'}">`));
+  assert.ok(html.includes(`<h1>${DEFAULT_EVENT.title}</h1>`) && html.includes('<main id="app"><section'));
   const desc = html.match(/<meta name="description" content="([^"]*)">/)[1];
   assert.ok(desc.length <= 200 && desc.startsWith('22 октября в 19:00'), desc);
   const [ev] = ldOf(html);
@@ -80,7 +80,8 @@ test('у каждой страницы есть значок для поиска
 test('«Цены и оплата»: фиксированная цена каждого события без «от», порядок оплаты через ЮKassa', () => {
   const { seo } = setup();
   const html = seo.render('prices.html', page('prices.html'), new URL(`${ORIGIN}/prices`), ORIGIN);
-  assert.match(html, /<a href="\/event\?id=1">Первое мероприятие<\/a><\/td><td>22 октября, 19:00<\/td><td><b>1\s000\s₽<\/b>/);
+  assert.ok(html.includes(`<a href="/event?id=1">${DEFAULT_EVENT.title}</a></td><td>22 октября, 19:00</td>`));
+  assert.match(html, /22 октября, 19:00<\/td><td><b>1\s000\s₽<\/b>/);
   assert.match(html, /ЮKassa/);
   assert.match(html, /54-ФЗ/);
   assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/prices">/);

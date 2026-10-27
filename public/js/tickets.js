@@ -146,7 +146,7 @@ async function main() {
     <h1>Мои билеты</h1>
     <p>Здесь билеты, купленные с этого телефона. Если покупали с другого устройства, введите номер заказа и телефон.</p>
     <form class="lookup" id="lookup" style="margin-top:24px">
-      <label class="field"><span>Номер заказа</span><input class="input" name="code" placeholder="MT-XXXXXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" required></label>
+      <label class="field"><span>Номер заказа</span><input class="input" name="code" placeholder="${BRAND.orderPrefix}-XXXXXXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="next" required></label>
       <label class="field"><span>Телефон</span><input class="input" name="phone" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="search" placeholder="+7 900 000-00-00" required></label>
       <button class="btn" type="submit">Найти билеты</button>
     </form>
@@ -168,7 +168,7 @@ async function main() {
     } catch (err) { $('#lookup-error').textContent = err.message; }
   });
 
-  // С платёжной страницы ЮKassa возвращаемся с номером заказа (#return=MT-…), секрет заказа знает только этот телефон
+  // С платёжной страницы ЮKassa возвращаемся с номером заказа (#return=EH-…), секрет заказа знает только этот телефон
   const back = params.get('return');
   const secret = params.get('order') || (back && savedOrders.list().find((x) => x.code === back)?.secret);
   if (back && !secret) {

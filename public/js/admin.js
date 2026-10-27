@@ -515,7 +515,7 @@ async function downloadExcel(btn) {
   try {
     const res = await fetch(`/api/admin/export.xlsx${btn.dataset.export ? `?event=${encodeURIComponent(btn.dataset.export)}` : ''}`, { headers: { 'X-Admin-Token': token } });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Не удалось скачать файл');
-    const name = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'MT-bilety.xlsx';
+    const name = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'bilety.xlsx';
     const url = URL.createObjectURL(await res.blob());
     const a = Object.assign(document.createElement('a'), { href: url, download: name });
     document.body.append(a);

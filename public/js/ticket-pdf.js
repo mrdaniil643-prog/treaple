@@ -7,9 +7,9 @@ import { BRAND } from './brand.js';
 const W = 1240, H = 1754; // A4 при 150 dpi
 const PT_W = 595.28, PT_H = 841.89;
 const M = 90;
-const C = { night: '#212b3a', cream: '#fbe5b5', orange: '#f07a2b', ink: '#1a2230', muted: '#5f6b7d', paper: '#ffffff', box: '#f6f0e4', line: '#d9cdb6' };
+const C = { night: '#14291f', cream: '#ffffff', orange: '#f4bd4d', ink: '#14291f', muted: '#4a5e53', paper: '#ffffff', box: '#eef3ef', line: '#cfdad3' };
 const FONT = "Manrope, 'Segoe UI', Roboto, Arial, sans-serif";
-const DISPLAY = "Unbounded, Manrope, 'Segoe UI', Arial, sans-serif";
+const DISPLAY = FONT;
 
 function wrap(ctx, text, maxWidth, maxLines) {
   const words = String(text).split(/\s+/);
@@ -51,17 +51,22 @@ function drawQr(ctx, data, x, y, size) {
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect(ox + (c + quiet) * cell, oy + (r + quiet) * cell, cell, cell);
 }
 
-function drawPage(ctx, t, event, qrData) {
+function drawPage(ctx, t, event, qrData, logo) {
   ctx.fillStyle = C.paper;
   ctx.fillRect(0, 0, W, H);
 
   // шапка
   ctx.fillStyle = C.night;
   ctx.fillRect(0, 0, W, 300);
-  // название вместо логотипа: canvas не рисует SVG-разметку без загрузки картинки
-  ctx.font = `800 96px ${DISPLAY}`;
-  const nameSize = Math.min(96, Math.floor(96 * 560 / Math.max(1, ctx.measureText(BRAND.name).width)));
-  text(ctx, BRAND.name, M, 200, { size: nameSize, weight: 800, color: C.orange, font: DISPLAY });
+  if (logo) {
+    // знак из brand.js, вписанный в 420×200 слева
+    const k = Math.min(420 / logo.width, 200 / logo.height);
+    ctx.drawImage(logo, M, 150 - logo.height * k / 2, logo.width * k, logo.height * k);
+  } else {
+    ctx.font = `800 96px ${DISPLAY}`;
+    const nameSize = Math.min(96, Math.floor(96 * 560 / Math.max(1, ctx.measureText(BRAND.name).width)));
+    text(ctx, BRAND.name, M, 200, { size: nameSize, weight: 800, color: C.orange, font: DISPLAY });
+  }
   text(ctx, BRAND.tagline, W - M, 150, { size: 30, weight: 600, color: C.cream, align: 'right' });
   text(ctx, 'БИЛЕТ', W - M, 205, { size: 40, weight: 700, color: C.orange, font: DISPLAY, align: 'right' });
 
@@ -178,23 +183,38 @@ const toJpeg = (canvas) => new Promise((resolve, reject) => {
 });
 
 // Скачивает PDF с билетами (только действующими). Возвращает число билетов в файле.
+// Знак из brand.js белым: SVG с currentColor перекрашиваем и грузим как картинку (data: разрешён в CSP)
+async function loadLogo() {
+  if (!BRAND.logo) return null;
+  try {
+    const svg = (await fetch(BRAND.logo).then((r) => r.text())).replace(/currentColor/g, C.cream);
+    const img = new Image();
+    img.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    await img.decode();
+    return img;
+  } catch {
+    return null; // без знака напишем название текстом
+  }
+}
+
 export async function downloadTicketsPdf(tickets, event) {
   const active = tickets.filter((t) => t.status === 'active');
   if (!active.length) throw new Error('Нет действующих билетов');
   await document.fonts?.ready;
   const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H });
   const ctx = canvas.getContext('2d');
+  const logo = await loadLogo();
   const pages = [];
   for (const t of active) {
     const { qr } = await api(`/api/tickets/${encodeURIComponent(t.code)}/print`);
-    drawPage(ctx, t, event, `${location.origin}/c/${qr}`);
+    drawPage(ctx, t, event, `${location.origin}/c/${qr}`, logo);
     pages.push(await toJpeg(canvas));
   }
   const blob = buildPdf(pages);
   const one = active.length === 1 ? active[0] : null;
   // имя латиницей: браузеры и телефоны теряют кириллицу в имени скачанного файла
   const day = new Date(event.startsAt).toISOString().slice(0, 10);
-  const name = one ? `MT-bilet-${day}-${one.code.slice(-4)}.pdf` : `MT-bilety-${day}.pdf`;
+  const name = one ? `bilet-${day}-${one.code.slice(-4)}.pdf` : `bilety-${day}.pdf`;
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.append(a);

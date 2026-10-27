@@ -58,7 +58,7 @@ app.innerHTML = `<section class="wrap page-head">
       <label class="field menu-search"><span class="visually-hidden">Поиск по меню</span>
         <input class="input" id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Найти блюдо: краб, роллы, чизкейк"></label>
       <div id="menu-body"></div>
-      <p class="menu-legal">Меню с полной информацией о составе, выходе и энергетической ценности каждого блюда находится в уголке потребителя. Если у вас аллергия на какой-либо ингредиент, сообщите об этом официанту. Цены в рублях.</p>
+      <p class="menu-legal">Цены в рублях. Контрольное меню с составом и выходом блюд лежит в уголке потребителя. Морепродукты натуральные, в них могут попадаться кусочки хитина. Если у вас аллергия, скажите официанту.</p>
     </div>
   </div>
 </section>`;

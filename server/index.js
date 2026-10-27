@@ -208,7 +208,7 @@ route('GET', '/api/admin/export.xlsx', (_, __, url) => {
   const eventId = url.searchParams.get('event');
   const rows = booking.exportTickets(eventId ? Number(eventId) : null);
   const day = new Date().toISOString().slice(0, 10);
-  return { download: { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: `MT-bilety-${eventId ? `sobytie-${Number(eventId)}-` : ''}${day}.xlsx`, body: buildXlsx('Билеты', rows, [34, 18, 15, 15, 26, 22, 15, 26, 10, 14, 18, 18]) } };
+  return { download: { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: `bilety-${eventId ? `sobytie-${Number(eventId)}-` : ''}${day}.xlsx`, body: buildXlsx('Билеты', rows, [34, 18, 15, 15, 26, 22, 15, 26, 10, 14, 18, 18]) } };
 }, { admin: true });
 route('GET', '/api/admin/refund-requests', () => booking.listRefundRequests(), { admin: true });
 route('POST', '/api/admin/orders/:code/refund-decline', ({ code }, body) => booking.declineRefund(code, body), { admin: true });

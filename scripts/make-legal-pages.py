@@ -20,19 +20,18 @@ VENUE = f'''<dl class="req">
   <dt>Адрес</dt><dd>{e(B["address"])} · <a href="{e(B["mapUrl"])}" rel="noopener" target="_blank">на карте</a></dd>
   <dt>Часы работы</dt><dd>{e(B["hours"])}</dd>
   <dt>Инфо и резерв</dt><dd><a href="{tel(B["phone"])}">{e(B["phone"])}</a></dd>
-  <dt>Почта</dt><dd><a href="mailto:{e(B["email"])}">{e(B["email"])}</a></dd>
-''' + (f'  <dt>Вход</dt><dd>{e(B["entry"])}</dd>\n' if B['entry'] else '') + '</dl>'
+''' + (f'  <dt>Почта</dt><dd><a href="mailto:{e(B["email"])}">{e(B["email"])}</a></dd>\n' if B['email'] else '') + (f'  <dt>Вход</dt><dd>{e(B["entry"])}</dd>\n' if B['entry'] else '') + '</dl>'
 REQ = f'''<dl class="req">
   <dt>Продавец</dt><dd>{e(S["name"])}</dd>
   <dt>ИНН</dt><dd>{e(S["inn"])}</dd>
-  <dt>ОГРНИП</dt><dd>{e(S["ogrnip"])}</dd>
+  <dt>{e(S["ogrnLabel"])}</dt><dd>{e(S["ogrnip"])}</dd>
   <dt>Город</dt><dd>{e(S["city"])}</dd>
   <dt>Телефон</dt><dd><a href="{tel(S["phone"])}">{e(S["phone"])}</a></dd>
   <dt>Почта</dt><dd><a href="mailto:{e(S["email"])}">{e(S["email"])}</a></dd>
 </dl>'''
 MAIL = f'<a href="mailto:{e(S["email"])}">{e(S["email"])}</a>'
 CALL = f'<a href="{tel(S["phone"])}">{e(S["phone"])}</a>'
-IDS = f'ИНН {e(S["inn"])}, ОГРНИП {e(S["ogrnip"])}'
+IDS = f'ИНН {e(S["inn"])}, {e(S["ogrnLabel"])} {e(S["ogrnip"])}'
 DEP = B['tableDeposit']
 
 def page(file, title, desc, body, script='legal.js'):
@@ -43,7 +42,7 @@ def page(file, title, desc, body, script='legal.js'):
 <meta name="description" content="{desc}">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#212b3a">
+<meta name="theme-color" content="#14291f">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/img/icon-120.png" type="image/png" sizes="120x120">

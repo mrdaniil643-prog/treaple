@@ -45,14 +45,14 @@ function save() {
 }
 const listeners = new Set();
 
-// ---- событие-образец, 5 декабря 2026 ----
+// ---- событие по умолчанию, 5 декабря 2026 ----
 // Время задаём по поясу заведения (Хабаровск, UTC+10), где бы ни находился посетитель.
 const VENUE_OFFSET = 10 * 3600e3;
 const at = (hh, mm) => new Date(Date.UTC(2026, 11, 5, hh, mm) - VENUE_OFFSET).toISOString();
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const POSTER = {
-  title: 'Первое мероприятие', lineup: '', genre: 'Концерт', image: null,
-  description: 'Образец события. Поменяйте название, дату, цену и описание в админке или удалите его.',
+  title: 'Rock Some! × Easy Vocal', lineup: '', genre: 'Концерт', image: 'img/events/rock-some-easy-vocal.jpg',
+  description: 'На сцену «Эхо» выходят вокалисты Rock Some! и Easy Vocal. Рок вживую, а кухня работает весь вечер.',
 };
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', ...POSTER,
@@ -140,7 +140,7 @@ function hold(eventId, qty) {
   if (free < n) throw new DemoError(409, free ? `Осталось билетов: ${free}` : 'Билеты закончились', { free });
   const secret = rand(24);
   const order = {
-    code: `MT-${rand(8)}`, secret, event_id: event.id, status: 'held', total: event.price * n, tickets: [],
+    code: `EH-${rand(8)}`, secret, event_id: event.id, status: 'held', total: event.price * n, tickets: [],
     created_at: new Date().toISOString(), expires_at: new Date(Date.now() + HOLD_MINUTES * 60e3).toISOString(),
   };
   for (let i = 0; i < n; i++) {

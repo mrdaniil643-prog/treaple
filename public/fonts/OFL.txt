@@ -1,5 +1,5 @@
-Manrope, Unbounded, Amatic SC — SIL Open Font License 1.1.
-Текст лицензии (одинаковый для всех трёх шрифтов):
+Manrope — SIL Open Font License 1.1.
+Текст лицензии:
 
 Copyright 2019 The Manrope Project Authors (https://github.com/sharanda/manrope)
 

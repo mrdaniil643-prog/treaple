@@ -168,7 +168,7 @@ check('A01 без пароля список гостей в Excel не скач�
 check('A01 без пароля в возврате не отказать', post(f"/api/admin/orders/{o2['code']}/refund-decline", {'note': 'x'}).status_code in (401, 429))
 
 # ===== Перебор
-codes = [requests.get(f'{B}/api/orders/lookup', params={'code': 'MT-AAAAAAAA', 'phone': '9000000000'}).status_code for _ in range(35)]
+codes = [requests.get(f'{B}/api/orders/lookup', params={'code': 'EH-AAAAAAAA', 'phone': '9000000000'}).status_code for _ in range(35)]
 check('Перебор поиска заказа ограничен (429)', 429 in codes)
 
 print('\n' + f"ИТОГО: {sum(1 for r in results if r[0])} из {len(results)} проверок пройдено")

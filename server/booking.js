@@ -1,5 +1,6 @@
 import { randomBytes, randomInt, createHmac, timingSafeEqual } from 'node:crypto';
 import { tx, DEFAULT_CAPACITY } from './db.js';
+import { BRAND } from '../public/js/brand.js';
 
 export const HOLD_MINUTES = 10;
 export const MAX_TICKETS_PER_ORDER = 10;
@@ -195,7 +196,7 @@ export function createBooking(db, { onChange = () => {}, onTickets = () => {}, o
       }
       const createdAt = iso();
       const expiresAt = new Date(now().getTime() + HOLD_MINUTES * 60e3).toISOString();
-      const order = { code: `MT-${code(8)}`, secret: randomBytes(18).toString('base64url') };
+      const order = { code: `${BRAND.orderPrefix}-${code(8)}`, secret: randomBytes(18).toString('base64url') };
       const { lastInsertRowid: orderId } = q.insOrder.run(order.code, order.secret, event.id, event.price * n, createdAt, expiresAt);
       for (const no of freeNumbers(event.id, n)) {
         const { lastInsertRowid } = q.insTicket.run(code(12), orderId, event.id, GA, no, event.price, 0, randomBytes(9).toString('base64url'));
