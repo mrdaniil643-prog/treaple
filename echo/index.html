@@ -1,0 +1,22 @@
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ресторан «Эхо» — демо</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  :root { color-scheme: dark; }
+  html { background: #14291f; }
+  .site-header { top: env(safe-area-inset-top, 0px); }
+  .demo-banner { background: #f4bd4d; color: #14291f; font: 700 14px/1.4 'Manrope', system-ui, sans-serif; text-align: center; padding: 8px 16px; }
+  .demo-banner a { color: inherit; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; display: inline-block; padding: 10px 4px; margin: -10px 0; }
+  dialog.ask { width: min(420px, 100% - 24px); margin: auto; border-radius: 18px; }
+  dialog.doc-dlg { width: min(760px, 100% - 16px); max-height: 90svh; margin: auto; border-radius: 18px; }
+  dialog.doc-dlg .dlg-head { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+  dialog.ask p { font-size: 16px; line-height: 1.5; }
+  dialog.ask .row { gap: 10px; }
+</style>
+<div class="demo-banner">Демо-версия сайта. Деньги не списываются, брони и билеты сохраняются только в вашем браузере. <a href="/admin">Админка</a></div>
+<main id="app"></main>
+<script src="vendor/qrcode.js"></script>
+<script type="module" src="js/app.js"></script>
