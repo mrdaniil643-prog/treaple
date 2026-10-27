@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Сайт ресторана «Эхо» в Хабаровске (код из сайта бара «МТ»): афиша, продажа входных билетов, заявки на бронь стола, живой QR на входе, меню кухни. Интерфейс и тексты на русском. Дизайн по меню-брендбуку: лесной `#14291F`, белый знак `public/img/logo.svg` (currentColor), золото `#F4BD4D`, шрифт Manrope (вместо платного LT Superior), заголовки разделов прописными с разрядкой. Главный мотив — знак с двумя «отзвуками» на главной (`.echo` в `style.css`).
 
-Всё о заведении и продавце — в `public/js/brand.js` (реквизиты продавца пока заглушки). Его импортируют фронт, сервер (`seo.js`, `index.js`) и `scripts/make-legal-pages.py`. В HTML-страницах и `manifest.webmanifest` поля пишутся как `{{name}}`, `{{city}}`: сервер подставляет их через `brandHtml()` из `seo.js` при отдаче (`test/legal.test.js` проверяет, что все ключи есть в `BRAND`). Не вписывайте название заведения в код: берите его из `BRAND`. После правки `brand.js`: `npm run brand` (документы) и `npm run icons` (значки и `og.jpg`).
+Всё о заведении и продавце (ИП Чернозем С. В.) — в `public/js/brand.js`. Его импортируют фронт, сервер (`seo.js`, `index.js`) и `scripts/make-legal-pages.py`. В HTML-страницах и `manifest.webmanifest` поля пишутся как `{{name}}`, `{{city}}`: сервер подставляет их через `brandHtml()` из `seo.js` при отдаче (`test/legal.test.js` проверяет, что все ключи есть в `BRAND`). Не вписывайте название заведения в код: берите его из `BRAND`. После правки `brand.js`: `npm run brand` (документы) и `npm run icons` (значки и `og.jpg`).
 
 ## Команды
 
