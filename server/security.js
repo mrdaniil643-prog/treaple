@@ -5,7 +5,7 @@ const PROD = process.env.NODE_ENV === 'production' || process.argv.includes('--p
 // Сколько прокси стоит перед сервером (nginx = 1). Только им верим в X-Forwarded-*.
 const PROXY_HOPS = Math.max(0, Math.floor(Number(process.env.TRUST_PROXY) || 0));
 const TRUST_PROXY = PROXY_HOPS > 0;
-// Адреса сайта, с которых разрешены запросы, через запятую: https://mt-bar.ru
+// Адреса сайта, с которых разрешены запросы, через запятую: https://example.ru
 const PUBLIC_ORIGINS = String(process.env.PUBLIC_ORIGIN || '').split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean);
 
 // Пароль администратора. В продакшене без него сервер не стартует,

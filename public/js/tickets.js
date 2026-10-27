@@ -1,4 +1,5 @@
 import { api, esc, fmt, money, ticketsWord, renderHeader, renderFooter, toast, copyText, savedOrders, ticketUrl, orderLink, STATUS_TEXT, $ } from './common.js';
+import { BRAND } from './brand.js';
 import { ticketCard } from './ticket-card.js';
 import { startLiveTickets } from './live-qr.js';
 import { downloadTicketsPdf } from './ticket-pdf.js';
@@ -59,8 +60,8 @@ function renderOrder(o, { fresh = false } = {}) {
     }
     if (share) {
       const url = ticketUrl(share);
-      const text = `Твой билет в МТ: ${o.event.title}, ${fmt.full(o.event.startsAt)}`;
-      if (navigator.share) navigator.share({ title: 'Билет в МТ', text, url }).catch(() => {});
+      const text = `Твой билет в «${BRAND.name}»: ${o.event.title}, ${fmt.full(o.event.startsAt)}`;
+      if (navigator.share) navigator.share({ title: `Билет в «${BRAND.name}»`, text, url }).catch(() => {});
       else if (await copyText(`${text}\n${url}`)) toast('Ссылка на билет скопирована');
       else toast(`Не удалось скопировать. Ссылка: ${url}`, { ms: 12000 });
     }

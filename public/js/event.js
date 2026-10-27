@@ -1,4 +1,5 @@
 import { api, esc, fmt, money, ticketsWord, renderHeader, renderFooter, toast, savedOrders, orderLink, VENUE, $, $$ } from './common.js';
+import { BRAND } from './brand.js';
 import { mountTableRequest } from './table-request.js';
 
 renderHeader('afisha');
@@ -24,14 +25,14 @@ function render() {
     ${e.image ? `<img class="poster" src="${esc(e.image)}" alt="Афиша: ${esc(e.title)}" width="720" height="1280" decoding="async">` : ''}
     <div class="event-meta">${e.genre ? `<span class="genre">${esc(e.genre)}</span>` : ''}<span>${fmt.full(e.starts_at)}</span><span>Двери открываются в ${fmt.time(e.doors_at)}</span></div>
     ${e.description || e.lineup ? `<p class="desc">${esc(e.description || e.lineup)}</p>` : ''}
-    <p class="desc muted">${esc(VENUE.address)}. ${esc(VENUE.entry)}.</p>
+    <p class="desc muted">${esc(VENUE.address)}.${VENUE.entry ? ` ${esc(VENUE.entry)}.` : ''}</p>
   </section>
   <section class="wrap buy-grid">
     <div class="buy-card" id="buy" aria-live="polite"></div>
     <div class="request-card">
       <h2>Бронь стола</h2>
-      <p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p>
-      <p class="muted">Депозит тратите на еду и напитки в этот вечер. Оставьте заявку, администратор перезвонит и подтвердит стол. Билет на вход нужен каждому гостю, его покупают отдельно.</p>
+      ${VENUE.tableDeposit ? `<p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p>` : ''}
+      <p class="muted">${VENUE.tableDeposit ? 'Депозит тратите на еду и напитки в этот вечер. ' : ''}Оставьте заявку, администратор перезвонит и подтвердит стол. Билет на вход нужен каждому гостю, его покупают отдельно.</p>
       <div id="request"></div>
     </div>
   </section>
@@ -205,7 +206,7 @@ async function main() {
   try {
     const [config, event, av] = await Promise.all([api('/api/config'), api(`/api/events/${eventId}`), api(`/api/events/${eventId}/availability`)]);
     Object.assign(state, { config, event, availability: av });
-    document.title = `${event.title} — ${fmt.date(event.starts_at)}, билеты | Бар МТ, Хабаровск`;
+    document.title = `${event.title} — ${fmt.date(event.starts_at)}, билеты | ${BRAND.name}, ${BRAND.city}`;
     if (event.status !== 'on_sale' || !config.paymentsEnabled) {
       state.blocked = !config.paymentsEnabled ? 'Онлайн-продажа пока закрыта.'
         : event.status === 'cancelled' ? 'Событие отменено.' : 'Продажа билетов закрыта.';

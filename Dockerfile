@@ -1,7 +1,7 @@
 FROM node:22-alpine
 
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000 DB_FILE=/app/data/mt.db
+ENV NODE_ENV=production PORT=3000 DB_FILE=/app/data/venue.db
 
 # Внешних зависимостей нет: копируем только то, что нужно серверу
 COPY package.json package-lock.json ./

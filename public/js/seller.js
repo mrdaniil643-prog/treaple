@@ -1,15 +1,6 @@
-// Продавец билетов: реквизиты для подвала сайта, оферты и чеков.
-// Эти же данные вписаны в public/offer.html, privacy.html, consent.html и contacts.html
-// (страницы должны читаться без JavaScript). test/legal.test.js проверяет, что они совпадают.
-export const SELLER = {
-  name: 'Индивидуальный предприниматель Чухалдин Владимир Ильич',
-  short: 'ИП Чухалдин В. И.',
-  inn: '272402549281',
-  ogrnip: '326270000041993',
-  city: 'г. Хабаровск',
-  phone: '+7 929 418-82-88',
-  email: 'jpeg8288@gmail.com',
-};
+// Реквизиты продавца живут в brand.js; документы в public/*.html собираются из них (npm run brand),
+// test/legal.test.js проверяет, что страницы не устарели.
+export { SELLER } from './brand.js';
 
 export const LEGAL_LINKS = [
   ['/prices', 'Цены и оплата'],

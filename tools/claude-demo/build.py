@@ -24,7 +24,7 @@ for f in ['offer', 'refund', 'privacy', 'consent', 'contacts']:
 # «Цены и оплата»: на сайте таблицу цен вписывает сервер, в демо — событие по умолчанию
 prices = open(f'{SITE}/public/prices.html').read()
 assert '<div id="price-list"></div>' in prices
-open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Отчётный концерт × Открытый микрофон</td><td>25 октября, 16:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
+open(f'{OUT}/docs/prices.html', 'w').write(prices.replace('<div id="price-list"></div>', '<div class="table-wrap"><table class="list price-table"><thead><tr><th>Мероприятие</th><th>Дата и время</th><th>Входной билет</th></tr></thead><tbody><tr><td>Первое мероприятие</td><td>5 декабря, 19:00</td><td><b>1\u00a0000\u00a0₽</b></td></tr></tbody></table></div>'))
 
 
 def rep(s, a, b, name, count=1):
@@ -98,7 +98,7 @@ s = rep(s, "  document.body.prepend(header);", "  const banner = document.queryS
 write('common.js', s)
 
 # ---------- страницы без изменений логики ----------
-for f in ['table-request.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'menu-data.js']:
+for f in ['table-request.js', 'ticket-pdf.js', 'charts.js', 'seller.js', 'brand.js', 'menu-data.js']:
     write(f, read(f))
 
 s = read('ticket-card.js')
@@ -206,9 +206,9 @@ s = read('admin.js')
 s = rep(s, "import { api, esc, fmt, money, ticketsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, $, $$ } from './common.js';",
         "import { api, esc, fmt, money, ticketsWord, renderHeader, toast, copyText, prettyCode, qrSvg, STATUS_TEXT, onLeave, ask, $, $$ } from './common.js';\nimport { watchAvailability } from './backend.js';", 'admin')
 # sessionStorage в просмотрщике может быть недоступен
-s = rep(s, "let token = sessionStorage.getItem('mt.admin') || '';",
-        "const store = { getItem: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* нет доступа */ } }, removeItem: (k) => { try { sessionStorage.removeItem(k); } catch { /* нет доступа */ } } };\nlet token = store.getItem('mt.admin') || '';", 'admin')
-s = s.replace("sessionStorage.setItem('mt.admin'", "store.setItem('mt.admin'").replace("sessionStorage.removeItem('mt.admin')", "store.removeItem('mt.admin')")
+s = rep(s, "let token = sessionStorage.getItem('venue.admin') || '';",
+        "const store = { getItem: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, setItem: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* нет доступа */ } }, removeItem: (k) => { try { sessionStorage.removeItem(k); } catch { /* нет доступа */ } } };\nlet token = store.getItem('venue.admin') || '';", 'admin')
+s = s.replace("sessionStorage.setItem('venue.admin'", "store.setItem('venue.admin'").replace("sessionStorage.removeItem('venue.admin')", "store.removeItem('venue.admin')")
 assert s.count('sessionStorage') == 3, s.count('sessionStorage')
 # confirm() в просмотрщике не работает: все вызовы внутри async-обработчиков
 # выгрузка в Excel собирается на сервере, в демо её нет
@@ -231,7 +231,7 @@ write('admin.js', wrap(s))
 # ---------- страница ----------
 open(f'{OUT}/index.html', 'w').write("""<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Бар МТ</title>
+<title>Сайт заведения</title>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 <style>

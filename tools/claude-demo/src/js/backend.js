@@ -3,10 +3,10 @@
 
 const HOLD_MINUTES = 10;
 const MAX_TICKETS = 10;
-const DEFAULT_CAPACITY = 136;
+const DEFAULT_CAPACITY = 100;
 const CANCEL_BEFORE_HOURS = 24;
 const QR_WINDOW = 30;
-const KEY = 'mt.demo.v1';
+const KEY = 'venue.demo.v1';
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const rand = (n) => {
@@ -34,12 +34,6 @@ function load() {
   memory.tickets ||= {};
   memory.events ||= [DEFAULT_EVENT()];
   memory.requests ||= [];
-  // у тех, кто открывал демо раньше, событие по умолчанию ещё старое
-  for (const e of memory.events) {
-    if (e.slug !== 'e1') continue;
-    if (e.title === 'Караоке-вечер' || e.description?.startsWith('Отчётный концерт и открытый')) Object.assign(e, POSTER);
-    if (e.starts_at === at(21, 0)) Object.assign(e, { starts_at: at(16, 0), doors_at: at(15, 0) });
-  }
   // раньше билеты продавались на места за столами: теперь входные, у события вместимость
   for (const e of memory.events) { e.capacity ||= DEFAULT_CAPACITY; delete e.halls; if (e.slug === 'e1' && e.deposit === 500) e.deposit = 0; }
   for (const t of Object.values(memory.tickets)) { delete t.table_id; delete t.seat; delete t.whole; }
@@ -51,18 +45,18 @@ function save() {
 }
 const listeners = new Set();
 
-// ---- событие по умолчанию: то же, что на сайте, 25 октября 2026 ----
-// Время задаём по Хабаровску (UTC+10), где бы ни находился посетитель.
+// ---- событие-образец, 5 декабря 2026 ----
+// Время задаём по поясу заведения (Хабаровск, UTC+10), где бы ни находился посетитель.
 const VENUE_OFFSET = 10 * 3600e3;
-const at = (hh, mm) => new Date(Date.UTC(2026, 9, 25, hh, mm) - VENUE_OFFSET).toISOString();
+const at = (hh, mm) => new Date(Date.UTC(2026, 11, 5, hh, mm) - VENUE_OFFSET).toISOString();
 // sample: на схеме часть мест «уже продана» другим гостям, чтобы зал не был пустым
 const POSTER = {
-  title: 'Отчётный концерт × Открытый микрофон', lineup: 'ROCK SOME! & Easy Vocal при поддержке Capital Show', genre: 'Концерт', image: 'img/events/otchetny-koncert-25-10.jpg',
-  description: 'Выступят те, кто готовил песни с Rock Some! и Easy Vocal, исполнители бара МТ и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
+  title: 'Первое мероприятие', lineup: '', genre: 'Концерт', image: null,
+  description: 'Образец события. Поменяйте название, дату, цену и описание в админке или удалите его.',
 };
 const DEFAULT_EVENT = () => ({
   id: 1, slug: 'e1', ...POSTER,
-  price: 1000, deposit: 0, capacity: DEFAULT_CAPACITY, status: 'on_sale', starts_at: at(16, 0), doors_at: at(15, 0), sample: true,
+  price: 1000, deposit: 0, capacity: DEFAULT_CAPACITY, status: 'on_sale', starts_at: at(19, 0), doors_at: at(18, 0), sample: true,
 });
 window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); for (const fn of listeners) fn(); } });
 load();

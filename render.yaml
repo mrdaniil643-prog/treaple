@@ -1,13 +1,13 @@
 # Render Blueprint: сайт выкладывается из GitHub при каждом обновлении ветки.
 services:
   - type: web
-    name: mt-bar
+    name: venue-tickets
     runtime: docker
     plan: starter            # диск для базы есть только на платных тарифах
     healthCheckPath: /api/health
     autoDeploy: true
     disk:
-      name: mt-data
+      name: venue-data
       mountPath: /app/data   # здесь лежит база с заказами — она переживает перезапуски
       sizeGB: 1
     envVars:
@@ -18,7 +18,7 @@ services:
       - key: VENUE_TZ
         value: Asia/Vladivostok  # Хабаровск
       - key: PUBLIC_ORIGIN
-        sync: false          # адрес сайта, например https://mt-bar.onrender.com
+        sync: false          # адрес сайта, например https://venue-tickets.onrender.com
       - key: DEMO_PAYMENTS
         sync: false          # 1 — тестовая оплата без денег; при подключённой ЮKassa не нужна
       - key: YOOKASSA_SHOP_ID

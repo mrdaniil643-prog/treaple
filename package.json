@@ -1,8 +1,8 @@
 {
-  "name": "mt-bar-tickets",
+  "name": "venue-tickets",
   "version": "1.0.0",
   "private": true,
-  "description": "Сайт музыкального бара «МТ»: афиша, билеты по столам, меню бара и кухни",
+  "description": "Сайт заведения: афиша, входные билеты, бронь столов, меню",
   "type": "module",
   "engines": {
     "node": ">=22.13"
@@ -13,6 +13,8 @@
     "demo": "node --no-warnings server/index.js",
     "test": "node --no-warnings --test test/*.test.js",
     "lint": "node scripts/check-syntax.mjs",
-    "e2e": "node --no-warnings --test test/e2e/*.e2e.js"
+    "e2e": "node --no-warnings --test test/e2e/*.e2e.js",
+    "brand": "python3 scripts/make-legal-pages.py",
+    "icons": "node scripts/make-icons.mjs"
   }
 }

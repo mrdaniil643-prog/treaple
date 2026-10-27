@@ -1,4 +1,4 @@
-// Бар в Хабаровске: его зона в базе часовых поясов — Asia/Vladivostok (UTC+10)
+// Часовой пояс заведения. Хабаровск в базе часовых поясов — Asia/Vladivostok (UTC+10)
 process.env.TZ ||= process.env.VENUE_TZ || 'Asia/Vladivostok';
 
 import { createServer } from 'node:http';
@@ -10,7 +10,8 @@ import { openDb, seedEvents } from './db.js';
 import { resolveAdminToken, makeTokenCheck, clientIp, createLimiter, securityHeaders, sameOrigin, isProd } from './security.js';
 import { createBooking, BookingError, HOLD_MINUTES, MAX_TICKETS_PER_ORDER, CANCEL_BEFORE_HOURS, QR_WINDOW_SECONDS } from './booking.js';
 import { createStaff, readCookie, STAFF_COOKIE } from './staff.js';
-import { createSeo } from './seo.js';
+import { createSeo, brandHtml } from './seo.js';
+import { BRAND } from '../public/js/brand.js';
 import { buildXlsx } from './xlsx.js';
 import { createBackups } from './backup.js';
 import { createYooKassa, buildReceipt, receiptSettings } from './yookassa.js';
@@ -38,13 +39,13 @@ if (process.env.YOOKASSA_SHOP_ID || process.env.YOOKASSA_SECRET_KEY) {
   }
   // адрес, на который ЮKassa вернёт гостя после оплаты
   if (isProd && !process.env.PUBLIC_ORIGIN) {
-    console.error('Для ЮKassa задайте PUBLIC_ORIGIN — адрес сайта, например https://mt-bar.ru');
+    console.error('Для ЮKassa задайте PUBLIC_ORIGIN — адрес сайта, например https://example.ru');
     process.exit(1);
   }
 }
 const PAYMENTS = yookassa ? 'yookassa' : DEMO_PAYMENTS ? 'demo' : null;
 
-const DB_FILE = process.env.DB_FILE || join(ROOT, 'data', 'mt.db');
+const DB_FILE = process.env.DB_FILE || join(ROOT, 'data', 'venue.db');
 const db = openDb(DB_FILE);
 seedEvents(db);
 // Копии базы рядом с ней: data/backups. BACKUP_DIR=off выключает.
@@ -442,7 +443,7 @@ function sendText(res, type, text) {
 }
 
 async function notFound(res) {
-  const page = await readFile(join(PUBLIC, '404.html')).catch(() => 'Страница не найдена');
+  const page = await readFile(join(PUBLIC, '404.html'), 'utf8').then(brandHtml).catch(() => 'Страница не найдена');
   res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
   res.end(page);
 }
@@ -474,6 +475,8 @@ async function serveStatic(req, res, url) {
     let data = await readFile(file);
     // в HTML сервер дописывает canonical, Open Graph, разметку schema.org и текст для поисковиков
     if (ext === '.html') data = seo.render(basename(file), data.toString(), url, origin(req));
+    // название и описание приложения из brand.js
+    if (ext === '.webmanifest') data = brandHtml(data.toString(), (v) => JSON.stringify(v).slice(1, -1));
     res.writeHead(200, { 'Content-Type': MIME[ext], 'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600' });
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
@@ -546,4 +549,4 @@ server.requestTimeout = 30e3;
 server.keepAliveTimeout = 5e3;
 server.setTimeout(60e3);
 
-server.listen(PORT, () => console.log(`МТ: http://localhost:${PORT}  (админка: /admin)${isProd ? '' : ', режим разработки: демо-оплата включена'}`));
+server.listen(PORT, () => console.log(`${BRAND.name}: http://localhost:${PORT}  (админка: /admin)${isProd ? '' : ', режим разработки: демо-оплата включена'}`));

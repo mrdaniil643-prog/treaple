@@ -3,7 +3,7 @@ import { occupancyChart, salesChart, entryMeter } from './charts.js';
 
 renderHeader('');
 const app = $('#app');
-let token = sessionStorage.getItem('mt.admin') || '';
+let token = sessionStorage.getItem('venue.admin') || '';
 let events = [], currentId = null, es = null;
 
 const adm = (path, opts = {}) => api(path, { ...opts, admin: token });
@@ -21,7 +21,7 @@ function login(error = '') {
     token = e.currentTarget.p.value;
     try {
       await adm('/api/admin/events');
-      sessionStorage.setItem('mt.admin', token);
+      sessionStorage.setItem('venue.admin', token);
       start();
     } catch (err) { login(err.message); }
   });
@@ -31,7 +31,7 @@ async function start() {
   try {
     events = await adm('/api/admin/events');
   } catch (err) {
-    sessionStorage.removeItem('mt.admin');
+    sessionStorage.removeItem('venue.admin');
     return login(err.status === 401 ? '' : err.message);
   }
   const upcoming = events.filter((e) => new Date(e.starts_at) > Date.now() - 12 * 3600e3);
@@ -104,7 +104,7 @@ async function start() {
         </div>
         <div class="row">
           <label class="field"><span>Цена билета, ₽</span><input class="input" type="number" name="price" min="1" required value="1000"></label>
-          <label class="field"><span>Сколько билетов продавать</span><input class="input" type="number" name="capacity" min="1" max="5000" required value="136"></label>
+          <label class="field"><span>Сколько билетов продавать</span><input class="input" type="number" name="capacity" min="1" max="5000" required value="100"></label>
         </div>
         <p class="form-error" id="new-error"></p>
         <button class="btn" type="submit">Открыть продажу</button>
@@ -135,7 +135,7 @@ async function loadReport() {
   try {
     report = await adm(`/api/admin/events/${currentId}/report`);
   } catch (err) {
-    if (err.status === 401) { sessionStorage.removeItem('mt.admin'); return login('Пароль изменился, войдите снова'); }
+    if (err.status === 401) { sessionStorage.removeItem('venue.admin'); return login('Пароль изменился, войдите снова'); }
     toast(err.message, { error: true });
     return;
   }

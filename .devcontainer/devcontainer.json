@@ -1,5 +1,5 @@
 {
-  "name": "МТ — сайт с билетами",
+  "name": "Сайт заведения с билетами",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "containerEnv": {
     "TRUST_PROXY": "1"
@@ -9,11 +9,11 @@
   ],
   "portsAttributes": {
     "3000": {
-      "label": "Сайт МТ",
+      "label": "Сайт",
       "onAutoForward": "openBrowser"
     }
   },
-  "postStartCommand": "nohup bash -c 'npm run demo > /tmp/mt.log 2>&1 &' > /dev/null 2>&1",
+  "postStartCommand": "nohup bash -c 'npm run demo > /tmp/site.log 2>&1 &' > /dev/null 2>&1",
   "customizations": {
     "codespaces": {
       "openFiles": [

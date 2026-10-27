@@ -8,9 +8,9 @@ import { openDb } from '../server/db.js';
 import { createBackups } from '../server/backup.js';
 
 test('резервная копия пишется раз в день, старые удаляются', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'mt-backup-'));
+  const dir = mkdtempSync(join(tmpdir(), 'venue-backup-'));
   try {
-    const db = openDb(join(dir, 'mt.db'));
+    const db = openDb(join(dir, 'venue.db'));
     db.prepare("INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre) VALUES ('x', 'Вечер', '', '', '2026-10-25T18:00:00Z', '2026-10-25T17:00:00Z', '[\"main\"]', 1000, 0, '')").run();
     let day = new Date('2026-10-01T10:00:00Z');
     const backups = createBackups(db, { dir: join(dir, 'backups'), keep: 3, now: () => day });
@@ -20,7 +20,7 @@ test('резервная копия пишется раз в день, стар�
     assert.equal(copy.prepare('SELECT title FROM events').get().title, 'Вечер', 'в копии есть данные');
     copy.close();
     for (let i = 0; i < 5; i++) { day = new Date(day.getTime() + 864e5); backups.run(); }
-    assert.deepEqual(backups.list(), ['mt-2026-10-04.db', 'mt-2026-10-05.db', 'mt-2026-10-06.db']);
+    assert.deepEqual(backups.list(), ['venue-2026-10-04.db', 'venue-2026-10-05.db', 'venue-2026-10-06.db']);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -47,11 +47,11 @@ async function buy(p) {
 before(async () => {
   yk = await startYooKassaMock({ ...SHOP, port: PORT + 500 });
   yk.setSite(B);
-  dir = mkdtempSync(join(tmpdir(), 'mt-pay-'));
+  dir = mkdtempSync(join(tmpdir(), 'venue-pay-'));
   server = spawn(process.execPath, ['--no-warnings', 'server/index.js', '--prod'], {
     cwd: ROOT,
     env: {
-      ...process.env, PORT: String(PORT), DB_FILE: join(dir, 'mt.db'), ADMIN_TOKEN: TOKEN, BACKUP_DIR: 'off', PUBLIC_ORIGIN: B,
+      ...process.env, PORT: String(PORT), DB_FILE: join(dir, 'venue.db'), ADMIN_TOKEN: TOKEN, BACKUP_DIR: 'off', PUBLIC_ORIGIN: B,
       PAYMENT_POLL_MS: '1500', YOOKASSA_SHOP_ID: SHOP.shopId, YOOKASSA_SECRET_KEY: SHOP.secretKey, YOOKASSA_API_URL: `${yk.url}/v3`,
     },
     stdio: ['ignore', 'ignore', 'inherit'],

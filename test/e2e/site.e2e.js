@@ -9,6 +9,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BRAND } from '../../public/js/brand.js';
 
 const require = createRequire(import.meta.url);
 function loadPlaywright() {
@@ -40,10 +41,10 @@ async function page(opts = { viewport: { width: 1280, height: 900 } }) {
 }
 
 before(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'mt-e2e-'));
+  dir = mkdtempSync(join(tmpdir(), 'venue-e2e-'));
   server = spawn(process.execPath, ['--no-warnings', 'server/index.js'], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(PORT), DB_FILE: join(dir, 'mt.db'), ADMIN_TOKEN: TOKEN, BACKUP_DIR: 'off' },
+    env: { ...process.env, PORT: String(PORT), DB_FILE: join(dir, 'venue.db'), ADMIN_TOKEN: TOKEN, BACKUP_DIR: 'off' },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
   await waitHealthy();
@@ -130,7 +131,7 @@ test('контролёр гасит билет по QR один раз, пост
 
   const stranger = await page(devices['iPhone 13']);
   await stranger.goto(`${B}/c/${qr}`);
-  assert.equal((await stranger.textContent('h1')).trim(), 'Это билет в МТ');
+  assert.equal((await stranger.textContent('h1')).trim(), `Это билет в «${BRAND.name}»`);
 
   await staff.goto(`${B}/c/${qr}`);
   assert.equal((await staff.textContent('h1')).trim(), 'Проходите');

@@ -1,4 +1,5 @@
 import { api, esc, fmt, renderHeader, renderFooter, toast, $ } from './common.js';
+import { BRAND } from './brand.js';
 import { ticketCard } from './ticket-card.js';
 import { startLiveTickets } from './live-qr.js';
 import { downloadTicketsPdf } from './ticket-pdf.js';
@@ -10,7 +11,7 @@ const code = new URLSearchParams(location.search).get('t') || '';
 async function main() {
   try {
     const t = await api(`/api/tickets/${encodeURIComponent(code)}`);
-    document.title = `Билет: ${t.event.title} — МТ`;
+    document.title = `Билет: ${t.event.title} — ${BRAND.name}`;
     app.innerHTML = `<section class="wrap page-head" style="max-width:460px">
       <h1 style="font-size:32px">Ваш билет</h1>
       <p>Покажите этот экран на входе. Двери открываются в ${fmt.time(t.event.doorsAt)}.</p>

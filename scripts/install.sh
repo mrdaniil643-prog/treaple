@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Установка и обновление сайта на VPS (Ubuntu/Debian, например Beget Cloud).
-#   git clone -b claude/table-booking-ticket-system-7ax845 https://github.com/mrdaniil643-prog/treaple.git mt && cd mt && sudo bash scripts/install.sh
+#   git clone -b claude/venue-site-template https://github.com/mrdaniil643-prog/treaple.git site && cd site && sudo bash scripts/install.sh
 # Повторный запуск обновляет сайт: берёт свежий код и перезапускает, настройки из .env сохраняются.
 # Ключи ЮKassa потом: sudo bash scripts/install.sh --keys; поменять адрес сайта: --domain
-# Без вопросов: DOMAIN=bilety.mtbarkhv.ru YOOKASSA_SHOP_ID=… YOOKASSA_SECRET_KEY=… sudo -E bash scripts/install.sh
+# Без вопросов: DOMAIN=bilety.example.ru YOOKASSA_SHOP_ID=… YOOKASSA_SECRET_KEY=… sudo -E bash scripts/install.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -32,7 +32,7 @@ if [ ! -f .env ]; then
   DOMAIN="$(clean_domain "${DOMAIN:-}")"
   while ! valid_domain "$DOMAIN"; do
     [ -n "$DOMAIN" ] && echo "Адрес «${DOMAIN}» не подходит: только латиница, цифры, точки и дефис. Проверьте раскладку клавиатуры."
-    read -rp "Адрес сайта без https:// (например bilety-mt.ru): " DOMAIN
+    read -rp "Адрес сайта без https:// (например bilety.example.ru): " DOMAIN
     DOMAIN="$(clean_domain "$DOMAIN")"
   done
   if [ -z "${YOOKASSA_SHOP_ID+x}" ]; then

@@ -145,17 +145,6 @@ function migrate(db) {
   if (!eventCols.includes('image')) db.exec('ALTER TABLE events ADD COLUMN image TEXT');
   // сколько входных билетов продаётся на событие
   if (!eventCols.includes('capacity')) db.exec(`ALTER TABLE events ADD COLUMN capacity INTEGER NOT NULL DEFAULT ${DEFAULT_CAPACITY}`);
-  // событие по умолчанию 25 октября: если его ещё не меняли, подставляем данные с афиши
-  db.prepare("UPDATE events SET title = ?, genre = ?, lineup = ?, description = ?, image = ? WHERE slug = 'karaoke-25-october' AND title = 'Караоке-вечер'")
-    .run(DEFAULT_EVENT.title, DEFAULT_EVENT.genre, DEFAULT_EVENT.lineup, DEFAULT_EVENT.description, DEFAULT_EVENT.image);
-  // депозит больше не входит в цену билета: он берётся за стол (от 5000 ₽) в баре
-  db.prepare("UPDATE events SET deposit = 0 WHERE slug = 'karaoke-25-october' AND deposit = 500").run();
-  // начало перенесли с 21:00 на 16:00 и сократили описание; правки из админки не трогаем
-  db.prepare("UPDATE events SET starts_at = '2026-10-25T06:00:00.000Z', doors_at = '2026-10-25T05:00:00.000Z' WHERE slug = 'karaoke-25-october' AND starts_at = '2026-10-25T11:00:00.000Z'").run();
-  db.prepare("UPDATE events SET description = ? WHERE slug = 'karaoke-25-october' AND description = ?").run(DEFAULT_EVENT.description, OLD_DESCRIPTION);
-  db.prepare("UPDATE events SET lineup = ? WHERE slug = 'karaoke-25-october' AND lineup IN ('Rock Some! и приглашённые артисты', 'ROCK SOME! & Easy Vocal при поддержке capital show')").run(DEFAULT_EVENT.lineup);
-  db.prepare("UPDATE events SET description = ? WHERE slug = 'karaoke-25-october' AND description = ?").run(DEFAULT_EVENT.description, PREV_DESCRIPTION);
-  db.prepare("UPDATE events SET description = ? WHERE slug = 'karaoke-25-october' AND description = ?").run(DEFAULT_EVENT.description, EASY_VOCAL_DESCRIPTION);
   const ticketCols = db.prepare('PRAGMA table_info(tickets)').all().map((c) => c.name);
   if (!ticketCols.includes('paid_price')) db.exec('ALTER TABLE tickets ADD COLUMN paid_price INTEGER');
 }
@@ -189,28 +178,25 @@ function at(date, hh, mm) {
   return d.toISOString();
 }
 
-// Афиша по умолчанию: один вечер 25 октября 2026. Сидится только в пустую базу,
-// остальные события заводятся в админке.
-// Событие по умолчанию — с афиши бара: отчётный концерт 25 октября
-const EASY_VOCAL_DESCRIPTION = 'Выступят те, кто готовил песни с Rock Some! и Easy Vocal, и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.';
-const PREV_DESCRIPTION = 'Выступят те, кто готовил песни с Rock Some!, и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.';
-const OLD_DESCRIPTION = 'Отчётный концерт и открытый микрофон в караоке-баре МТ. На сцену выйдут те, кто готовил песни вместе с Rock Some!, и приглашённые артисты. В программе розыгрыш сертификатов от партнёров. Хотите выступить сами? Подготовка начинается 1 октября, участие стоит 1000\u00a0₽.';
-export const DEFAULT_CAPACITY = 136;
+// Событие-образец: сидится только в пустую базу, чтобы афиша не была пустой.
+// Настоящие события заводятся и правятся в админке.
+export const DEFAULT_CAPACITY = 100;
 export const DEFAULT_EVENT = {
-  title: 'Отчётный концерт × Открытый микрофон',
+  title: 'Первое мероприятие',
   genre: 'Концерт',
-  lineup: 'ROCK SOME! & Easy Vocal при поддержке Capital Show',
-  description: 'Выступят те, кто готовил песни с Rock Some! и Easy Vocal, исполнители бара МТ и приглашённые артисты. Разыграем сертификаты от партнёров. Хотите выступить сами? Подготовка с 1 октября, участие 1000\u00a0₽.',
-  image: '/img/events/otchetny-koncert-25-10.jpg',
+  lineup: '',
+  description: 'Образец события. Поменяйте название, дату, цену и описание в админке или удалите его.',
+  image: null,
 };
 
-export function seedEvents(db) {
+// дата образца: через три недели от запуска, 19:00 по времени заведения
+export function seedEvents(db, now = new Date()) {
   const { n } = db.prepare('SELECT COUNT(*) AS n FROM events').get();
   if (n > 0) return;
-  const d = new Date(2026, 9, 25);
+  const d = new Date(now.getTime() + 21 * 864e5);
   const e = DEFAULT_EVENT;
   db.prepare(`INSERT INTO events (slug, title, lineup, description, starts_at, doors_at, halls, price, deposit, genre, image, capacity)
     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?)`)
-    .run('karaoke-25-october', e.title, e.lineup, e.description,
-      at(d, 16, 0), at(d, 15, 0), 1000, 0, e.genre, e.image, DEFAULT_CAPACITY);
+    .run('first-event', e.title, e.lineup, e.description,
+      at(d, 19, 0), at(d, 18, 0), 1000, 0, e.genre, e.image, DEFAULT_CAPACITY);
 }

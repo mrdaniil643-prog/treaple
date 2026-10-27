@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { SELLER, LEGAL_LINKS } from '../public/js/seller.js';
+import { BRAND } from '../public/js/brand.js';
 
 const page = (name) => readFileSync(new URL(`../public/${name}.html`, import.meta.url), 'utf8');
 
@@ -10,7 +11,7 @@ test('документы на месте, ссылки из подвала ве�
   assert.ok(existsSync(new URL('../public/consent.html', import.meta.url)));
 });
 
-test('реквизиты в документах совпадают с seller.js', () => {
+test('документы собраны из текущего brand.js (иначе: npm run brand)', () => {
   for (const name of ['offer', 'refund', 'privacy', 'consent', 'contacts']) {
     const html = page(name);
     assert.ok(html.includes(SELLER.inn), `${name}: ИНН`);
@@ -18,4 +19,15 @@ test('реквизиты в документах совпадают с seller.js
     assert.ok(html.includes(SELLER.email), `${name}: почта`);
   }
   for (const name of ['offer', 'refund', 'privacy', 'contacts']) assert.ok(page(name).includes(SELLER.phone), `${name}: телефон`);
+  for (const name of ['offer', 'contacts']) {
+    assert.ok(page(name).includes(`«${BRAND.name}»`), `${name}: название`);
+    assert.ok(page(name).includes(BRAND.address), `${name}: адрес`);
+  }
+});
+
+test('в HTML-страницах только известные поля {{…}} из brand.js', () => {
+  const dir = new URL('../public/', import.meta.url);
+  for (const f of [...readdirSync(dir).filter((x) => x.endsWith('.html')), 'manifest.webmanifest']) {
+    for (const [, key] of readFileSync(new URL(f, dir), 'utf8').matchAll(/\{\{(\w+)\}\}/g)) assert.equal(typeof BRAND[key], 'string', `${f}: {{${key}}}`);
+  }
 });

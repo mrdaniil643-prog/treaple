@@ -2,6 +2,7 @@
 // сохраняем в JPEG и оборачиваем в минимальный PDF. Одна страница A4 на билет.
 // QR в файле постоянный: пускает на вход один раз, как обычный распечатанный билет.
 import { api, fmt, money, VENUE } from './common.js';
+import { BRAND } from './brand.js';
 
 const W = 1240, H = 1754; // A4 при 150 dpi
 const PT_W = 595.28, PT_H = 841.89;
@@ -9,11 +10,6 @@ const M = 90;
 const C = { night: '#212b3a', cream: '#fbe5b5', orange: '#f07a2b', ink: '#1a2230', muted: '#5f6b7d', paper: '#ffffff', box: '#f6f0e4', line: '#d9cdb6' };
 const FONT = "Manrope, 'Segoe UI', Roboto, Arial, sans-serif";
 const DISPLAY = "Unbounded, Manrope, 'Segoe UI', Arial, sans-serif";
-// Логотип МТ — те же многоугольники, что в шапке сайта (viewBox 224,5×80)
-const LOGO = [
-  [16.3, 0, 89.5, 0, 89.5, 40.1, 129.5, 0, 145.2, 0, 145.2, 80, 126.6, 80, 126.6, 41.1, 87.7, 80, 73.6, 80, 73.6, 39, 32.7, 80, 0, 80, 62.4, 17.6, 16.3, 17.6],
-  [151.3, 0, 224.5, 0, 224.5, 17.6, 197.2, 17.6, 197.2, 80, 178.6, 80, 178.6, 17.6, 151.3, 17.6],
-];
 
 function wrap(ctx, text, maxWidth, maxLines) {
   const words = String(text).split(/\s+/);
@@ -62,18 +58,11 @@ function drawPage(ctx, t, event, qrData) {
   // шапка
   ctx.fillStyle = C.night;
   ctx.fillRect(0, 0, W, 300);
-  ctx.save();
-  ctx.translate(M, 86);
-  ctx.scale(1.6, 1.6);
-  ctx.fillStyle = C.orange;
-  for (const p of LOGO) {
-    ctx.beginPath();
-    for (let i = 0; i < p.length; i += 2) (i ? ctx.lineTo : ctx.moveTo).call(ctx, p[i], p[i + 1]);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-  text(ctx, 'Музыкальный бар и караоке', W - M, 150, { size: 30, weight: 600, color: C.cream, align: 'right' });
+  // название вместо логотипа: canvas не рисует SVG-разметку без загрузки картинки
+  ctx.font = `800 96px ${DISPLAY}`;
+  const nameSize = Math.min(96, Math.floor(96 * 560 / Math.max(1, ctx.measureText(BRAND.name).width)));
+  text(ctx, BRAND.name, M, 200, { size: nameSize, weight: 800, color: C.orange, font: DISPLAY });
+  text(ctx, BRAND.tagline, W - M, 150, { size: 30, weight: 600, color: C.cream, align: 'right' });
   text(ctx, 'БИЛЕТ', W - M, 205, { size: 40, weight: 700, color: C.orange, font: DISPLAY, align: 'right' });
 
   // событие
@@ -152,7 +141,7 @@ function drawPage(ctx, t, event, qrData) {
   ctx.fillRect(0, H - 120, W, 120);
   const venue = [VENUE.address, VENUE.phone].filter(Boolean).join(' · ') || location.host;
   text(ctx, venue, M, H - 50, { size: 26, weight: 600, color: C.cream });
-  text(ctx, 'МТ', W - M, H - 50, { size: 26, weight: 800, color: C.orange, font: DISPLAY, align: 'right' });
+  text(ctx, BRAND.name, W - M, H - 50, { size: 26, weight: 800, color: C.orange, font: DISPLAY, align: 'right' });
 }
 
 const enc = new TextEncoder();

@@ -3,15 +3,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { openDb, seedEvents } from '../server/db.js';
 import { createBooking } from '../server/booking.js';
-import { createSeo } from '../server/seo.js';
+import { createSeo, brandHtml } from '../server/seo.js';
+import { BRAND } from '../public/js/brand.js';
 
 process.env.TZ ||= 'Asia/Vladivostok';
-const ORIGIN = 'https://bilety-mt.ru';
+const ORIGIN = 'https://bilety.example.ru';
+const NOW = new Date('2026-10-01T00:00:00Z'); // образец события встанет на 22 октября, 19:00
 
 function setup() {
   const db = openDb(':memory:');
-  seedEvents(db);
-  const booking = createBooking(db, { now: () => new Date('2026-10-01T00:00:00Z') });
+  seedEvents(db, NOW);
+  const booking = createBooking(db, { now: () => NOW });
   return { booking, seo: createSeo({ booking }) };
 }
 const page = (f) => readFileSync(new URL(`../public/${f}`, import.meta.url), 'utf8');
@@ -20,30 +22,31 @@ const ldOf = (html) => [...html.matchAll(/<script type="application\/ld\+json">(
 test('страница события: заголовок, canonical, Open Graph, разметка Event и текст без JS', () => {
   const { seo } = setup();
   const html = seo.render('event.html', page('event.html'), new URL(`${ORIGIN}/event?id=1`), ORIGIN);
-  assert.match(html, /<title>Отчётный концерт × Открытый микрофон — 25 октября, билеты \| Бар МТ, Хабаровск<\/title>/);
-  assert.match(html, /<link rel="canonical" href="https:\/\/bilety-mt\.ru\/event\?id=1">/);
-  assert.match(html, /<meta property="og:image" content="https:\/\/bilety-mt\.ru\/img\/events\/otchetny-koncert-25-10\.jpg">/);
-  assert.match(html, /<main id="app"><section[^>]*><h1>Отчётный концерт × Открытый микрофон<\/h1>/);
+  assert.equal(html.match(/<title>(.*)<\/title>/)[1], `Первое мероприятие — 22 октября, билеты | ${BRAND.name}, ${BRAND.city}`);
+  assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/event\?id=1">/);
+  assert.match(html, /<meta property="og:image" content="https:\/\/bilety\.example\.ru\/img\/og\.jpg">/);
+  assert.match(html, /<main id="app"><section[^>]*><h1>Первое мероприятие<\/h1>/);
   const desc = html.match(/<meta name="description" content="([^"]*)">/)[1];
-  assert.ok(desc.length <= 200 && desc.startsWith('25 октября в 16:00'), desc);
+  assert.ok(desc.length <= 200 && desc.startsWith('22 октября в 19:00'), desc);
   const [ev] = ldOf(html);
   assert.equal(ev['@type'], 'Event');
-  assert.equal(ev.startDate, '2026-10-25T16:00:00+10:00');
+  assert.equal(ev.startDate, '2026-10-22T19:00:00+10:00');
   assert.deepEqual([ev.offers.price, ev.offers.priceCurrency, ev.offers.availability], [1000, 'RUB', 'https://schema.org/InStock']);
-  assert.equal(ev.location.address.addressLocality, 'Хабаровск');
+  assert.equal(ev.location.address.addressLocality, BRAND.city);
 });
 
 test('главная: бар и афиша в разметке, ссылки на события в тексте; чужое событие не индексируется', () => {
   const { seo } = setup();
   const html = seo.render('index.html', page('index.html'), new URL(`${ORIGIN}/`), ORIGIN);
   const [bar, ev] = ldOf(html);
-  assert.equal(bar['@type'], 'BarOrPub');
+  assert.equal(bar['@type'], BRAND.schemaType);
   assert.equal(bar.logo, `${ORIGIN}/img/icon-512.png`);
-  assert.equal(bar.openingHoursSpecification.length, 2);
+  assert.equal(bar.openingHoursSpecification.length, BRAND.openingHours.length);
   assert.equal(ev['@type'], 'Event');
   assert.match(html, /<a href="\/event\?id=1">/);
   assert.match(seo.render('event.html', page('event.html'), new URL(`${ORIGIN}/event?id=999`), ORIGIN), /<meta name="robots" content="noindex">/);
-  assert.equal(seo.render('admin.html', page('admin.html'), new URL(`${ORIGIN}/admin`), ORIGIN), page('admin.html'), 'служебные страницы не трогаем');
+  assert.equal(seo.render('admin.html', page('admin.html'), new URL(`${ORIGIN}/admin`), ORIGIN), brandHtml(page('admin.html')), 'в служебные страницы только название');
+  assert.ok(!seo.render('admin.html', page('admin.html'), new URL(`${ORIGIN}/admin`), ORIGIN).includes('{{'));
 });
 
 test('в разметку и заголовки не пролезает HTML из названия события', () => {
@@ -58,10 +61,10 @@ test('robots.txt закрывает служебные разделы, sitemap �
   const { seo } = setup();
   const robots = seo.robots(ORIGIN);
   for (const p of ['/admin', '/staff', '/tickets', '/c/', '/api/']) assert.match(robots, new RegExp(`Disallow: ${p.replace('/', '\\/')}`));
-  assert.match(robots, /Sitemap: https:\/\/bilety-mt\.ru\/sitemap\.xml/);
+  assert.match(robots, /Sitemap: https:\/\/bilety\.example\.ru\/sitemap\.xml/);
   const map = seo.sitemap(ORIGIN);
-  assert.match(map, /<loc>https:\/\/bilety-mt\.ru\/event\?id=1<\/loc>/);
-  assert.match(map, /<loc>https:\/\/bilety-mt\.ru\/menu<\/loc>/);
+  assert.match(map, /<loc>https:\/\/bilety\.example\.ru\/event\?id=1<\/loc>/);
+  assert.match(map, /<loc>https:\/\/bilety\.example\.ru\/menu<\/loc>/);
   assert.ok(!map.includes('/admin'));
 });
 
@@ -77,11 +80,11 @@ test('у каждой страницы есть значок для поиска
 test('«Цены и оплата»: фиксированная цена каждого события без «от», порядок оплаты через ЮKassa', () => {
   const { seo } = setup();
   const html = seo.render('prices.html', page('prices.html'), new URL(`${ORIGIN}/prices`), ORIGIN);
-  assert.match(html, /<a href="\/event\?id=1">Отчётный концерт × Открытый микрофон<\/a><\/td><td>25 октября, 16:00<\/td><td><b>1\s000\s₽<\/b>/);
+  assert.match(html, /<a href="\/event\?id=1">Первое мероприятие<\/a><\/td><td>22 октября, 19:00<\/td><td><b>1\s000\s₽<\/b>/);
   assert.match(html, /ЮKassa/);
   assert.match(html, /54-ФЗ/);
-  assert.match(html, /<link rel="canonical" href="https:\/\/bilety-mt\.ru\/prices">/);
-  assert.match(seo.sitemap(ORIGIN), /<loc>https:\/\/bilety-mt\.ru\/prices<\/loc>/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/bilety\.example\.ru\/prices">/);
+  assert.match(seo.sitemap(ORIGIN), /<loc>https:\/\/bilety\.example\.ru\/prices<\/loc>/);
 });
 
 test('нигде на сайте нет цен «от …»: ЮKassa принимает только фиксированные цены', async () => {

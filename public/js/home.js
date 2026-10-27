@@ -1,4 +1,5 @@
 import { api, esc, fmt, money, ticketsWord, renderHeader, renderFooter, LOGO, VENUE, $ } from './common.js';
+import { BRAND } from './brand.js';
 import { mountTableRequest } from './table-request.js';
 
 renderHeader('afisha');
@@ -42,7 +43,7 @@ async function main() {
     <div class="wrap">
       <div>
         <div class="hero-mark"><i class="corner tr"></i>${LOGO}<i class="corner bl"></i></div>
-        <h1 class="hero-sub">Музыкальный бар и караоке в Хабаровске</h1>
+        <h1 class="hero-sub">${esc(BRAND.tagline)} ${esc(BRAND.cityIn)}</h1>
         <p class="hero-lead">Билеты на концерты онлайн. Стол можно забронировать заявкой, администратор перезвонит.</p>
       </div>
       <div id="hero-stub"></div>
@@ -56,11 +57,11 @@ async function main() {
 
   <section class="section wrap">
     <div class="section-head"><h2>Меню</h2></div>
-    <a class="menu-card" href="/menu" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>Живые гребешки, тартары, роллы и баскский чизкейк.</p></a>
+    <a class="menu-card" href="/menu" style="--img:url('/img/kitchen.jpg')"><span class="brush">Кухня</span><p>${esc(BRAND.menuTeaser)}</p></a>
   </section>
 
   <section class="section wrap" id="table">
-    <div class="section-head"><h2>Бронь стола</h2><p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p><p>Депозит тратите на еду и напитки. Оставьте заявку, администратор перезвонит и подтвердит стол. На концерт каждому гостю нужен билет.</p></div>
+    <div class="section-head"><h2>Бронь стола</h2>${VENUE.tableDeposit ? `<p class="table-deposit">Депозит на стол ${money(VENUE.tableDeposit)}</p>` : ''}<p>${VENUE.tableDeposit ? 'Депозит тратите на еду и напитки. ' : ''}Оставьте заявку, администратор перезвонит и подтвердит стол. На концерт каждому гостю нужен билет.</p></div>
     <div class="request-card home-request" id="request"></div>
   </section>`;
 

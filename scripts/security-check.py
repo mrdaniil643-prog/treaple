@@ -54,7 +54,7 @@ check('A01 старый возврат одной кнопкой закрыт', 
 check('A01 без пароля заявку на стол не изменить', post('/api/admin/table-requests/1', {'status': 'declined'}).status_code == 401)
 check('A01 без пароля вместимость события не поменять', post(f'/api/admin/events/{EID}', {'capacity': 1}).status_code == 401)
 check('A01 гашение контролёра без cookie закрыто', post('/api/staff/checkin', {'code': 'X'}).status_code == 401)
-check('A01 поддельная cookie контролёра не работает', post('/api/staff/checkin', {'code': 'X'}, {'Cookie': 'mt_staff=' + 'a' * 43}).status_code == 401)
+check('A01 поддельная cookie контролёра не работает', post('/api/staff/checkin', {'code': 'X'}, {'Cookie': 'venue_staff=' + 'a' * 43}).status_code == 401)
 check('A01 админ-токен не даёт роль контролёра через заголовок', post('/api/staff/checkin', {'code': 'X'}, ADMIN).status_code == 401)
 
 # ===== API3 Mass assignment
@@ -101,7 +101,7 @@ for need in ['content-security-policy', 'x-content-type-options', 'x-frame-optio
 check('A05 CSP без unsafe-eval и без unsafe-inline для скриптов', "script-src 'self'" in hdr.get('content-security-policy', '') and 'unsafe-eval' not in hdr.get('content-security-policy', ''))
 check('A05 нет заголовка X-Powered-By / версии сервера', 'x-powered-by' not in hdr and 'server' not in hdr)
 check('A05 нет CORS для чужих сайтов', 'access-control-allow-origin' not in {k.lower() for k in requests.get(B + '/api/events', headers={'Origin': 'https://evil.example'}).headers})
-for p in ['/.env', '/.git/config', '/../server/index.js', '/%2e%2e/package.json', '/data/mt.db', '/server/booking.js', '/package.json', '/README.md', '/.claude/skills/cyber-web-security/SKILL.md']:
+for p in ['/.env', '/.git/config', '/../server/index.js', '/%2e%2e/package.json', '/data/venue.db', '/server/booking.js', '/package.json', '/README.md', '/.claude/skills/cyber-web-security/SKILL.md']:
     check(f'A05 закрыт {p}', requests.get(B + p).status_code == 404)
 r = requests.get(B + '/api/nonexistent')
 check('A05 ошибки без стектрейсов', 'at ' not in r.text and 'Error' not in r.text)
@@ -134,8 +134,8 @@ cookie = a.headers.get('Set-Cookie', '')
 check('A07 cookie контролёра HttpOnly', 'HttpOnly' in cookie)
 check('A07 cookie контролёра SameSite=Strict', 'SameSite=Strict' in cookie)
 check('A07 приглашение одноразовое', post('/api/staff/activate', {'invite': inv['code']}).status_code == 410)
-staff_tok = re.search(r'mt_staff=([^;]+)', cookie).group(1)
-SC = {'Cookie': f'mt_staff={staff_tok}'}
+staff_tok = re.search(r'venue_staff=([^;]+)', cookie).group(1)
+SC = {'Cookie': f'venue_staff={staff_tok}'}
 check('A07 cookie контролёра работает', requests.get(B + '/api/staff/me', headers=SC).status_code == 200)
 check('A07 токен контролёра ≥ 256 бит', len(staff_tok) >= 43)
 

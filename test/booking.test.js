@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openDb } from '../server/db.js';
+import { openDb, DEFAULT_CAPACITY } from '../server/db.js';
 import { createBooking, BookingError, HOLD_MINUTES, QR_WINDOW_SECONDS } from '../server/booking.js';
 import { createStaff } from '../server/staff.js';
 
@@ -62,7 +62,7 @@ test('оплата, поиск заказа по телефону, проход 
   assert.throws(() => booking.getOrder({ code: paid.code, phone: '9000000000' }), BookingError);
 
   const code = paid.tickets[0].code;
-  assert.equal(booking.checkIn(`https://mt.bar/ticket.html?t=${code}`, { eventId: event.id }).result, 'ok');
+  assert.equal(booking.checkIn(`https://example.ru/ticket.html?t=${code}`, { eventId: event.id }).result, 'ok');
   assert.equal(booking.checkIn(code, { eventId: event.id }).result, 'already_used');
   assert.equal(booking.getOrder({ secret: paid.secret }).canRequestRefund, false, 'после прохода вернуть нельзя');
 });
@@ -146,8 +146,8 @@ test('живой QR гасит билет один раз, а скриншот �
   const live = booking.liveTickets([a, b, 'NOPE12345678']);
   assert.deepEqual(Object.keys(live.tickets).sort(), [a, b].sort());
   const token = live.tickets[a].qr;
-  assert.equal(booking.checkIn(`https://mt.bar/c/${token}`, { by: 'staff:1', requireSigned: true }).result, 'ok');
-  assert.equal(booking.checkIn(`https://mt.bar/c/${token}`, { by: 'staff:1', requireSigned: true }).result, 'already_used');
+  assert.equal(booking.checkIn(`https://example.ru/c/${token}`, { by: 'staff:1', requireSigned: true }).result, 'ok');
+  assert.equal(booking.checkIn(`https://example.ru/c/${token}`, { by: 'staff:1', requireSigned: true }).result, 'already_used');
   assert.equal(booking.liveTickets([a]).tickets[a].status, 'used');
   assert.equal(booking.liveTickets([a]).tickets[a].qr, undefined, 'у погашенного билета QR больше нет');
 
@@ -228,7 +228,7 @@ test('время открытия дверей проверяется', () => {
   assert.throws(() => booking.createEvent({ ...base, capacity: 0 }), (e) => e.status === 400);
   const e = booking.createEvent(base);
   assert.equal(e.title, 'Вечер');
-  assert.equal(e.capacity, 136, 'вместимость по умолчанию');
+  assert.equal(e.capacity, DEFAULT_CAPACITY, 'вместимость по умолчанию');
   assert.equal(booking.createEvent({ ...base, capacity: 80 }).capacity, 80);
 });
 

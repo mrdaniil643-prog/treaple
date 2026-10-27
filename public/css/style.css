@@ -1,4 +1,4 @@
-/* МТ — музыкальный бар и караоке. Цвета взяты из буклетов меню. */
+/* Стили сайта заведения. Палитра — в переменных ниже. */
 :root {
   --night: #212b3a;      /* фон буклетов */
   --night-2: #1a2230;    /* углублённые поверхности */
@@ -72,6 +72,9 @@ p { margin: 0; }
 .site-header .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
 .logo { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
 .logo svg { width: 64px; height: auto; fill: var(--logo); }
+/* название вместо логотипа, если в brand.js нет SVG */
+.wordmark { font-family: var(--f-display); font-weight: 800; color: var(--logo); line-height: 1; }
+.logo .wordmark { font-size: 20px; white-space: nowrap; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
 .logo span { font: 600 10px/1.25 var(--f-display); color: var(--logo); max-width: 15em; text-transform: uppercase; letter-spacing: .06em; }
 .nav { display: flex; gap: 4px; margin-left: auto; }
 .nav a {
@@ -83,6 +86,8 @@ p { margin: 0; }
 .nav .tickets-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 10px; background: var(--orange); color: var(--night-2); font-size: 12px; }
 @media (max-width: 720px) {
   .logo span { display: none; }
+  .logo { min-width: 0; }
+  .logo .wordmark { font-size: 16px; max-width: 5.5em; min-width: 0; }
   .site-header .wrap { gap: 8px; }
   .nav a { padding: 8px 10px; font-size: 14px; }
 }
@@ -148,6 +153,7 @@ textarea.input { padding: 12px 14px; min-height: 90px; resize: vertical; }
 @keyframes hero-drift { to { transform: scale(1); } }
 .hero .wrap { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: end; }
 .hero-mark { position: relative; max-width: 560px; }
+.hero-mark .wordmark { display: block; font-size: clamp(36px, 9vw, 96px); hyphens: manual; filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .35)); animation: glyph-in .9s var(--ease) both; }
 .hero-mark svg.mt { width: 100%; height: auto; fill: var(--logo); filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .35)); }
 .hero-mark svg.mt polygon { transform-box: fill-box; transform-origin: left bottom; animation: glyph-in .9s var(--ease) both; }
 .hero-mark svg.mt polygon:nth-child(2) { animation-delay: .12s; }

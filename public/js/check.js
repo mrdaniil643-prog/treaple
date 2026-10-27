@@ -1,4 +1,5 @@
-import { api, $ } from './common.js';
+import { api, esc, $ } from './common.js';
+import { BRAND } from './brand.js';
 import { showGateResult } from './gate-result.js';
 
 // Сюда ведёт живой QR с билета: /c/<код>.<подпись>.
@@ -13,7 +14,7 @@ async function main() {
   } catch (err) {
     if (err.status === 401) {
       app.innerHTML = `<section class="wrap page-head" style="max-width:520px">
-        <h1 style="font-size:32px">Это билет в МТ</h1>
+        <h1 style="font-size:32px">Это билет в «${esc(BRAND.name)}»</h1>
         <p>Покажите его контролёру на входе.</p>
         <p class="cart-note" style="margin-top:20px">Если вы контролёр, откройте в этом браузере приглашение от администратора. После этого билеты будут гаситься при скане.</p>
       </section>`;

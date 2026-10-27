@@ -2,7 +2,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { BookingError, cleanText } from './booking.js';
 import { tx } from './db.js';
 
-export const STAFF_COOKIE = 'mt_staff';
+export const STAFF_COOKIE = 'venue_staff';
 const INVITE_MINUTES = 15;
 const DEVICE_DAYS = 30;
 

@@ -2,21 +2,10 @@
 // canonical, Open Graph, разметка schema.org и текст страницы до загрузки скриптов
 // (поисковик видит заголовок, дату, цену и меню, даже если не выполняет JS).
 import { KITCHEN } from '../public/js/menu-data.js';
+import { BRAND } from '../public/js/brand.js';
 
-export const VENUE = {
-  name: 'МТ',
-  fullName: 'Музыкальный бар и караоке «МТ»',
-  city: 'Хабаровск',
-  street: 'ул. Муравьёва-Амурского, 3б',
-  region: 'Хабаровский край',
-  phone: '+7 4212 94-44-22',
-  email: 'mtbarkhv@yandex.ru',
-  // вс–чт 19:00–04:00, пт–сб 19:00–06:00
-  hours: [
-    { days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'], opens: '19:00', closes: '04:00' },
-    { days: ['Friday', 'Saturday'], opens: '19:00', closes: '06:00' },
-  ],
-};
+// Данные заведения — в public/js/brand.js
+export const VENUE = BRAND;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 // JSON внутри <script>: «</script>» и похожее не должны закрыть тег
@@ -39,6 +28,9 @@ function localIso(iso) {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${sign}${hh}:${mm}`;
 }
 
+// {{name}}, {{city}} и другие поля brand.js в HTML-страницах: так название меняется в одном месте
+export const brandHtml = (html, quote = esc) => html.replace(/\{\{(\w+)\}\}/g, (m, k) => (typeof BRAND[k] === 'string' ? quote(BRAND[k]) : m));
+
 // Страницы, которые не должны попадать в поиск: личные билеты, админка, контролёр
 const PRIVATE = new Set(['admin.html', 'staff.html', 'c.html', 'ticket.html', 'tickets.html', '404.html']);
 const PUBLIC_PAGES = ['/', '/menu', '/prices', '/contacts', '/offer', '/refund', '/privacy', '/consent'];
@@ -47,13 +39,13 @@ export function createSeo({ booking }) {
   const address = () => ({
     '@type': 'PostalAddress', streetAddress: VENUE.street, addressLocality: VENUE.city, addressRegion: VENUE.region, addressCountry: 'RU',
   });
-  const place = () => ({ '@type': 'Place', name: `Бар ${VENUE.name}`, address: address() });
+  const place = () => ({ '@type': 'Place', name: VENUE.name, address: address() });
   const bar = (origin) => ({
     '@context': 'https://schema.org',
-    '@type': 'BarOrPub',
+    '@type': VENUE.schemaType,
     '@id': `${origin}/#bar`,
     name: VENUE.name,
-    alternateName: VENUE.fullName,
+    alternateName: `${VENUE.tagline} «${VENUE.name}»`,
     url: `${origin}/`,
     logo: `${origin}/img/icon-512.png`,
     image: `${origin}/img/og.jpg`,
@@ -61,7 +53,7 @@ export function createSeo({ booking }) {
     email: VENUE.email,
     address: address(),
     hasMenu: `${origin}/menu`,
-    openingHoursSpecification: VENUE.hours.map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: h.days, opens: h.opens, closes: h.closes })),
+    openingHoursSpecification: VENUE.openingHours.map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: h.days, opens: h.opens, closes: h.closes })),
   });
 
   function eventLd(e, origin) {
@@ -75,10 +67,10 @@ export function createSeo({ booking }) {
       eventStatus: e.status === 'cancelled' ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
       eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
       location: place(),
-      description: e.description || e.lineup || `${e.title} в баре ${VENUE.name}`,
+      description: e.description || e.lineup || `${e.title} в «${VENUE.name}»`,
       url: `${origin}/event?id=${e.id}`,
       image: [`${origin}${e.image || '/img/og.jpg'}`],
-      organizer: { '@type': 'Organization', name: `Бар ${VENUE.name}`, url: `${origin}/` },
+      organizer: { '@type': 'Organization', name: VENUE.name, url: `${origin}/` },
       offers: {
         '@type': 'Offer', name: 'Входной билет', price: e.price, priceCurrency: 'RUB', url: `${origin}/event?id=${e.id}`,
         availability: e.status === 'on_sale' && left > 0 ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut',
@@ -107,12 +99,12 @@ ${events.map((e) => {
     if (file === 'index.html') {
       const events = upcoming();
       return {
-        title: `${VENUE.fullName} в Хабаровске: афиша, билеты, бронь столов`,
-        desc: `Музыкальный бар и караоке «МТ» в Хабаровске, ${VENUE.street}. Афиша концертов, билеты онлайн, бронь столов, меню кухни. Работаем каждый день с 19:00.`,
+        title: `${VENUE.tagline} «${VENUE.name}» ${VENUE.cityIn}: афиша, билеты, бронь столов`,
+        desc: `${VENUE.tagline} «${VENUE.name}» ${VENUE.cityIn}, ${VENUE.street}. Афиша, билеты онлайн, бронь столов, меню кухни. ${VENUE.hours}.`,
         canonical: '/',
         ld: [bar(origin), ...events.map((e) => eventLd(e, origin))],
-        body: `<section class="wrap page-head"><h1>Музыкальный бар и караоке «МТ» в Хабаровске</h1>
-<p>${esc(VENUE.street)}. Вс–чт 19:00–04:00, пт–сб 19:00–06:00. Билеты на концерты онлайн, бронь столов заявкой.</p>
+        body: `<section class="wrap page-head"><h1>${esc(VENUE.tagline)} «${esc(VENUE.name)}» ${esc(VENUE.cityIn)}</h1>
+<p>${esc(VENUE.street)}. ${esc(VENUE.hours)}. Билеты на концерты онлайн, бронь столов заявкой.</p>
 ${events.length ? `<h2>Афиша</h2><ul>${events.map((e) => `<li><a href="/event?id=${e.id}">${esc(e.title)}</a>, ${dateRu(e.starts_at)} в ${timeRu(e.starts_at)}, билет ${rub(e.price)}</li>`).join('')}</ul>` : ''}
 <p><a href="/menu">Меню кухни</a></p></section>`,
       };
@@ -124,21 +116,21 @@ ${events.length ? `<h2>Афиша</h2><ul>${events.map((e) => `<li><a href="/eve
       const when = `${dateRu(e.starts_at)} в ${timeRu(e.starts_at)}`;
       const about = e.description || e.lineup || '';
       return {
-        title: `${e.title} — ${dateRu(e.starts_at)}, билеты | Бар ${VENUE.name}, Хабаровск`,
-        desc: clip(`${when}, бар «МТ», Хабаровск. Входной билет ${rub(e.price)}, бронь столов. ${about}`, 200),
+        title: `${e.title} — ${dateRu(e.starts_at)}, билеты | ${VENUE.name}, ${VENUE.city}`,
+        desc: clip(`${when}, «${VENUE.name}», ${VENUE.city}. Входной билет ${rub(e.price)}, бронь столов. ${about}`, 200),
         canonical: `/event?id=${e.id}`,
         image: e.image,
         type: 'event',
         ld: [eventLd(e, origin)],
         body: `<section class="wrap page-head"><h1>${esc(e.title)}</h1>
-<p>${when}, двери открываются в ${timeRu(e.doors_at)}. ${esc(VENUE.street)}, Хабаровск.</p>
+<p>${when}, двери открываются в ${timeRu(e.doors_at)}. ${esc(VENUE.address)}.</p>
 ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price)}.</p></section>`,
       };
     }
     if (file === 'menu.html') {
       return {
-        title: `Меню кухни бара ${VENUE.name} в Хабаровске: цены`,
-        desc: 'Меню кухни музыкального бара «МТ»: устрицы и живые гребешки, камчатский краб, тартары, роллы, горячее и десерты. Цены в рублях.',
+        title: `Меню кухни «${VENUE.name}» ${VENUE.cityIn}: цены`,
+        desc: `Меню кухни «${VENUE.name}»: ${KITCHEN.map((s) => s.title.toLowerCase()).join(', ')}. Цены в рублях.`,
         canonical: '/menu',
         body: `<section class="wrap page-head"><h1>Меню кухни</h1>${KITCHEN.map((s) => `<h2>${esc(s.title)}</h2><ul>${s.items.map((d) => `<li>${esc(d.n)}${d.w ? `, ${esc(d.w)}` : ''} — ${rub(d.p)}</li>`).join('')}</ul>`).join('')}</section>`,
       };
@@ -152,6 +144,7 @@ ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price
 
   // Дописывает в HTML теги для поисковиков и соцсетей
   function render(file, html, url, origin) {
+    html = brandHtml(html);
     if (PRIVATE.has(file)) return html;
     const info = describe(file, url, origin);
     if (info.noindex) return html.replace('</head>', '<meta name="robots" content="noindex">\n</head>');
@@ -164,7 +157,7 @@ ${about ? `<p>${esc(about)}</p>` : ''}<p>Входной билет ${rub(e.price
     const image = `${origin}${info.image || '/img/og.jpg'}`;
     const head = [
       link && `<link rel="canonical" href="${esc(link)}">`,
-      '<meta property="og:site_name" content="Бар МТ">',
+      `<meta property="og:site_name" content="${esc(VENUE.name)}">`,
       '<meta property="og:locale" content="ru_RU">',
       `<meta property="og:type" content="${info.type === 'event' ? 'article' : 'website'}">`,
       `<meta property="og:title" content="${title}">`,

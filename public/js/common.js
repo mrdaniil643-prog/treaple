@@ -1,11 +1,10 @@
 import { SELLER, LEGAL_LINKS } from './seller.js';
+import { BRAND } from './brand.js';
 // Часовой пояс заведения задаётся на сервере (VENUE_TZ); все даты показываем в нём.
 export const TZ = await fetch('/api/settings').then((r) => r.json()).then((s) => s.timeZone).catch(() => 'Asia/Vladivostok');
 
-export const LOGO = `<svg class="mt" viewBox="0 0 224.5 80" aria-hidden="true">
-  <polygon points="16.3,0 89.5,0 89.5,40.1 129.5,0 145.2,0 145.2,80 126.6,80 126.6,41.1 87.7,80 73.6,80 73.6,39 32.7,80 0,80 62.4,17.6 16.3,17.6"/>
-  <polygon points="151.3,0 224.5,0 224.5,17.6 197.2,17.6 197.2,80 178.6,80 178.6,17.6 151.3,17.6"/>
-</svg>`;
+// Логотип из brand.js, а без него — название текстом
+export const LOGO = BRAND.logo || `<b class="wordmark">${BRAND.name.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])}</b>`;
 
 export async function api(path, { method = 'GET', body, admin } = {}) {
   const headers = {};
@@ -48,7 +47,7 @@ export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 // Заказы гостя хранятся в браузере, чтобы «Мои билеты» открывались без поиска.
-const KEY = 'mt.orders';
+const KEY = 'venue.orders';
 export const savedOrders = {
   list() {
     try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; }
@@ -101,7 +100,7 @@ export function renderHeader(current) {
   const header = document.createElement('header');
   header.className = 'site-header';
   header.innerHTML = `<div class="wrap">
-    <a class="logo" href="/" aria-label="МТ — на главную">${LOGO}<span>Музыкальный бар и караоке</span></a>
+    <a class="logo" href="/" aria-label="${esc(BRAND.name)} — на главную">${LOGO}<span>${esc(BRAND.tagline)}</span></a>
     <nav class="nav" aria-label="Разделы">${links.map(([href, label, id]) => `<a href="${href}"${id === current ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
   </div>`;
   document.body.prepend(header);
@@ -123,14 +122,14 @@ export function renderHeader(current) {
   }
 }
 
-// Данные заведения для подвала. Пустые поля на сайте не показываются.
+// Данные заведения для подвала и страниц. Пустые поля на сайте не показываются.
 export const VENUE = {
-  address: 'г. Хабаровск, ул. Муравьёва-Амурского, 3б',
-  hours: 'Вс–чт 19:00–04:00, пт–сб 19:00–06:00',
-  phone: '+7 (4212) 94-44-22',
-  email: 'mtbarkhv@yandex.ru',
-  entry: 'Фейс- и дресс-контроль',
-  tableDeposit: 5000, // депозит на стол: тратится на еду и напитки, оплачивается в баре (не на сайте)
+  address: BRAND.address,
+  hours: BRAND.hours,
+  phone: BRAND.phone,
+  email: BRAND.email,
+  entry: BRAND.entry,
+  tableDeposit: BRAND.tableDeposit, // депозит на стол: тратится на еду и напитки, оплачивается в заведении (не на сайте)
 };
 
 export function renderFooter() {
@@ -138,7 +137,7 @@ export function renderFooter() {
   footer.className = 'site-footer';
   const tel = VENUE.phone.replace(/[^\d+]/g, '');
   footer.innerHTML = `<div class="wrap">
-    <div><b>МТ</b><br>Музыкальный бар и караоке</div>
+    <div><b>${esc(BRAND.name)}</b><br>${esc(BRAND.tagline)}</div>
     ${VENUE.address || VENUE.hours ? `<div>${esc(VENUE.address)}${VENUE.address && VENUE.hours ? '<br>' : ''}${esc(VENUE.hours)}</div>` : ''}
     ${VENUE.phone ? `<div>Инфо и резерв<br><a href="tel:${esc(tel)}">${esc(VENUE.phone)}</a>${VENUE.email ? `<br><a href="mailto:${esc(VENUE.email)}">${esc(VENUE.email)}</a>` : ''}</div>` : ''}
     ${VENUE.entry ? `<div>${esc(VENUE.entry)}</div>` : ''}
