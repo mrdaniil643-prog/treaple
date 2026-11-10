@@ -115,7 +115,7 @@ function openCheckout() {
       </div>
       <label class="field"><span>Имя</span><input class="input" name="name" autocomplete="name" autocapitalize="words" enterkeyhint="next" required></label>
       <label class="field"><span>Телефон (по нему найдём заказ)</span><input class="input" name="phone" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="next" placeholder="+7 900 000-00-00" required></label>
-      <label class="field"><span>Почта для билетов (необязательно)</span><input class="input" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" enterkeyhint="done"></label>
+      <label class="field"><span>Почта для чека (необязательно)</span><input class="input" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" enterkeyhint="done"></label>
       ${o.tickets.length > 1 ? `<details class="guest-names"><summary>Подписать билеты именами гостей</summary>
         <div class="grid">${o.tickets.map((t, i) => `<label class="field"><span>Билет ${i + 1}</span><input class="input" data-guest="${t.code}" autocomplete="off" autocapitalize="words" placeholder="${i === 0 ? 'Вы' : `Гость ${i + 1}`}"></label>`).join('')}</div>
       </details>` : ''}
