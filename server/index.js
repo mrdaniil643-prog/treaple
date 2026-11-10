@@ -2,7 +2,7 @@
 process.env.TZ ||= process.env.VENUE_TZ || 'Asia/Vladivostok';
 
 import { createServer } from 'node:http';
-import { randomUUID, createHash } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, normalize, dirname, sep, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -184,7 +184,7 @@ route('GET', '/api/admin/events/:id/report', ({ id }) => booking.eventReport(id)
 route('POST', '/api/admin/checkin', (_, body) => booking.checkIn(body.code, { eventId: body.eventId, by: 'admin' }), { admin: true });
 route('GET', '/api/admin/staff', () => staff.list(), { admin: true });
 route('POST', '/api/admin/staff/invite', (_, body) => staff.invite(body.name), { admin: true });
-route('POST', '/api/admin/staff/:id/revoke', ({ id }) => staff.revoke(id), { admin: true });
+route('POST', '/api/admin/staff/:id/revoke', ({ id }, body) => staff.revoke(id), { admin: true });
 
 // Контролёр
 route('POST', '/api/staff/activate', (_, body, __, ctx) => {
@@ -267,7 +267,9 @@ async function startPayment(secret, body, req) {
       returnUrl: `${origin(req)}/tickets#return=${encodeURIComponent(order.code)}`,
       orderCode: order.code,
       receipt: buildReceipt(lines, contacts, receiptSettings()),
-      idempotenceKey: `pay-${order.code}-${randomUUID()}`,
+      // Один заказ — один платёж. Если ответ ЮKassa потерялся, повтор с тем же ключом
+      // вернёт уже созданный платёж, а не откроет вторую оплату для этого заказа.
+      idempotenceKey: `pay-${order.code}`,
     });
     const url = payment.confirmation?.confirmation_url;
     if (!payment.id || !url) throw new BookingError(502, 'Платёжный сервис не вернул страницу оплаты');
@@ -350,7 +352,7 @@ async function syncPayment(id) {
       idempotenceKey: `late-${o.code}`,
     });
     // не прошёл — заказ остаётся «к возврату», проверка раз в минуту попробует снова
-    if (refund?.status === 'canceled') return console.error(`Возврат по заказу ${o.code} не прошёл: ${refund.cancellation_details?.reason}`);
+    if (refund?.status === 'canceled') return console.error(`Возврат по заказу ${o.code} не прошёл: ${r.cancellation_details?.reason}`);
     booking.markLateRefunded(o);
   }
   return r;

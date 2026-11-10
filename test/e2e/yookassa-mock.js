@@ -6,8 +6,9 @@ import { randomUUID } from 'node:crypto';
 
 export function startYooKassaMock({ shopId, secretKey, port }) {
   const payments = new Map();
+  const paymentAttempts = [];
   const refunds = [];
-  const state = { refuseNext: false, loseNext: false, byKey: new Map() };
+  const state = { refuseNext: false, loseNext: false, loseNextPayment: false, byKey: new Map(), paymentByKey: new Map() };
   const errors = [];
   const webhooks = [];
   let site = '';
@@ -53,15 +54,26 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
     if (req.method === 'POST' && !req.headers['idempotence-key']) return json(res, 400, { type: 'error', code: 'invalid_request', description: 'Idempotence-Key' });
     if (req.method === 'POST' && url.pathname === '/v3/payments') {
       const b = await read(req);
+      const key = req.headers['idempotence-key'];
+      paymentAttempts.push({ key, order: b.metadata?.order });
       const bad = checkReceipt(b.receipt, b.amount);
       if (bad || !b.confirmation?.return_url || b.capture !== true) {
         errors.push(bad || 'нет return_url или capture');
         return json(res, 400, { type: 'error', code: 'invalid_request', description: bad });
       }
+      // Повтор с тем же ключом возвращает исходный платёж, даже если первый ответ потерялся.
+      const seen = state.paymentByKey.get(key);
+      if (seen) return json(res, 200, seen);
       const id = randomUUID();
       const p = { id, status: 'pending', paid: false, amount: b.amount, description: b.description, metadata: b.metadata, receipt: b.receipt, return_url: b.confirmation.return_url,
         confirmation: { type: 'redirect', confirmation_url: `http://localhost:${port}/checkout/${id}` } };
       payments.set(id, p);
+      state.paymentByKey.set(key, p);
+      // Платёж создан, но магазин получает 500 и не знает его ID.
+      if (state.loseNextPayment) {
+        state.loseNextPayment = false;
+        return json(res, 500, { type: 'error', code: 'internal_server_error' });
+      }
       return json(res, 200, p);
     }
     const one = url.pathname.match(/^\/v3\/payments\/([\w-]+)$/);
@@ -100,8 +112,9 @@ export function startYooKassaMock({ shopId, secretKey, port }) {
     server.listen(port, '127.0.0.1', () => resolve({
       url: `http://localhost:${port}`,
       setSite: (s) => { site = s; },
-      payments, refunds, errors, webhooks,
+      payments, paymentAttempts, refunds, errors, webhooks,
       refuseNextRefund: () => { state.refuseNext = true; },
+      loseNextPaymentAnswer: () => { state.loseNextPayment = true; },
       loseNextRefundAnswer: () => { state.loseNext = true; },
       close: () => server.close(),
     }));

@@ -197,6 +197,31 @@ test('ЮKassa провела возврат, но ответ потерялся:
   assert.equal(yk.refunds.length, before + 1, 'деньги ушли один раз');
 });
 
+test('ЮKassa создала платёж, но ответ потерялся: повтор открывает тот же платёж, а не новый', async () => {
+  const p = await page();
+  await p.goto(`${B}/event?id=${eventId}`);
+  await p.click('#go');
+  await p.fill('#pay-form [name=name]', 'Пётр');
+  await p.fill('#pay-form [name=phone]', '+7 912 000-33-44');
+  await p.check('#pay-form [name=consent]');
+  await p.fill('#pay-form [name=email]', 'petr@example.ru');
+  const before = yk.payments.size;
+  const attemptsBefore = yk.paymentAttempts.length;
+  yk.loseNextPaymentAnswer();
+  await p.click('#pay-form [type=submit]');
+  await p.waitForFunction(() => document.querySelector('#pay-error')?.textContent.includes('Платёжный сервис'));
+  assert.equal(yk.payments.size, before + 1, 'первый запрос создал один платёж, но его ответ потерялся');
+  await p.click('#pay-form [type=submit]');
+  await p.waitForURL(/\/checkout\//);
+  assert.equal(yk.payments.size, before + 1, 'повтор не создал второй платёж');
+  const attempts = yk.paymentAttempts.slice(attemptsBefore);
+  assert.equal(attempts.length, 2);
+  assert.equal(attempts[0].key, attempts[1].key, 'повтор использует ключ исходного платежа');
+  assert.equal(attempts[0].order, attempts[1].order);
+  const created = [...yk.payments.keys()].at(-1);
+  assert.match(p.url(), new RegExp(created), 'гость попал на страницу исходного платежа');
+});
+
 test('на страницах нет ошибок JavaScript', () => {
   assert.deepEqual(pageErrors, []);
 });
