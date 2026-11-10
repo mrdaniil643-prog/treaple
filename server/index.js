@@ -184,7 +184,7 @@ route('GET', '/api/admin/events/:id/report', ({ id }) => booking.eventReport(id)
 route('POST', '/api/admin/checkin', (_, body) => booking.checkIn(body.code, { eventId: body.eventId, by: 'admin' }), { admin: true });
 route('GET', '/api/admin/staff', () => staff.list(), { admin: true });
 route('POST', '/api/admin/staff/invite', (_, body) => staff.invite(body.name), { admin: true });
-route('POST', '/api/admin/staff/:id/revoke', ({ id }, body) => staff.revoke(id), { admin: true });
+route('POST', '/api/admin/staff/:id/revoke', ({ id }) => staff.revoke(id), { admin: true });
 
 // Контролёр
 route('POST', '/api/staff/activate', (_, body, __, ctx) => {
@@ -352,7 +352,7 @@ async function syncPayment(id) {
       idempotenceKey: `late-${o.code}`,
     });
     // не прошёл — заказ остаётся «к возврату», проверка раз в минуту попробует снова
-    if (refund?.status === 'canceled') return console.error(`Возврат по заказу ${o.code} не прошёл: ${r.cancellation_details?.reason}`);
+    if (refund?.status === 'canceled') return console.error(`Возврат по заказу ${o.code} не прошёл: ${refund.cancellation_details?.reason}`);
     booking.markLateRefunded(o);
   }
   return r;
