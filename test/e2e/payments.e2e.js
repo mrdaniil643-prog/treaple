@@ -222,6 +222,20 @@ test('ЮKassa создала платёж, но ответ потерялся: �
   assert.match(p.url(), new RegExp(created), 'гость попал на страницу исходного платежа');
 });
 
+test('после оплаты через другое приложение билеты открываются даже без сохранённого заказа в браузере', async () => {
+  const p = await page();
+  await buy(p);
+  // СБП или другой браузер могут вернуть гостя без localStorage исходной вкладки.
+  const sameOrigin = await p.context().newPage();
+  await sameOrigin.goto(B);
+  await sameOrigin.evaluate(() => localStorage.clear());
+  await sameOrigin.close();
+  await p.click('#pay');
+  await p.waitForURL(/\/tickets/);
+  await p.waitForSelector('.ticket .qr svg', { timeout: 10000 });
+  assert.equal(await p.locator('.ticket').count(), 2);
+});
+
 test('на страницах нет ошибок JavaScript', () => {
   assert.deepEqual(pageErrors, []);
 });
