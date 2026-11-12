@@ -264,7 +264,7 @@ async function startPayment(secret, body, req) {
     const payment = await yookassa.createPayment({
       amount: order.total,
       description: `Заказ ${order.code}: ${order.event.title}`,
-      returnUrl: `${origin(req)}/tickets#return=${encodeURIComponent(order.code)}`,
+      returnUrl: `${origin(req)}/tickets#order=${encodeURIComponent(secret)}&return=${encodeURIComponent(order.code)}`,
       orderCode: order.code,
       receipt: buildReceipt(lines, contacts, receiptSettings()),
       // Один заказ — один платёж. Если ответ ЮKassa потерялся, повтор с тем же ключом
