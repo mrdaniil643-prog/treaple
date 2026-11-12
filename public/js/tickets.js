@@ -168,7 +168,7 @@ async function main() {
     } catch (err) { $('#lookup-error').textContent = err.message; }
   });
 
-  // С платёжной страницы ЮKassa возвращаемся с номером заказа (#return=EH-…), секрет заказа знает только этот телефон
+  // После оплаты ссылка содержит секрет заказа во фрагменте; старые ссылки #return=EH-… ищем в памяти телефона
   const back = params.get('return');
   const secret = params.get('order') || (back && savedOrders.list().find((x) => x.code === back)?.secret);
   if (back && !secret) {
